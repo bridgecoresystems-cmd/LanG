@@ -1,0 +1,17 @@
+{
+  "name": "language-school-monorepo",
+  "version": "1.0.0",
+  "description": "Monorepo for Language School project",
+  "main": "index.js",
+  "scripts": {
+    "start": "echo \"Select a project to start\"",
+    "dev": "echo \"Select a project to develop\"",
+    "build": "echo \"Select a project to build\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "workspaces": [
+    "packages/*"
+  ]
+}
