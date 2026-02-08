@@ -3,6 +3,9 @@ import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { authMiddleware } from "./middleware";
 import { lucia } from "./auth";
+import { db } from "./db";
+import { users } from "./db/schema";
+import { eq } from "drizzle-orm";
 import { landingRoutes } from "./routes/landing";
 import { userRoutes } from "./routes/users";
 
@@ -51,9 +54,13 @@ const app = new Elysia()
         }
         return { user, session };
       })
-      .get("/me", ({ user }) => {
+      .get("/me", async ({ user }) => {
         if (!user) return { error: "Unauthorized", status: 401 };
-        return { user };
+        const [dbUser] = await db.select().from(users).where(eq(users.id, user.id));
+        if (!dbUser) return { error: "User not found" };
+        const { password_hash, ...profile } = dbUser;
+        const full_name = [dbUser.first_name, dbUser.last_name].filter(Boolean).join(" ") || dbUser.username;
+        return { user: { ...profile, full_name } };
       })
       .use(userRoutes)
       .use(adminRoutes)

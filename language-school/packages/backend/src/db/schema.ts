@@ -117,6 +117,15 @@ export const news = pgTable("news", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// --- Changelog ---
+
+export const changelog = pgTable("changelog", {
+  id: serial("id").primaryKey(),
+  date: timestamp("date").notNull(),
+  text: text("text").notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
 // --- Teachers ---
 
 export const teachers = pgTable("teacher", {

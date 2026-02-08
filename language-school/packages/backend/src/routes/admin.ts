@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { db } from "../db";
-import { contactMessages, courseCategories, courseSubCategories, courses, news, teachers, users } from "../db/schema";
+import { contactMessages, changelog, courseCategories, courseSubCategories, courses, news, teachers, users } from "../db/schema";
 import { desc, eq } from "drizzle-orm";
 import { lucia } from "../auth";
 
@@ -31,6 +31,32 @@ export const adminRoutes = new Elysia({ prefix: "/admin" })
       return { error: "Forbidden: Admins only" };
     }
   })
+  // --- Admin Profile ---
+  .get("/profile", async ({ user }) => {
+    if (!user) return { error: "Unauthorized" };
+    const [dbUser] = await db.select().from(users).where(eq(users.id, user.id));
+    if (!dbUser) return { error: "User not found" };
+    const { password_hash, ...profile } = dbUser;
+    return profile;
+  })
+  .patch("/profile", async ({ user, body, set }) => {
+    if (!user) {
+      set.status = 401;
+      return { error: "Unauthorized" };
+    }
+    const payload = body as Record<string, unknown>;
+    const updateData: Record<string, unknown> = {};
+    if (payload.first_name !== undefined) updateData.first_name = payload.first_name;
+    if (payload.last_name !== undefined) updateData.last_name = payload.last_name;
+    if (payload.phone !== undefined) updateData.phone = payload.phone;
+    if (payload.avatar !== undefined) updateData.avatar = payload.avatar;
+    if (payload.email !== undefined) updateData.email = payload.email;
+    const [updated] = await db.update(users).set(updateData).where(eq(users.id, user.id)).returning();
+    if (!updated) return { error: "Not found" };
+    const { password_hash, ...profile } = updated;
+    return profile;
+  })
+
   // --- Admin Password Change ---
   .post("/change-password", async ({ user, body, set }) => {
     if (!user) {
@@ -463,4 +489,39 @@ export const adminRoutes = new Elysia({ prefix: "/admin" })
   // --- Teachers ---
   .post("/teachers", async ({ body }) => {
     return await db.insert(teachers).values(body as any).returning();
+  })
+
+  // --- Changelog ---
+  .get("/changelog", async () => {
+    return await db.select().from(changelog).orderBy(desc(changelog.date));
+  })
+  .post("/changelog", async ({ body }) => {
+    const [created] = await db.insert(changelog).values({
+      date: new Date(body.date),
+      text: body.text
+    }).returning();
+    return created;
+  }, {
+    body: t.Object({
+      date: t.String(),
+      text: t.String()
+    })
+  })
+  .patch("/changelog/:id", async ({ params: { id }, body }) => {
+    const payload = body as { date?: string; text?: string };
+    const updateData: Record<string, unknown> = {};
+    if (payload.date !== undefined) updateData.date = new Date(payload.date);
+    if (payload.text !== undefined) updateData.text = payload.text;
+    const [updated] = await db.update(changelog).set(updateData).where(eq(changelog.id, parseInt(id))).returning();
+    if (!updated) return { error: "Not found" };
+    return updated;
+  }, {
+    body: t.Partial(t.Object({
+      date: t.String(),
+      text: t.String()
+    }))
+  })
+  .delete("/changelog/:id", async ({ params: { id } }) => {
+    await db.delete(changelog).where(eq(changelog.id, parseInt(id)));
+    return { message: "Deleted successfully" };
   });

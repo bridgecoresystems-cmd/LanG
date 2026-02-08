@@ -5,15 +5,22 @@
       <QToolbar>
         <QBtn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
         <QToolbarTitle class="admin-title">
-          LanG Admin
+          Bridgecore SYSTEMS admin panel 
         </QToolbarTitle>
         <QSpace />
         <div class="q-gutter-sm row items-center no-wrap">
-          <QBtn round flat class="user-menu-button">
-            <QAvatar size="28px">
-              <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" alt="">
-              <QIcon v-else name="person" />
+          <QBtn flat no-caps :to="'/admin/changelogs'" icon="history" label="Changelog" class="q-mr-sm" />
+          <QBtn flat no-caps class="user-menu-button">
+            <QAvatar size="36px" class="q-mr-sm">
+              <img v-if="authStore.user?.avatar" :src="avatarSrc" alt="">
+              <QIcon v-else name="person" size="24px" />
             </QAvatar>
+            <span class="text-body2 text-weight-medium">
+              {{ authStore.user?.first_name || authStore.user?.last_name
+                ? [authStore.user?.first_name, authStore.user?.last_name].filter(Boolean).join(' ')
+                : authStore.user?.username || 'Админ' }}
+            </span>
+            <QIcon name="expand_more" size="20px" class="q-ml-xs" />
             <QMenu>
               <QList style="min-width: 140px">
                 <QItem clickable v-close-popup @click="handleLogout">
@@ -88,11 +95,11 @@
             <QItemSection>Пользователи</QItemSection>
           </QItem>
 
-          <QItem clickable v-ripple @click="showPasswordDialog = true" class="nav-item">
+          <QItem clickable v-ripple @click="router.push('/admin/profile')" class="nav-item">
             <QItemSection avatar>
-              <QIcon name="security" />
+              <QIcon name="person" />
             </QItemSection>
-            <QItemSection>Безопасность</QItemSection>
+            <QItemSection>Профиль администратора</QItemSection>
           </QItem>
         </QList>
       </QScrollArea>
@@ -120,50 +127,6 @@
     </QPageContainer>
 
     <!-- Password Dialog -->
-    <QDialog v-model="showPasswordDialog">
-      <QCard style="min-width: 350px">
-        <QCardSection>
-          <div class="text-h6">Смена пароля администратора</div>
-        </QCardSection>
-
-        <QCardSection class="q-pt-none">
-          <QForm @submit="changePassword" class="q-gutter-md">
-            <QInput
-              v-model="passwordForm.currentPassword"
-              type="password"
-              label="Текущий пароль"
-              outlined
-              :rules="[val => !!val || 'Обязательное поле']"
-            />
-            <QInput
-              v-model="passwordForm.newPassword"
-              type="password"
-              label="Новый пароль"
-              outlined
-              :rules="[
-                val => !!val || 'Обязательное поле',
-                val => val.length >= 6 || 'Минимум 6 символов'
-              ]"
-            />
-            <QInput
-              v-model="passwordForm.confirmPassword"
-              type="password"
-              label="Подтвердите новый пароль"
-              outlined
-              :rules="[
-                val => !!val || 'Обязательное поле',
-                val => val === passwordForm.newPassword || 'Пароли не совпадают'
-              ]"
-            />
-
-            <div class="row justify-end q-mt-md">
-              <QBtn flat label="Отмена" color="primary" v-close-popup />
-              <QBtn label="Сменить" type="submit" color="primary" :loading="loading" />
-            </div>
-          </QForm>
-        </QCardSection>
-      </QCard>
-    </QDialog>
   </QLayout>
 </template>
 
@@ -171,18 +134,13 @@
 const leftDrawerOpen = ref(true)
 const authStore = useAuthStore()
 const router = useRouter()
+const avatarSrc = computed(() => authStore.user?.avatar || undefined)
 const route = useRoute()
 const config = useRuntimeConfig()
 const apiBase = config.public.apiBase
 const $q = useQuasar()
 
-const showPasswordDialog = ref(false)
 const loading = ref(false)
-const passwordForm = reactive({
-  currentPassword: '',
-  newPassword: '',
-  confirmPassword: ''
-})
 
 const breadcrumbItems = computed(() => {
   const items: Array<{ label: string; path?: string }> = []
@@ -203,43 +161,14 @@ const breadcrumbItems = computed(() => {
     }
   } else if (path.includes('/users')) {
     items.push({ label: 'Пользователи' })
+  } else if (path.includes('/profile')) {
+    items.push({ label: 'Профиль' })
+  } else if (path.includes('/changelogs')) {
+    items.push({ label: 'Changelog' })
   }
 
   return items
 })
-
-const changePassword = async () => {
-  loading.value = true
-  try {
-    await $fetch(`${apiBase}/admin/change-password`, {
-      method: 'POST',
-      body: {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword
-      },
-      credentials: 'include'
-    })
-
-    $q.notify({
-      color: 'positive',
-      message: 'Пароль успешно изменен',
-      icon: 'check'
-    })
-    showPasswordDialog.value = false
-    passwordForm.currentPassword = ''
-    passwordForm.newPassword = ''
-    passwordForm.confirmPassword = ''
-  } catch (err: any) {
-    console.error('Failed to change password', err)
-    $q.notify({
-      color: 'negative',
-      message: err.data?.error || 'Ошибка при смене пароля',
-      icon: 'error'
-    })
-  } finally {
-    loading.value = false
-  }
-}
 
 const toggleLeftDrawer = () => {
   leftDrawerOpen.value = !leftDrawerOpen.value
@@ -269,9 +198,11 @@ const handleLogout = async () => {
 }
 
 .admin-title {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
   color: white !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 1px;
 }
 
 .user-menu-button {
