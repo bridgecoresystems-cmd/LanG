@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Receipt {{ payment.invoice_number }}</title>
+    <style>
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 13px;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .layout-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: none;
+            margin-bottom: 20px;
+        }
+        .layout-table td {
+            vertical-align: top;
+            border: none;
+            padding: 0;
+        }
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 10px;
+        }
+        .invoice-info {
+            margin-bottom: 8px;
+        }
+        .section-title {
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #666;
+            font-size: 11px;
+            margin-bottom: 5px;
+            margin-top: 20px;
+        }
+        .school-info {
+            text-align: right;
+            line-height: 1.4;
+        }
+        .bill-to {
+            line-height: 1.4;
+        }
+        .status-paid {
+            color: #18a058;
+            font-weight: bold;
+            font-size: 15px;
+            margin: 20px 0;
+            padding: 10px 0;
+            border-top: 1px solid #eee;
+            border-bottom: 1px solid #eee;
+        }
+        .main-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .main-table th {
+            text-align: left;
+            border-bottom: 2px solid #333;
+            padding: 10px 5px;
+            color: #333;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        .main-table td {
+            padding: 12px 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .total-section-table {
+            width: 300px;
+            margin-left: auto;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        .total-section-table td {
+            padding: 5px;
+        }
+        .total-label {
+            color: #666;
+            text-align: left;
+        }
+        .total-value {
+            text-align: right;
+            font-weight: bold;
+        }
+        .grand-total {
+            font-size: 16px;
+            border-top: 1px solid #ccc;
+        }
+        .footer {
+            margin-top: 60px;
+            font-size: 11px;
+            color: #999;
+            text-align: center;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .history-table th {
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            padding: 5px;
+            color: #666;
+        }
+        .history-table td {
+            padding: 8px 5px;
+            border-bottom: 1px solid #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Table -->
+    <table class="layout-table">
+        <tr>
+            <td style="width: 50%;">
+                <div class="title">Receipt</div>
+                <div class="invoice-info">
+                    <strong>Invoice number</strong><br>
+                    {{ payment.invoice_number }}
+                </div>
+                <div class="invoice-info">
+                    <strong>Date paid</strong><br>
+                    {{ payment.created_at|date:"F d, Y" }}
+                </div>
+            </td>
+            <td style="width: 50%;">
+                <div class="school-info">
+                    <strong style="font-size: 16px;">{{ school.name }}</strong><br>
+                    {{ school.address }}<br>
+                    {{ school.country }}<br>
+                    {{ school.phone }}<br>
+                    {{ school.email }}
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Bill To Table -->
+    <table class="layout-table" style="margin-top: 30px;">
+        <tr>
+            <td>
+                <div class="section-title">Bill to</div>
+                <div class="bill-to">
+                    <strong style="font-size: 14px;">{{ payment.student.get_full_name|default:payment.student.username }}</strong><br>
+                    {% if payment.student.address %}{{ payment.student.address }}<br>{% endif %}
+                    {% if payment.student.phone %}{{ payment.student.phone }}<br>{% endif %}
+                    {% if payment.student.email %}{{ payment.student.email }}{% endif %}
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="status-paid">
+        {{ payment.amount }} {{ payment.currency }} paid on {{ payment.created_at|date:"F d, Y" }}
+    </div>
+
+    <table class="main-table">
+        <thead>
+            <tr>
+                <th style="width: 50%;">Description</th>
+                <th style="text-align: center; width: 10%;">Qty</th>
+                <th style="text-align: right; width: 20%;">Unit price</th>
+                <th style="text-align: right; width: 20%;">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <strong>{{ payment.group.course.name|default:"Course Payment" }}</strong><br>
+                    <span style="font-size: 11px; color: #666;">Group: {{ payment.group.name|default:"General" }}</span>
+                </td>
+                <td style="text-align: center;">1</td>
+                <td style="text-align: right;">{{ subtotal }} {{ payment.currency }}</td>
+                <td style="text-align: right;">{{ subtotal }} {{ payment.currency }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="total-section-table">
+        <tr>
+            <td class="total-label">Subtotal</td>
+            <td class="total-value">{{ subtotal }} {{ payment.currency }}</td>
+        </tr>
+        {% if payment.discount > 0 %}
+        <tr>
+            <td class="total-label">Discount</td>
+            <td class="total-value" style="color: #d03050;">-{{ payment.discount }} {{ payment.currency }}</td>
+        </tr>
+        {% endif %}
+        <tr class="grand-total">
+            <td class="total-label" style="padding-top: 10px;">Total</td>
+            <td class="total-value" style="padding-top: 10px; font-size: 18px;">{{ payment.amount }} {{ payment.currency }}</td>
+        </tr>
+        <tr>
+            <td class="total-label">Amount paid</td>
+            <td class="total-value">{{ payment.amount }} {{ payment.currency }}</td>
+        </tr>
+    </table>
+
+    <div style="margin-top: 40px;">
+        <div class="section-title">Payment history</div>
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Payment method</th>
+                    <th>Date</th>
+                    <th style="text-align: right;">Amount paid</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ payment.get_payment_method_display }}</td>
+                    <td>{{ payment.created_at|date:"F d, Y" }}</td>
+                    <td style="text-align: right;">{{ payment.amount }} {{ payment.currency }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 30px; font-size: 12px;">
+        <strong>Receipt number</strong><br>
+        {{ payment.id }}-{{ payment.invoice_number|slice:"-4:" }}
+    </div>
+
+    <div class="footer">
+        Thank you for choosing Language School!<br>
+        This is an electronically generated receipt and does not require a physical signature.
+    </div>
+</body>
+</html>

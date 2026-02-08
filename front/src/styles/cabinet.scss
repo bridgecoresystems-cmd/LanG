@@ -1,0 +1,19 @@
+/**
+ * Стили для кабинета (Naive UI)
+ * Используются только на страницах /cabinet/*
+ */
+
+// Кастомизация Naive UI для кабинета
+.cabinet-container {
+  padding: 24px;
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+
+// Мягкие, дружелюбные цвета для кабинета
+:root {
+  --cabinet-primary: #18a058;
+  --cabinet-secondary: #2080f0;
+  --cabinet-bg: #f5f5f5;
+}
+

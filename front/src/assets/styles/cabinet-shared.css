@@ -1,0 +1,172 @@
+/* Shared styles for Cabinet applications */
+
+:root {
+  --cabinet-header-bg: #ffffff;
+  --cabinet-card-bg: #ffffff;
+  --cabinet-border-radius: 12px;
+  --cabinet-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Page Layout */
+.cabinet-page-container {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.cabinet-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--cabinet-header-bg);
+  border-radius: var(--cabinet-border-radius);
+  box-shadow: var(--cabinet-shadow);
+}
+
+.cabinet-page-title-section h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.cabinet-page-description {
+  color: var(--text-secondary);
+  margin: 0.25rem 0 0 0;
+  font-size: 1rem;
+}
+
+/* Common Buttons */
+.cabinet-btn-primary {
+  background: var(--primary-color) !important;
+  border: 1px solid var(--primary-color) !important;
+  color: white !important;
+  padding: 0.75rem 1.5rem !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  font-size: 0.95rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+}
+
+.cabinet-btn-primary:hover {
+  background: var(--secondary-color) !important;
+  border-color: var(--secondary-color) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2) !important;
+}
+
+.cabinet-btn-primary:active {
+  transform: translateY(0);
+}
+
+.cabinet-btn-primary i {
+  font-size: 0.9rem;
+}
+
+/* Cards */
+.cabinet-card {
+  background: var(--cabinet-card-bg);
+  border-radius: var(--cabinet-border-radius);
+  box-shadow: var(--cabinet-shadow);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Interactive Tables */
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: var(--surface-50) !important;
+}
+
+/* Input Fields */
+.cabinet-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.cabinet-input:focus {
+  border-color: var(--primary-color);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+/* Global PrimeVue Fixes */
+:deep(.p-datatable .p-datatable-thead > tr > th) {
+  background: var(--surface-50) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.5px !important;
+  padding: 1.25rem 1rem !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid var(--surface-200) !important;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr > td) {
+  padding: 1.25rem 1rem !important;
+  border-bottom: 1px solid var(--surface-100) !important;
+}
+
+:deep(.p-tag) {
+  padding: 0.25rem 0.75rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  line-height: 1 !important;
+}
+
+:deep(.p-tag-value) {
+  line-height: 1 !important;
+  display: inline-block !important;
+  padding: 2px 0 !important;
+}
+
+:deep(.p-paginator) {
+  padding: 1rem !important;
+  justify-content: center !important;
+  background: var(--surface-50) !important;
+  border-top: 1px solid var(--surface-200) !important;
+}
+
+:deep(.p-paginator .p-dropdown) {
+  height: 2.25rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+:deep(.p-paginator .p-dropdown .p-dropdown-label) {
+  padding: 0 0.75rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  font-weight: 600 !important;
+  font-size: 0.9rem !important;
+}
+
+:deep(.p-paginator .p-paginator-pages .p-paginator-page) {
+  min-width: 2.25rem !important;
+  height: 2.25rem !important;
+  border-radius: 6px !important;
+  margin: 0 2px !important;
+}
+
+

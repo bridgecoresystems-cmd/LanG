@@ -1,0 +1,21 @@
+/**
+ * Стили для админ-панели (Quasar)
+ * Используются только на страницах /management/*
+ */
+
+// Кастомизация Quasar для админки
+.q-page {
+  padding: 24px;
+}
+
+.q-table {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.q-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
