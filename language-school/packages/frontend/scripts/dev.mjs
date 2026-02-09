@@ -15,9 +15,9 @@ const nuxtPkg = require.resolve('nuxt/package.json');
 const nuxtDir = dirname(nuxtPkg);
 const nuxtBin = join(nuxtDir, 'bin/nuxt.mjs');
 
-const proc = spawn(process.execPath, [nuxtBin, 'dev'], {
+const proc = spawn(process.execPath, ['--max-old-space-size=4096', nuxtBin, 'dev'], {
   stdio: 'inherit',
   cwd: join(__dirname, '..'),
-  env: process.env,
+  env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' },
 });
 proc.on('exit', (code) => process.exit(code ?? 0));

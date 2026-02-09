@@ -54,4 +54,10 @@ export default defineNuxtConfig({
       },
     },
   },
+  nitro: {
+    experimental: {
+      wasm: false,
+    },
+    nodeOptions: ['--max-old-space-size=4096'],
+  },
 })
