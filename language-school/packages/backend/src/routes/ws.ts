@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { lucia } from "../auth";
+import { ROLES } from "../constants/roles";
 import { adminClients, publicClients } from "../ws/contact-broadcast";
 
 export const wsRoutes = new Elysia()
@@ -16,7 +17,7 @@ export const wsRoutes = new Elysia()
           return { error: "Unauthorized" };
         }
         const { session, user } = await lucia.validateSession(sessionId);
-        if (!session || !user || user.role !== "admin") {
+        if (!session || !user || user.role !== ROLES.SUPERUSER) {
           set.status = 403;
           return { error: "Forbidden" };
         }

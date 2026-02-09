@@ -1,1 +1,41 @@
-{"version":"7","dialect":"postgresql","entries":[{"idx":0,"version":"7","when":1770556299957,"tag":"0000_nice_husk","breakpoints":true},{"idx":1,"version":"7","when":1770570000000,"tag":"0001_changelog","breakpoints":true}]}
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1770556299957,
+      "tag": "0000_nice_husk",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1770570000000,
+      "tag": "0001_changelog",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770580000000,
+      "tag": "0002_admin_to_superuser",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1770658439175,
+      "tag": "0003_natural_kat_farrell",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1770660678371,
+      "tag": "0004_supreme_hellfire_club",
+      "breakpoints": true
+    }
+  ]
+}

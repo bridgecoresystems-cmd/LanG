@@ -1,10 +1,12 @@
+import { ROLES } from '~/constants/roles'
+
 export default defineNuxtRouteMiddleware(async () => {
   const authStore = useAuthStore()
   
   // Если только что залогинились и пользователь уже есть в store, пропускаем проверку
   if (import.meta.client) {
     const justLoggedIn = sessionStorage.getItem('auth_just_logged_in')
-    if (justLoggedIn && authStore.user?.role === 'admin') {
+    if (justLoggedIn && authStore.user?.role === ROLES.SUPERUSER) {
       sessionStorage.removeItem('auth_just_logged_in')
       return
     }
@@ -31,7 +33,7 @@ export default defineNuxtRouteMiddleware(async () => {
       `${baseUrl || ''}${apiBase}/me`,
       opts
     )
-    if (!user?.user || user.user.role !== 'admin') {
+    if (!user?.user || user.user.role !== ROLES.SUPERUSER) {
       return navigateTo('/landing/login')
     }
     authStore.user = user.user as any

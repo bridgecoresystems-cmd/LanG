@@ -1,0 +1,89 @@
+---
+description: LanG Language School — стек, архитектура, роли, гайдлайны и план доработок
+alwaysApply: true
+---
+
+# LanG Language School — Project Guidelines
+
+## Контекст
+
+- **Стек**: Bun (runtime), Elysia.js (backend), Drizzle ORM (БД), Nuxt 3 (frontend)
+- **Архитектура**: Monorepo — `packages/backend/`, `packages/frontend/`
+- **Домен**: Language School (школа языков)
+
+## User Roles & Logic (RBAC)
+
+Строгий RBAC. Всегда использовать константу `ROLES`, не magic strings.
+
+| Роль | Описание |
+|------|----------|
+| **SUPERUSER** | Batyr (я). Полный доступ ко всему, системные настройки, управление БД |
+| **GEN_DIRECTOR** | Генеральный директор. Управляет несколькими школами/филиалами. Глобальная аналитика |
+| **HEAD_ACCOUNTANT** | Главный бухгалтер. Отчёты, зарплаты по всем филиалам |
+| **DIRECTOR** | Директор школы. Только ОДНА школа/филиал (`school_id`) |
+| **HEAD_TEACHER** | Завуч. Учебный план и учителя в одной школе |
+| **TEACHER** | Учитель. Свои группы, студенты, отметки посещаемости |
+| **STUDENT** | Студент. Расписание, оценки, чат |
+| **PARENT** | Родитель. Профили НЕСКОЛЬКИХ детей (через `parent_id`) |
+| **MERCHANT** | Продавец. ESP32/Mifare браслеты. «Гемы», столовая, магазин |
+| **SALES** | Менеджер по продажам. Лиды, записи, звонки |
+| **RECEPTIONIST** | Ресепшн. Регистрация, базовые вопросы, встреча гостей |
+| **EDITOR** | Контент-менеджер. Новости, лендинг, блог школы |
+
+### Implementation Rules
+
+1. **ROLES** — всегда использовать константу для проверок.
+2. **PARENT** — доступ только к данным детей, связанных через `parent_id`.
+3. **DIRECTOR**, **HEAD_TEACHER** — привязаны к конкретному `school_id`.
+
+---
+
+## Backend (Elysia.js)
+
+- **Плагины**: Plugin-based архитектура через `Elysia.group` и `.use()`
+- **Роуты по доменам**: `src/routes/admin/`, `src/routes/cabinet/`, `src/routes/public/`
+- **Валидация**: `Elysia.t` для строгой схемы
+- **RBAC**: `.guard()` и `.derive()` для проверки ролей
+- **БД**: Drizzle ORM, инстанс `db` из `src/db/`
+- **WebSocket**: логика в `src/ws/`
+
+---
+
+## Frontend (Nuxt 3)
+
+- **Composition API**: Script Setup
+- **API**: Eden Treaty для type-safe вызовов (если используется), иначе типизированный `$fetch`
+- **Защита роутов**: Nuxt Middleware по ролям пользователя
+
+---
+
+## Code Style
+
+- **TypeScript** везде
+- **Константы/enum** вместо magic strings (роли, пути)
+- **Функциональный стиль**, код лаконичный
+
+---
+
+## Текущее состояние и план доработок
+
+### Уже есть
+
+- Разбиение admin по доменам (admin/, admin/landing/)
+- Composition API + Script Setup
+- Drizzle ORM
+- Nuxt Middleware admin-auth
+- WebSocket в src/ws/
+- Eden Treaty установлен (useEden.ts), но не используется
+
+### Нужно доработать
+
+1. **Константы ролей** — создать `ROLES` enum/const
+2. **RBAC** — .guard() для admin/cabinet, поддержка `school_id`, `parent_id`
+3. **Eden Treaty** — либо начать использовать, либо зафиксировать решение оставить $fetch
+
+### Приоритеты
+
+1. Константы ролей (ROLES)
+2. Базовый RBAC с учётом Implementation Rules
+3. Eden или типизация $fetch

@@ -1,5 +1,6 @@
 import { db } from "./src/db";
 import { courseCategories, courseSubCategories, news, teachers, users } from "./src/db/schema";
+import { ROLES } from "./src/constants/roles";
 
 async function seed() {
   console.log("🌱 Seeding database...");
@@ -67,7 +68,7 @@ async function seed() {
     username: "admin",
     password_hash: adminPasswordHash,
     email: "admin@example.com",
-    role: "admin",
+    role: ROLES.SUPERUSER,
   });
 
   console.log("✅ Seeding complete! Admin: admin / admin123");

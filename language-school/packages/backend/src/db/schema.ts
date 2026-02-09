@@ -1,5 +1,19 @@
 import { pgTable, text, timestamp, integer, boolean, serial, decimal } from "drizzle-orm/pg-core";
 
+// --- Schools (for DIRECTOR, HEAD_TEACHER scope) ---
+
+export const schools = pgTable("school", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  name_tm: text("name_tm"),
+  name_ru: text("name_ru"),
+  name_en: text("name_en"),
+  address: text("address"),
+  phone: text("phone"),
+  is_active: boolean("is_active").default(true).notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
 // --- Auth & Users ---
 
 export const users = pgTable("user", {
@@ -9,11 +23,16 @@ export const users = pgTable("user", {
   email: text("email").unique(),
   first_name: text("first_name"),
   last_name: text("last_name"),
-  role: text("role").default("student").notNull(), // student, teacher, director, admin, etc.
+  role: text("role").default("student").notNull(),
   phone: text("phone"),
   avatar: text("avatar"),
+  video: text("video"),
   is_active: boolean("is_active").default(true).notNull(),
   created_at: timestamp("created_at").defaultNow().notNull(),
+  // DIRECTOR, HEAD_TEACHER — привязаны к school_id
+  school_id: integer("school_id").references(() => schools.id, { onDelete: "set null" }),
+  // PARENT — связь: у STUDENT parent_id → родитель
+  parent_id: text("parent_id").references(() => users.id, { onDelete: "set null" }),
 });
 
 export const sessions = pgTable("session", {

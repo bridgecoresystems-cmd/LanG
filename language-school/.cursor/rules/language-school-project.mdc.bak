@@ -1,0 +1,74 @@
+---
+description: LanG Language School — стек, архитектура, роли, гайдлайны и план доработок
+alwaysApply: true
+---
+
+# LanG Language School — Project Guidelines
+
+## Контекст
+
+- **Стек**: Bun (runtime), Elysia.js (backend), Drizzle ORM (БД), Nuxt 3 (frontend)
+- **Архитектура**: Monorepo — `packages/backend/`, `packages/frontend/`
+- **Домен**: Language School (школа языков)
+
+## Роли пользователей (RBAC)
+
+Использовать константы, не magic strings:
+
+```
+SUPERUSER, GEN_DIRECTOR, HEAD_ACCOUNTANT, DIRECTOR, HEAD_TEACHER,
+TEACHER, STUDENT, PARENT, MERCHANT, SALES, RECEPTIONIST, EDITOR
+```
+
+---
+
+## Backend (Elysia.js)
+
+- **Плагины**: Plugin-based архитектура через `Elysia.group` и `.use()`
+- **Роуты по доменам**: `src/routes/admin/`, `src/routes/cabinet/`, `src/routes/public/`
+- **Валидация**: `Elysia.t` для строгой схемы
+- **RBAC**: `.guard()` и `.derive()` для проверки ролей
+- **БД**: Drizzle ORM, инстанс `db` из `src/db/`
+- **WebSocket**: логика в `src/ws/`
+
+---
+
+## Frontend (Nuxt 3)
+
+- **Composition API**: Script Setup
+- **API**: Eden Treaty для type-safe вызовов (если используется), иначе типизированный `$fetch`
+- **Защита роутов**: Nuxt Middleware по ролям пользователя
+
+---
+
+## Code Style
+
+- **TypeScript** везде
+- **Константы/enum** вместо magic strings (роли, пути)
+- **Функциональный стиль**, код лаконичный
+
+---
+
+## Текущее состояние и план доработок
+
+### Уже есть
+
+- Composition API + Script Setup
+- Drizzle ORM
+- Nuxt Middleware admin-auth
+- WebSocket в src/ws/
+- Eden Treaty установлен (useEden.ts), но не используется
+
+### Нужно доработать
+
+1. **Константы ролей** — enum/const вместо "admin", "student"
+2. **RBAC** — .guard() для admin/cabinet, поддержка нескольких ролей
+3. **Разбиение admin.ts** — разнести по доменам (categories, news, profile и т.д.)
+4. **Eden Treaty** — либо начать использовать, либо зафиксировать решение оставить $fetch
+
+### Приоритеты
+
+1. Константы ролей
+2. Базовый RBAC
+3. Разбиение admin-роутов
+4. Eden или типизация $fetch

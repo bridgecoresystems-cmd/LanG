@@ -10,7 +10,8 @@ import { landingRoutes } from "./routes/landing";
 import { userRoutes } from "./routes/users";
 
 import { authRoutes } from "./routes/auth";
-import { adminRoutes } from "./routes/admin";
+import { adminRoutes } from "./routes/admin/index";
+import { cabinetRoutes } from "./routes/cabinet/index";
 import { uploadRoutes } from "./routes/upload";
 import { wsRoutes } from "./routes/ws";
 import { staticPlugin } from "@elysiajs/static";
@@ -20,14 +21,11 @@ const app = new Elysia()
     origin: [
       'http://localhost:3000', 'http://127.0.0.1:3000',
       'http://localhost:3001', 'http://127.0.0.1:3001',
+      'http://localhost:8000', 'http://127.0.0.1:8000',
     ],
     credentials: true,
   }))
   .use(swagger())
-  .use(staticPlugin({
-    assets: "public",
-    prefix: "/"
-  }))
   .get("/", () => "Hello LanG API")
   .group("/api/v1", (app) =>
     app
@@ -63,9 +61,14 @@ const app = new Elysia()
         return { user: { ...profile, full_name } };
       })
       .use(userRoutes)
+      .use(cabinetRoutes)
       .use(adminRoutes)
       .use(uploadRoutes)
   )
+  .use(staticPlugin({
+    assets: "public",
+    prefix: "/"
+  }))
   .listen(process.env.PORT || 8000);
 
 console.log(

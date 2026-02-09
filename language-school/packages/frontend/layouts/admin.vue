@@ -11,10 +11,13 @@
         <div class="q-gutter-sm row items-center no-wrap">
           <QBtn flat no-caps :to="'/admin/changelogs'" icon="history" label="Changelog" class="q-mr-sm" />
           <QBtn flat no-caps class="user-menu-button">
-            <QAvatar size="36px" class="q-mr-sm">
-              <img v-if="authStore.user?.avatar" :src="avatarSrc" alt="">
-              <QIcon v-else name="person" size="24px" />
-            </QAvatar>
+            <img
+              v-if="avatarSrc"
+              :src="avatarSrc"
+              alt="User avatar"
+              class="admin-header-avatar q-mr-sm"
+            />
+            <QAvatar v-else size="42px" class="q-mr-sm" icon="person" />
             <span class="text-body2 text-weight-medium">
               {{ authStore.user?.first_name || authStore.user?.last_name
                 ? [authStore.user?.first_name, authStore.user?.last_name].filter(Boolean).join(' ')
@@ -88,6 +91,12 @@
             </QItem>
           </QExpansionItem>
 
+          <QItem to="/admin/schools" clickable v-ripple active-class="nav-item-active" class="nav-item">
+            <QItemSection avatar>
+              <QIcon name="school" />
+            </QItemSection>
+            <QItemSection>Школы</QItemSection>
+          </QItem>
           <QItem to="/admin/users" clickable v-ripple active-class="nav-item-active" class="nav-item">
             <QItemSection avatar>
               <QIcon name="people" />
@@ -134,7 +143,13 @@
 const leftDrawerOpen = ref(true)
 const authStore = useAuthStore()
 const router = useRouter()
-const avatarSrc = computed(() => authStore.user?.avatar || undefined)
+const avatarSrc = computed(() => {
+  const av = authStore.user?.avatar
+  if (!av || av === '') return undefined
+  // Если путь относительный (начинается с /), используем как есть
+  // Если полный URL, используем как есть
+  return av.startsWith('http') ? av : av
+})
 const route = useRoute()
 const config = useRuntimeConfig()
 const apiBase = config.public.apiBase
@@ -159,8 +174,14 @@ const breadcrumbItems = computed(() => {
       items.push({ label: 'Сообщения', path: '/admin/landing/contact' })
       if (path.match(/\/contact\/[\d]+$/)) items.push({ label: 'Редактировать' })
     }
+  } else if (path.includes('/schools')) {
+    items.push({ label: 'Школы', path: '/admin/schools' })
+    if (path.match(/\/schools\/add$/)) items.push({ label: 'Добавить' })
+    if (path.match(/\/schools\/[\d]+$/) && !path.endsWith('/add')) items.push({ label: 'Редактировать' })
   } else if (path.includes('/users')) {
-    items.push({ label: 'Пользователи' })
+    items.push({ label: 'Пользователи', path: '/admin/users' })
+    if (path.match(/\/users\/add$/)) items.push({ label: 'Добавить' })
+    if (path.match(/\/users\/[^/]+$/) && !path.endsWith('/add')) items.push({ label: 'Редактировать' })
   } else if (path.includes('/profile')) {
     items.push({ label: 'Профиль' })
   } else if (path.includes('/changelogs')) {
@@ -264,5 +285,13 @@ const handleLogout = async () => {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   min-height: calc(100vh - 200px);
+}
+
+.admin-header-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.3);
 }
 </style>

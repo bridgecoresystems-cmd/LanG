@@ -2,7 +2,7 @@
   <div class="admin-page-content">
     <div class="row items-center justify-between q-mb-md">
       <h1 class="text-h4 q-ma-none">Категории курсов</h1>
-      <q-btn color="primary" icon="add" label="Добавить категорию" @click="router.push('/admin/landing/categories/add')" />
+      <q-btn color="primary" icon="add" label="Добавить категорию" to="/admin/landing/categories/add" />
     </div>
 
     <!-- Filters -->

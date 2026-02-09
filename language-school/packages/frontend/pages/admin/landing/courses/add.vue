@@ -31,8 +31,8 @@
             <div class="col-6"><q-input v-model.number="form.hours_per_week" type="number" label="Часов в неделю" outlined min="0" class="q-mb-md" /></div>
           </div>
           <div class="row q-col-gutter-md">
-            <div class="col-6"><q-input v-model="form.price" type="number" label="Цена (💎)" outlined :rules="[val => !!val || 'Обязательно']" class="q-mb-md" /></div>
-            <div class="col-6"><q-input v-model="form.discount_price" type="number" label="Цена со скидкой (💎)" outlined class="q-mb-md" /></div>
+            <div class="col-6"><q-input v-model="form.price" type="number" label="Цена (TMT)" outlined :rules="[val => !!val || 'Обязательно']" class="q-mb-md" /></div>
+            <div class="col-6"><q-input v-model="form.discount_price" type="number" label="Цена со скидкой (TMT)" outlined class="q-mb-md" /></div>
           </div>
           <q-toggle v-model="form.is_active" label="Активен" class="q-mb-md" />
           <div class="row q-gutter-sm q-mt-lg">

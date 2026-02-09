@@ -10,11 +10,17 @@
             <div class="text-h6 q-mb-md">Фото и данные</div>
             <div class="column items-center q-gutter-md">
               <div class="relative-position">
+                <img
+                  v-if="avatarPreview || (form.avatar && form.avatar !== '')"
+                  :src="avatarPreview || form.avatar"
+                  alt="Profile avatar"
+                  class="profile-avatar"
+                />
                 <QAvatar
-                  :size="120"
-                  :img="(avatarPreview || form.avatar) || undefined"
+                  v-else
+                  size="180px"
                   icon="person"
-                  font-size="48px"
+                  font-size="72px"
                   color="grey-4"
                   class="q-mb-sm"
                 />
@@ -270,3 +276,14 @@ onBeforeUnmount(() => {
   if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value)
 })
 </script>
+
+<style scoped>
+.profile-avatar {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #e0e0e0;
+  margin-bottom: 0.5rem;
+}
+</style>

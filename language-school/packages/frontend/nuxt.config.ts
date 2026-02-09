@@ -2,6 +2,7 @@
 export default defineNuxtConfig({
   devtools: {enabled: false},
   compatibilityDate: '2024-11-01',
+  ssr: false, // SPA mode — временно отключено для разработки (меньше нагрузка на Chrome)
   modules: ['@nuxtjs/i18n', '@pinia/nuxt', 'nuxt-quasar-ui'],
   quasar: {
     plugins: ['Notify', 'Dialog'],
@@ -31,8 +32,9 @@ export default defineNuxtConfig({
   css: ['~/assets/styles/main.css', 'primeicons/primeicons.css'],
   runtimeConfig: {
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || '/api/v1',
-      wsUrl: process.env.NUXT_PUBLIC_WS_URL || 'ws://127.0.0.1:8000',
+      // Прямой URL на backend. Используем localhost (не 127.0.0.1) чтобы cookies совпадали с доменом страницы.
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || `${process.env.NUXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:8000'}/api/v1`,
+      wsUrl: process.env.NUXT_PUBLIC_WS_URL || 'ws://localhost:8000',
     },
   },
   // Remove vite and nitro proxy blocks as we will use a server route instead

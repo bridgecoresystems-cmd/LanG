@@ -14,7 +14,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const isAuthenticated = computed(() => !!user.value)
-  const isSuperuser = computed(() => user.value?.role === 'admin')
+  const isSuperuser = computed(() => user.value?.role === 'SUPERUSER')
   const userFullName = computed(
     () => user.value?.full_name || user.value?.username || ''
   )

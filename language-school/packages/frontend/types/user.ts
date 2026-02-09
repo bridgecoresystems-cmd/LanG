@@ -5,11 +5,13 @@ export interface User {
   first_name: string | null
   last_name: string | null
   full_name: string
-  role: 'student' | 'teacher' | 'director' | 'admin' | 'head_teacher' | 'merchant'
+  role: 'SUPERUSER' | 'GEN_DIRECTOR' | 'HEAD_ACCOUNTANT' | 'DIRECTOR' | 'HEAD_TEACHER' | 'TEACHER' | 'STUDENT' | 'PARENT' | 'MERCHANT' | 'SALES' | 'RECEPTIONIST' | 'EDITOR'
   phone: string | null
   avatar: string | null
   avatar_url: string | null
   is_active: boolean
+  school_id?: number | null
+  parent_id?: string | null
 }
 
 export interface LoginCredentials {

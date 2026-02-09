@@ -68,7 +68,7 @@ const handleLogin = async () => {
     // Определяем путь на основе роли пользователя из store
     // После логина user уже должен быть установлен в store
     const user = authStore.user
-    const isAdmin = user?.role === 'admin'
+    const isAdmin = user?.role === 'SUPERUSER'
     
     const path = isAdmin ? '/admin' : '/landing'
     
