@@ -59,6 +59,10 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     const session = await lucia.createSession(user.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
     
+    console.log(`[Login] Created session for user: ${user.username}`);
+    console.log(`[Login] Session ID: ${session.id}`);
+    console.log(`[Login] Cookie: ${sessionCookie.serialize()}`);
+    
     set.headers["Set-Cookie"] = sessionCookie.serialize();
     return { message: "Logged in successfully", user: { id: user.id, username: user.username, role: user.role } };
   }, {

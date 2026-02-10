@@ -12,6 +12,7 @@
     "preview": "nuxt preview"
   },
   "dependencies": {
+    "backend": "workspace:*",
     "@elysiajs/eden": "^1.4.6",
     "@nuxtjs/i18n": "^9.0.0",
     "@pinia/nuxt": "^0.6.0",

@@ -1,45 +1,45 @@
+import { ref } from 'vue'
+import { useEden } from './useEden'
+
 /**
  * WebSocket composable for contact messages real-time updates.
  * - Admin: receives new_message when someone submits the form
  * - Public: receives message_approved when admin approves a message
  */
 export function useContactWs(channel: 'admin' | 'public', onMessage: (data: any) => void) {
-  const config = useRuntimeConfig()
-  const wsUrl = (config.public.wsUrl as string) || 'ws://127.0.0.1:8000'
-  let ws: WebSocket | null = null
+  const api = useEden()
+  let wsClient: any = null
   const connected = ref(false)
 
   const connect = () => {
     if (typeof window === 'undefined') return
-    const base = wsUrl.startsWith('ws') ? wsUrl : `ws://${wsUrl.replace(/^https?:\/\//, '')}`
-    const url = `${base}/api/v1/ws?channel=${channel}`
-    ws = new WebSocket(url)
+    
+    wsClient = api.api.v1.ws.subscribe({
+      query: { channel }
+    })
 
-    ws.onopen = () => {
+    wsClient.on('open', () => {
       connected.value = true
-    }
+    })
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        onMessage(data)
-      } catch (_) {}
-    }
+    wsClient.on('message', (event: any) => {
+      onMessage(event.data)
+    })
 
-    ws.onclose = () => {
+    wsClient.on('close', () => {
       connected.value = false
-      ws = null
+      // Eden subscribe often handles reconnection or you can trigger it manually
       setTimeout(connect, 3000)
-    }
+    })
 
-    ws.onerror = () => {
-      ws?.close()
-    }
+    wsClient.on('error', () => {
+      wsClient?.close()
+    })
   }
 
   const disconnect = () => {
-    ws?.close()
-    ws = null
+    wsClient?.close()
+    wsClient = null
   }
 
   return { connect, disconnect, connected }

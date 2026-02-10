@@ -1,9 +1,8 @@
 import { ref } from 'vue'
 
-/** Admin news API — $fetch с apiBase (как users, categories). */
+/** Admin news API — useEden treaty. */
 export const useAdminNews = () => {
-  const config = useRuntimeConfig()
-  const apiBase = config.public.apiBase as string
+  const api = useEden()
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -11,13 +10,13 @@ export const useAdminNews = () => {
     loading.value = true
     error.value = null
     try {
-      const data = await $fetch<any[]>(`${apiBase}/admin/news`, {
-        credentials: 'include',
+      const { data, error: err } = await api.api.v1.admin.news.get({
         query: params,
       })
+      if (err) throw err
       return data ?? []
     } catch (err: any) {
-      error.value = err?.data?.error || err?.message || 'Failed to fetch news'
+      error.value = err?.value?.error || err?.message || 'Failed to fetch news'
       return []
     } finally {
       loading.value = false
@@ -28,44 +27,39 @@ export const useAdminNews = () => {
     loading.value = true
     error.value = null
     try {
-      const data = await $fetch<any>(`${apiBase}/admin/news/${id}`, { credentials: 'include' })
+      const { data, error: err } = await api.api.v1.admin.news({ id: String(id) }).get()
+      if (err) throw err
       return data
     } catch (err: any) {
-      error.value = err?.data?.error || err?.message || 'Failed to fetch news item'
+      error.value = err?.value?.error || err?.message || 'Failed to fetch news item'
       throw err
     } finally {
       loading.value = false
     }
   }
 
-  const createNews = async (data: Record<string, unknown>) => {
+  const createNews = async (data: any) => {
     loading.value = true
     error.value = null
     try {
-      await $fetch(`${apiBase}/admin/news`, {
-        method: 'POST',
-        credentials: 'include',
-        body: data,
-      })
+      const { error: err } = await api.api.v1.admin.news.post(data)
+      if (err) throw err
     } catch (err: any) {
-      error.value = err?.data?.error || err?.message || 'Failed to create news'
+      error.value = err?.value?.error || err?.message || 'Failed to create news'
       throw err
     } finally {
       loading.value = false
     }
   }
 
-  const updateNews = async (id: number, data: Record<string, unknown>) => {
+  const updateNews = async (id: number, data: any) => {
     loading.value = true
     error.value = null
     try {
-      await $fetch(`${apiBase}/admin/news/${id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        body: data,
-      })
+      const { error: err } = await api.api.v1.admin.news({ id: String(id) }).put(data)
+      if (err) throw err
     } catch (err: any) {
-      error.value = err?.data?.error || err?.message || 'Failed to update news'
+      error.value = err?.value?.error || err?.message || 'Failed to update news'
       throw err
     } finally {
       loading.value = false
@@ -76,12 +70,10 @@ export const useAdminNews = () => {
     loading.value = true
     error.value = null
     try {
-      await $fetch(`${apiBase}/admin/news/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      })
+      const { error: err } = await api.api.v1.admin.news({ id: String(id) }).delete()
+      if (err) throw err
     } catch (err: any) {
-      error.value = err?.data?.error || err?.message || 'Failed to delete news'
+      error.value = err?.value?.error || err?.message || 'Failed to delete news'
       throw err
     } finally {
       loading.value = false

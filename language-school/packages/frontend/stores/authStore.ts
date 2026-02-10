@@ -1,5 +1,6 @@
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import type { User, LoginCredentials, TokenResponse } from '~/types/user'
+import type { User, LoginCredentials } from '~/types/user'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -20,21 +21,18 @@ export const useAuthStore = defineStore('auth', () => {
   )
   const userAvatar = computed(() => user.value?.avatar || null)
 
-  const config = useRuntimeConfig()
-  const apiBase = config.public.apiBase as string
+  const api = useEden()
 
   const fetchCurrentUser = async () => {
     loading.value = true
     error.value = null
     try {
-      const data = await $fetch<{ user?: User }>(`${apiBase}/me`, { credentials: 'include' })
-      user.value = data?.user ?? null
+      const { data, error: err } = await api.api.v1.me.get()
+      if (err) throw err
+      user.value = (data as any)?.user ?? null
     } catch (err: any) {
-      error.value = err.data?.error || 'Failed to fetch user'
+      error.value = err?.value?.error || err?.message || 'Failed to fetch user'
       user.value = null
-      if (err.response?.status === 401) {
-        await logout()
-      }
     } finally {
       loading.value = false
     }
@@ -44,18 +42,17 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     error.value = null
     try {
-      const data = await $fetch<any>(`${apiBase}/auth/login`, {
-        method: 'POST',
-        body: credentials,
-        credentials: 'include',
-      })
-      // Сохраняем пользователя из ответа логина
-      if (data.user) {
-        user.value = data.user
+      const { data, error: err } = await api.api.v1.auth.login.post(credentials)
+      if (err) throw err
+      if ((data as any)?.user) {
+        user.value = (data as any).user
+      }
+      if (import.meta.client) {
+        sessionStorage.setItem('auth_just_logged_in', '1')
       }
       return true
     } catch (err: any) {
-      error.value = err.data?.error || 'Login failed'
+      error.value = err?.value?.error || err?.message || 'Login failed'
       user.value = null
       return false
     } finally {
@@ -74,35 +71,32 @@ export const useAuthStore = defineStore('auth', () => {
       sessionStorage.setItem('auth_logged_out', '1')
     }
     try {
-      await $fetch(`${apiBase}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      })
+      const { error: err } = await api.api.v1.auth.logout.post()
+      if (err) {
+        // ignore logout errors
+        // eslint-disable-next-line no-console
+        console.warn('Logout error (ignored):', err)
+      }
     } catch {
-      // 401 when not logged in is expected, ignore
+      // ignore
     }
   }
 
   const register = async (credentials: LoginCredentials & { email?: string }): Promise<boolean> => {
-    loading.value = true;
-    error.value = null;
+    loading.value = true
+    error.value = null
     try {
-      const data = await $fetch<any>(`${apiBase}/auth/register`, {
-        method: 'POST',
-        body: credentials,
-      });
-      // After successful registration, automatically log in the user
-      // Or redirect to login page for manual login
-      // For now, let's assume automatic login for convenience
-      user.value = data.user;
-      return true;
+      const { data, error: err } = await api.api.v1.auth.register.post(credentials as any)
+      if (err) throw err
+      user.value = (data as any)?.user ?? null
+      return true
     } catch (err: any) {
-      error.value = err.data?.error || 'Registration failed';
-      return false;
+      error.value = err?.value?.error || err?.message || 'Registration failed'
+      return false
     } finally {
-      loading.value = false;
+      loading.value = false
     }
-  };
+  }
 
   const initializeAuth = async () => {
     if (import.meta.client && sessionStorage.getItem('auth_logged_out')) {

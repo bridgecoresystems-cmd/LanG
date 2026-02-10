@@ -3,7 +3,6 @@
  * landing — публичное лицо | admin — всё для админа | cabinet — личные кабинеты пользователей
  */
 import { Elysia } from "elysia";
-import { lucia } from "../../auth";
 import { ADMIN_ROLES } from "../../constants/roles";
 import { adminProfileRoutes } from "./profile";
 import { adminCategoriesRoutes } from "./landing/categories";
@@ -17,30 +16,23 @@ import { adminUsersRoutes } from "./users/index";
 import { adminSchoolsRoutes } from "./schools";
 
 export const adminRoutes = new Elysia({ prefix: "/admin" })
-  .derive(async ({ request, set }) => {
-    const cookieHeader = request.headers.get("Cookie") ?? "";
-    const sessionId = lucia.readSessionCookie(cookieHeader);
-    if (!sessionId) {
-      return { user: null, session: null };
-    }
+  .onBeforeHandle((context: any) => {
+    const { user, set, request } = context;
+    console.log(`[Admin Access Check] Path: ${request.url}, User: ${user?.username}, Role: ${user?.role}`);
 
-    const { session, user } = await lucia.validateSession(sessionId);
-
-    if (session && session.fresh) {
-      const sessionCookie = lucia.createSessionCookie(session.id);
-      set.headers["Set-Cookie"] = sessionCookie.serialize();
-    }
-    if (!session) {
-      const sessionCookie = lucia.createBlankSessionCookie();
-      set.headers["Set-Cookie"] = sessionCookie.serialize();
-    }
-    return { user, session };
-  })
-  .onBeforeHandle(({ user, set }) => {
-    if (!user || !ADMIN_ROLES.includes(user.role)) {
+    if (!user) {
+      console.log(`[Admin Access Check] Denied: User null in context for ${request.url}`);
       set.status = 403;
-      return { error: "Forbidden: требуется роль администратора. Выйдите и войдите снова." };
+      return { error: "Forbidden: требуется авторизация." };
     }
+
+    if (!ADMIN_ROLES.includes(user.role)) {
+      console.log(`[Admin Access Check] Denied: Role ${user.role} insufficient`);
+      set.status = 403;
+      return { error: `Forbidden: роль ${user.role} не имеет доступа.` };
+    }
+
+    console.log(`[Admin Access Check] Granted for ${user.username}`);
   })
   .use(adminProfileRoutes)
   .use(adminCategoriesRoutes)

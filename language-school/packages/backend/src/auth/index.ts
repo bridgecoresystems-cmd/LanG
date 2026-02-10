@@ -5,11 +5,21 @@ import { sessions, users } from "../db/schema";
 
 const adapter = new DrizzlePostgreSQLAdapter(db, sessions, users);
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export const lucia = new Lucia(adapter, {
   sessionCookie: {
     attributes: {
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      /**
+       * В dev режиме:
+       * - SameSite=None, чтобы кука отправлялась с фронта (localhost:3000) на API (localhost:8000)
+       * - secure=false, т.к. работаем по http, а не https
+       *
+       * В production:
+       * - SameSite=lax и secure=true (обычное поведение)
+       */
+      secure: isProduction,
+      sameSite: isProduction ? "lax" : "none",
       path: "/",
       // Не устанавливаем Domain для localhost
       // domain: undefined,
