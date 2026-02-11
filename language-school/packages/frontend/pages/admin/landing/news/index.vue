@@ -197,7 +197,7 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const router = useRouter()
 const { locale } = useI18n()
-const { loading, error, fetchNews, deleteNews } = useAdminNews()
+const { loading, error, getAll, remove } = useAdminNews()
 const { pagination, rowsPerPageOptions, resetPage, savePagination } = useAdminPagination('news')
 
 const searchQuery = ref('')
@@ -336,7 +336,7 @@ const editItem = (id: number) => {
 const handleDelete = async (id: number) => {
   if (!confirm('Вы уверены, что хотите удалить эту новость?')) return
   try {
-    await deleteNews(id)
+    await remove(id)
     await loadNews()
   } catch (err) {
     console.error('Delete error:', err)
@@ -349,8 +349,8 @@ const loadNews = async () => {
     if (searchQuery.value) {
       params.search = searchQuery.value
     }
-    const response = await fetchNews(params)
-    items.value = Array.isArray(response) ? response : response?.results || []
+    const response = await getAll(params)
+    items.value = Array.isArray(response) ? response : (response as any)?.results || []
   } catch (err) {
     console.error('Load news error:', err)
   }

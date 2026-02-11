@@ -123,9 +123,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const { pagination, rowsPerPageOptions, resetPage, savePagination } = useAdminPagination('contact-messages')
+const { getAll, remove, toggleApproval, likeMessage: likeMessageApi } = useAdminContact()
 
 const items = ref<any[]>([])
 const loading = ref(false)
@@ -213,8 +212,8 @@ const handleLike = async (id: number) => {
   likesMap.value.set(id, current + 1)
   likesMap.value = new Map(likesMap.value)
   try {
-    const res = await $fetch<any>(`${apiBase}/admin/contact-messages/${id}/like`, { method: 'POST', credentials: 'include' })
-    if (res?.likes !== undefined) likesMap.value.set(id, res.likes)
+    const res = await likeMessageApi(id)
+    if ((res as any)?.likes !== undefined) likesMap.value.set(id, (res as any).likes)
   } catch (e) {
     likesMap.value.set(id, current)
     likesMap.value = new Map(likesMap.value)
@@ -227,8 +226,8 @@ const handleToggleApproval = async (id: number) => {
   const oldStatus = item.status
   item.status = oldStatus === 'approved' ? 'pending' : 'approved'
   try {
-    const res = await $fetch<any>(`${apiBase}/admin/contact-messages/${id}/toggle-approval`, { method: 'POST', credentials: 'include' })
-    if (res?.status) item.status = res.status
+    const res = await toggleApproval(id)
+    if ((res as any)?.status) item.status = (res as any).status
   } catch (e) {
     item.status = oldStatus
   }
@@ -237,7 +236,7 @@ const handleToggleApproval = async (id: number) => {
 const handleDelete = async (id: number) => {
   if (!confirm('Удалить сообщение?')) return
   try {
-    await $fetch(`${apiBase}/admin/contact-messages/${id}`, { method: 'DELETE', credentials: 'include' })
+    await remove(id)
     items.value = items.value.filter(i => i.id !== id)
   } catch (e) {
     console.error(e)
@@ -249,7 +248,7 @@ const loadItems = async () => {
   try {
     const params: any = {}
     if (statusFilter.value) params.status = statusFilter.value
-    const res = await $fetch<any[]>(`${apiBase}/admin/contact-messages`, { credentials: 'include', query: params })
+    const res = await getAll(params)
     items.value = Array.isArray(res) ? res : []
     const map = new Map<number, number>()
     items.value.forEach(i => { if (i.likes !== undefined) map.set(i.id, i.likes) })

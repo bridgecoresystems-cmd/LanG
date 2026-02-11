@@ -144,9 +144,9 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const $q = useQuasar()
+const { get: getProfile, update: updateProfile, changePassword: changePasswordApi } = useAdminProfile()
+const { uploadFile } = useUpload()
 
 const form = ref({
   id: '',
@@ -172,15 +172,17 @@ const passwordForm = reactive({
 
 const fetchProfile = async () => {
   try {
-    const data = await $fetch<any>(`${apiBase}/admin/profile`, { credentials: 'include' })
-    form.value = {
-      id: data.id ?? '',
-      username: data.username ?? '',
-      email: data.email ?? '',
-      first_name: data.first_name ?? '',
-      last_name: data.last_name ?? '',
-      phone: data.phone ?? '',
-      avatar: data.avatar ?? ''
+    const data = await getProfile()
+    if (data) {
+      form.value = {
+        id: (data as any).id ?? '',
+        username: (data as any).username ?? '',
+        email: (data as any).email ?? '',
+        first_name: (data as any).first_name ?? '',
+        last_name: (data as any).last_name ?? '',
+        phone: (data as any).phone ?? '',
+        avatar: (data as any).avatar ?? ''
+      }
     }
   } catch (e) {
     console.error('Fetch profile error:', e)
@@ -203,29 +205,19 @@ const saveProfile = async () => {
   savingProfile.value = true
   try {
     if (avatarFile.value) {
-      const fd = new FormData()
-      fd.append('file', avatarFile.value)
-      const res = await $fetch<{ url: string }>(`${apiBase}/upload`, {
-        method: 'POST',
-        body: fd,
-        credentials: 'include'
-      })
-      form.value.avatar = res.url
+      const res = await uploadFile(avatarFile.value)
+      form.value.avatar = (res as any).url
       if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value)
       avatarPreview.value = null
       avatarFile.value = null
     }
 
-    await $fetch(`${apiBase}/admin/profile`, {
-      method: 'PATCH',
-      body: {
-        first_name: form.value.first_name,
-        last_name: form.value.last_name,
-        phone: form.value.phone,
-        avatar: form.value.avatar,
-        email: form.value.email
-      },
-      credentials: 'include'
+    await updateProfile({
+      first_name: form.value.first_name,
+      last_name: form.value.last_name,
+      phone: form.value.phone,
+      avatar: form.value.avatar,
+      email: form.value.email
     })
     $q.notify({ color: 'positive', message: 'Профиль сохранён', icon: 'check' })
     await useAuthStore().fetchCurrentUser()
@@ -233,7 +225,7 @@ const saveProfile = async () => {
     console.error('Save profile error:', err)
     $q.notify({
       color: 'negative',
-      message: err.data?.error || 'Ошибка сохранения',
+      message: err.message || 'Ошибка сохранения',
       icon: 'error'
     })
   } finally {
@@ -244,13 +236,9 @@ const saveProfile = async () => {
 const changePassword = async () => {
   savingPassword.value = true
   try {
-    await $fetch(`${apiBase}/admin/change-password`, {
-      method: 'POST',
-      body: {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword
-      },
-      credentials: 'include'
+    await changePasswordApi({
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword
     })
     $q.notify({ color: 'positive', message: 'Пароль успешно изменён', icon: 'check' })
     passwordForm.currentPassword = ''
@@ -260,7 +248,7 @@ const changePassword = async () => {
     console.error('Change password error:', err)
     $q.notify({
       color: 'negative',
-      message: err.data?.error || 'Ошибка при смене пароля',
+      message: err.message || 'Ошибка при смене пароля',
       icon: 'error'
     })
   } finally {

@@ -89,8 +89,8 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
+const { getById, update, getAll } = useAdminUsers()
+const { getAll: getAllSchools } = useAdminSchools()
 
 const schools = ref<any[]>([])
 const parents = ref<any[]>([])
@@ -169,11 +169,7 @@ const handleSubmit = async () => {
     if (form.value.password?.length >= 6) {
       body.password = form.value.password
     }
-    await $fetch(`${apiBase}/admin/users/${form.value.id}`, {
-      method: 'PATCH',
-      body,
-      credentials: 'include'
-    })
+    await update(form.value.id as any, body)
     navigateTo('/admin/users')
   } catch (e: any) {
     const err = e?.data?.error || e?.message || 'Ошибка'
@@ -193,16 +189,17 @@ onMounted(async () => {
   }
   try {
     const [user, schoolsList, allUsers] = await Promise.all([
-      $fetch<any>(`${apiBase}/admin/users/${id}`, { credentials: 'include' }),
-      $fetch<any[]>(`${apiBase}/admin/schools`, { credentials: 'include' }),
-      $fetch<any[]>(`${apiBase}/admin/users`, { credentials: 'include' })
+      getById(id as any),
+      getAllSchools(),
+      getAll()
     ])
-    if (user?.error) {
+    
+    if (!user) {
       navigateTo('/admin/users')
       return
     }
-    schools.value = schoolsList
-    parents.value = allUsers.filter(u => u.role === 'PARENT')
+    schools.value = schoolsList as any[]
+    parents.value = (allUsers as any[]).filter(u => u.role === 'PARENT')
     form.value = {
       id: user.id,
       role: user.role || 'STUDENT',
@@ -216,7 +213,8 @@ onMounted(async () => {
       parent_id: user.parent_id ?? null,
       is_active: user.is_active ?? true
     }
-  } catch {
+  } catch (e) {
+    console.error('Load user error:', e)
     navigateTo('/admin/users')
   } finally {
     loading.value = false

@@ -69,9 +69,9 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default', middleware: 'cabinet-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const $q = useQuasar()
+const { get: getProfile, update: updateProfile } = useCabinetProfile()
+const { uploadFile } = useUpload()
 
 const form = ref({
   id: '',
@@ -103,16 +103,18 @@ const videoPreview = ref<string | null>(null)
 
 const fetchProfile = async () => {
   try {
-    const data = await $fetch<any>(`${apiBase}/cabinet/profile`, { credentials: 'include' })
-    form.value = {
-      id: data.id ?? '',
-      username: data.username ?? '',
-      email: data.email ?? '',
-      first_name: data.first_name ?? '',
-      last_name: data.last_name ?? '',
-      phone: data.phone ?? '',
-      avatar: data.avatar ?? '',
-      video: data.video ?? ''
+    const data = await getProfile()
+    if (data) {
+      form.value = {
+        id: (data as any).id ?? '',
+        username: (data as any).username ?? '',
+        email: (data as any).email ?? '',
+        first_name: (data as any).first_name ?? '',
+        last_name: (data as any).last_name ?? '',
+        phone: (data as any).phone ?? '',
+        avatar: (data as any).avatar ?? '',
+        video: (data as any).video ?? ''
+      }
     }
   } catch (e) {
     console.error('Fetch profile error:', e)
@@ -152,42 +154,34 @@ const saveProfile = async () => {
   saving.value = true
   try {
     if (avatarFile.value) {
-      const fd = new FormData()
-      fd.append('file', avatarFile.value)
-      const res = await $fetch<{ url: string }>(`${apiBase}/upload`, { method: 'POST', body: fd, credentials: 'include' })
-      form.value.avatar = res.url
+      const res = await uploadFile(avatarFile.value)
+      form.value.avatar = (res as any).url
       if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value)
       avatarPreview.value = null
       avatarFile.value = null
     }
 
     if (videoFile.value) {
-      const fd = new FormData()
-      fd.append('file', videoFile.value)
-      const res = await $fetch<{ url: string }>(`${apiBase}/upload`, { method: 'POST', body: fd, credentials: 'include' })
-      form.value.video = res.url
+      const res = await uploadFile(videoFile.value)
+      form.value.video = (res as any).url
       if (videoPreview.value) URL.revokeObjectURL(videoPreview.value)
       videoPreview.value = null
       videoFile.value = null
     }
 
-    await $fetch(`${apiBase}/cabinet/profile`, {
-      method: 'PATCH',
-      body: {
-        first_name: form.value.first_name,
-        last_name: form.value.last_name,
-        phone: form.value.phone,
-        avatar: form.value.avatar,
-        video: form.value.video,
-        email: form.value.email
-      },
-      credentials: 'include'
+    await updateProfile({
+      first_name: form.value.first_name,
+      last_name: form.value.last_name,
+      phone: form.value.phone,
+      avatar: form.value.avatar,
+      video: form.value.video,
+      email: form.value.email
     })
     $q.notify({ color: 'positive', message: 'Профиль сохранён', icon: 'check' })
     await useAuthStore().fetchCurrentUser()
   } catch (err: any) {
     console.error('Save profile error:', err)
-    $q.notify({ color: 'negative', message: err.data?.error || 'Ошибка сохранения', icon: 'error' })
+    $q.notify({ color: 'negative', message: err.message || 'Ошибка сохранения', icon: 'error' })
   } finally {
     saving.value = false
   }

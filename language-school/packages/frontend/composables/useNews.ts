@@ -25,5 +25,11 @@ export const useNews = () => {
     }
   }
 
-  return { news, loading, error, fetchNews }
+  const incrementViews = async (id: number) => {
+    const { data, error } = await api.api.v1.landing.news({ id: String(id) }).increment_views.post()
+    if (error) throw error
+    return data
+  }
+
+  return { news, loading, error, fetchNews, incrementViews }
 }

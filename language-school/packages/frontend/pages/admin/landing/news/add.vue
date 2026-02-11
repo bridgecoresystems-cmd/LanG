@@ -144,9 +144,8 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const router = useRouter()
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
-const { loading, error, createNews } = useAdminNews()
+const { loading, error, create } = useAdminNews()
+const { uploadFile } = useUpload()
 
 const imageFile = ref<File | null>(null)
 const previewImage = ref<string | null>(null)
@@ -171,15 +170,9 @@ const handleImageChange = async (file: File | null) => {
   imageFile.value = file
   previewImage.value = URL.createObjectURL(file)
 
-  const fd = new FormData()
-  fd.append('file', file)
   try {
-    const res = await $fetch<{ url: string }>(`${apiBase}/upload`, {
-      method: 'POST',
-      body: fd,
-      credentials: 'include'
-    })
-    formData.value.image = res.url
+    const res = await uploadFile(file)
+    formData.value.image = (res as any).url
   } catch (e) {
     console.error('Upload error:', e)
     error.value = 'Ошибка загрузки изображения'
@@ -197,7 +190,7 @@ const handleSubmit = async () => {
     content_en: formData.value.content_en || formData.value.content_ru
   }
   try {
-    await createNews(payload)
+    await create(payload)
     router.push('/admin/landing/news')
   } catch (err: any) {
     console.error('Failed to create news', err)

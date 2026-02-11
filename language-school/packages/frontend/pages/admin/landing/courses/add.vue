@@ -48,9 +48,11 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const { locale } = useI18n()
+const { create } = useAdminCourses()
+const { getAll: getAllCategories } = useAdminCategories()
+const { getAll: getAllSubcategories } = useAdminSubcategories()
+const { uploadFile } = useUpload()
 
 const categories = ref<any[]>([])
 const subcategories = ref<any[]>([])
@@ -85,8 +87,8 @@ const subcategoryOptions = computed(() =>
 const onCategoryChange = async () => {
   form.value.subcategory_id = null
   if (form.value.category_id) {
-    const all = await $fetch<any[]>(`${apiBase}/admin/subcategories`, { credentials: 'include' })
-    subcategories.value = all.filter((s: any) => s.categoryId === form.value.category_id || s.category_id === form.value.category_id)
+    const all = await getAllSubcategories()
+    subcategories.value = (all as any[]).filter((s: any) => s.categoryId === form.value.category_id || s.category_id === form.value.category_id)
   } else {
     subcategories.value = []
   }
@@ -94,24 +96,18 @@ const onCategoryChange = async () => {
 
 const handleImageUpload = async (file: File | null) => {
   if (!file) return
-  const fd = new FormData()
-  fd.append('file', file)
-  const res = await $fetch<{ url: string }>(`${apiBase}/upload`, { method: 'POST', body: fd, credentials: 'include' })
-  form.value.image = res.url
+  const res = await uploadFile(file)
+  form.value.image = (res as any).url
 }
 
 const handleSubmit = async () => {
   saving.value = true
   try {
-    await $fetch(`${apiBase}/admin/courses`, {
-      method: 'POST',
-      body: {
-        ...form.value,
-        price: String(form.value.price || 0),
-        discount_price: form.value.discount_price ? String(form.value.discount_price) : null
-      },
-      credentials: 'include'
-    })
+    await create({
+      ...form.value,
+      price: String(form.value.price || 0),
+      discount_price: form.value.discount_price ? String(form.value.discount_price) : null
+    } as any)
     navigateTo('/admin/landing/courses')
   } catch (e) {
     console.error(e)
@@ -121,7 +117,7 @@ const handleSubmit = async () => {
 }
 
 onMounted(async () => {
-  categories.value = await $fetch<any[]>(`${apiBase}/admin/categories`, { credentials: 'include' })
+  categories.value = await getAllCategories()
   if (form.value.category_id) await onCategoryChange()
 })
 </script>

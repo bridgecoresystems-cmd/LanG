@@ -38,10 +38,9 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const router = useRouter()
 const $q = useQuasar()
+const { create } = useAdminChangelogs()
 
 const saving = ref(false)
 const form = ref({
@@ -56,10 +55,9 @@ const save = async () => {
   }
   saving.value = true
   try {
-    await $fetch(`${apiBase}/admin/changelog`, {
-      method: 'POST',
-      body: { date: form.value.date, text: form.value.text },
-      credentials: 'include'
+    await create({
+      date: form.value.date,
+      text: form.value.text
     })
     $q.notify({ color: 'positive', message: 'Changelog добавлен', icon: 'check' })
     router.push('/admin/changelogs')

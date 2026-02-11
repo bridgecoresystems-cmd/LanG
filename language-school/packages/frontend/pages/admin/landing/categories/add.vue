@@ -36,8 +36,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
+const { create } = useAdminCategories()
+const { uploadFile } = useUpload()
 
 const saving = ref(false)
 const imageFile = ref<File | null>(null)
@@ -53,11 +53,9 @@ const form = ref({
 
 const handleImageUpload = async (file: File | null) => {
   if (!file) return
-  const fd = new FormData()
-  fd.append('file', file)
   try {
-    const res = await $fetch<{ url: string }>(`${apiBase}/upload`, { method: 'POST', body: fd, credentials: 'include' })
-    form.value.image = res.url
+    const res = await uploadFile(file)
+    form.value.image = (res as any).url
   } catch (e) {
     console.error(e)
   }
@@ -66,18 +64,14 @@ const handleImageUpload = async (file: File | null) => {
 const handleSubmit = async () => {
   saving.value = true
   try {
-    await $fetch(`${apiBase}/admin/categories`, {
-      method: 'POST',
-      body: {
-        name: form.value.name_ru || form.value.name_tm || form.value.name_en,
-        name_tm: form.value.name_tm,
-        name_ru: form.value.name_ru,
-        name_en: form.value.name_en,
-        image: form.value.image,
-        order: form.value.order,
-        is_active: form.value.is_active
-      },
-      credentials: 'include'
+    await create({
+      name: form.value.name_ru || form.value.name_tm || form.value.name_en,
+      name_tm: form.value.name_tm,
+      name_ru: form.value.name_ru,
+      name_en: form.value.name_en,
+      image: form.value.image,
+      order: form.value.order,
+      is_active: form.value.is_active
     })
     navigateTo('/admin/landing/categories')
   } catch (e) {

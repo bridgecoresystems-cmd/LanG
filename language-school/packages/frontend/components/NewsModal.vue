@@ -39,10 +39,8 @@ import dayjs from 'dayjs'
 
 const props = defineProps<{ isOpen: boolean; news: News | null }>()
 const emit = defineEmits<{ close: [] }>()
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase as string
-
 const viewsCount = ref(0)
+const { incrementViews: incrementViewsApi } = useNews()
 
 const close = () => {
   emit('close')
@@ -62,11 +60,8 @@ const formatViews = (views: number) => {
 const incrementViews = async () => {
   if (!props.news?.id) return
   try {
-    const data = (await $fetch<{ views: number }>(
-      `${apiBase}/landing/news/${props.news!.id}/increment_views/`,
-      { method: 'POST' }
-    )) as { views: number }
-    viewsCount.value = data.views
+    const data = await incrementViewsApi(props.news.id)
+    if ((data as any)?.views !== undefined) viewsCount.value = (data as any).views
   } catch {
     viewsCount.value = props.news?.views || 0
   }

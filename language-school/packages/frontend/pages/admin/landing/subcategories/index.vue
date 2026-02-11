@@ -70,10 +70,9 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const { pagination, rowsPerPageOptions, resetPage, savePagination } = useAdminPagination('subcategories')
 const { locale } = useI18n()
+const { getAll, remove } = useAdminSubcategories()
 
 const items = ref<any[]>([])
 const loading = ref(false)
@@ -133,7 +132,7 @@ const editItem = (id: number) => navigateTo(`/admin/landing/subcategories/${id}`
 const handleDelete = async (id: number) => {
   if (!confirm('Удалить подкатегорию?')) return
   try {
-    await $fetch(`${apiBase}/admin/subcategories/${id}`, { method: 'DELETE', credentials: 'include' })
+    await remove(id)
     await loadItems()
   } catch (e) {
     console.error(e)
@@ -143,7 +142,7 @@ const handleDelete = async (id: number) => {
 const loadItems = async () => {
   loading.value = true
   try {
-    items.value = await $fetch<any[]>(`${apiBase}/admin/subcategories`, { credentials: 'include' })
+    items.value = await getAll()
   } catch (e) {
     console.error(e)
   } finally {

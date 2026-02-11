@@ -81,10 +81,9 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const { pagination, rowsPerPageOptions, resetPage, savePagination } = useAdminPagination('courses')
 const { locale } = useI18n()
+const { getAll, remove } = useAdminCourses()
 
 const items = ref<any[]>([])
 const loading = ref(false)
@@ -146,7 +145,7 @@ const editItem = (id: number) => navigateTo(`/admin/landing/courses/${id}`)
 const handleDelete = async (id: number) => {
   if (!confirm('Удалить курс?')) return
   try {
-    await $fetch(`${apiBase}/admin/courses/${id}`, { method: 'DELETE', credentials: 'include' })
+    await remove(id)
     await loadItems()
   } catch (e) {
     console.error(e)
@@ -156,7 +155,7 @@ const handleDelete = async (id: number) => {
 const loadItems = async () => {
   loading.value = true
   try {
-    items.value = await $fetch<any[]>(`${apiBase}/admin/courses`, { credentials: 'include' })
+    items.value = await getAll()
   } catch (e) {
     console.error(e)
   } finally {

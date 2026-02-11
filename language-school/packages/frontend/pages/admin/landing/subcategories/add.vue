@@ -49,9 +49,10 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const { locale } = useI18n()
+const { create } = useAdminSubcategories()
+const { getAll: getAllCategories } = useAdminCategories()
+const { uploadFile } = useUpload()
 
 const categories = ref<any[]>([])
 const saving = ref(false)
@@ -77,11 +78,9 @@ const categoryOptions = computed(() =>
 
 const handleImageUpload = async (file: File | null) => {
   if (!file) return
-  const fd = new FormData()
-  fd.append('file', file)
   try {
-    const res = await $fetch<{ url: string }>(`${apiBase}/upload`, { method: 'POST', body: fd, credentials: 'include' })
-    form.value.image = res.url
+    const res = await uploadFile(file)
+    form.value.image = (res as any).url
   } catch (e) {
     console.error(e)
   }
@@ -91,10 +90,15 @@ const handleSubmit = async () => {
   if (!form.value.category_id) return
   saving.value = true
   try {
-    await $fetch(`${apiBase}/admin/subcategories`, {
-      method: 'POST',
-      body: { ...form.value },
-      credentials: 'include'
+    await create({
+      category_id: form.value.category_id,
+      name_tm: form.value.name_tm,
+      name_ru: form.value.name_ru,
+      name_en: form.value.name_en,
+      description: form.value.description,
+      image: form.value.image,
+      order: form.value.order,
+      is_active: form.value.is_active
     })
     navigateTo('/admin/landing/subcategories')
   } catch (e) {
@@ -105,7 +109,7 @@ const handleSubmit = async () => {
 }
 
 onMounted(async () => {
-  categories.value = await $fetch<any[]>(`${apiBase}/admin/categories`, { credentials: 'include' })
+  categories.value = await getAllCategories()
 })
 </script>
 

@@ -164,9 +164,8 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
 const router = useRouter()
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
-const { loading, error, fetchNewsItem, updateNews } = useAdminNews()
+const { loading, error, getById, update } = useAdminNews()
+const { uploadFile } = useUpload()
 
 const imageFile = ref<File | null>(null)
 const previewImage = ref<string | null>(null)
@@ -193,15 +192,9 @@ const handleImageChange = async (file: File | null) => {
   imageFile.value = file
   previewImage.value = URL.createObjectURL(file)
 
-  const fd = new FormData()
-  fd.append('file', file)
   try {
-    const res = await $fetch<{ url: string }>(`${apiBase}/upload`, {
-      method: 'POST',
-      body: fd,
-      credentials: 'include'
-    })
-    formData.value.image = res.url
+    const res = await uploadFile(file)
+    formData.value.image = (res as any).url
   } catch (e) {
     console.error('Upload error:', e)
     error.value = 'Ошибка загрузки изображения'
@@ -224,7 +217,7 @@ const handleSubmit = async () => {
     is_featured: formData.value.is_featured
   }
   try {
-    await updateNews(id, payload)
+    await update(id, payload)
     router.push('/admin/landing/news')
   } catch (err: any) {
     console.error('Failed to update news', err)
@@ -235,19 +228,21 @@ onMounted(async () => {
   const id = Number(route.params.id)
   if (id) {
     try {
-      const item = await fetchNewsItem(id)
-      formData.value = {
-        title_tm: item.title_tm || '',
-        title_ru: item.title_ru || '',
-        title_en: item.title_en || '',
-        content_tm: item.content_tm || '',
-        content_ru: item.content_ru || '',
-        content_en: item.content_en || '',
-        image: item.image || '',
-        is_featured: item.is_featured ?? false,
-        views: item.views ?? 0
+      const item = await getById(id)
+      if (item) {
+        formData.value = {
+          title_tm: item.title_tm || '',
+          title_ru: item.title_ru || '',
+          title_en: item.title_en || '',
+          content_tm: item.content_tm || '',
+          content_ru: item.content_ru || '',
+          content_en: item.content_en || '',
+          image: item.image || '',
+          is_featured: item.is_featured ?? false,
+          views: item.views ?? 0
+        }
+        if (item.image) currentImage.value = item.image
       }
-      if (item.image) currentImage.value = item.image
     } catch (err: any) {
       console.error('Failed to load news', err)
     }

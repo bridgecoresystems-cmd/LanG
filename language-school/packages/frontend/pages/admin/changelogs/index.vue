@@ -85,9 +85,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const router = useRouter()
+const { getAll, remove } = useAdminChangelogs()
 
 const items = ref<any[]>([])
 const loading = ref(false)
@@ -120,8 +119,7 @@ function truncate(str: string | null | undefined, len: number) {
 const fetchItems = async () => {
   loading.value = true
   try {
-    const data = await $fetch<any[]>(`${apiBase}/admin/changelog`, { credentials: 'include' })
-    items.value = data
+    items.value = await getAll()
   } catch (e) {
     console.error('Fetch changelog error:', e)
   } finally {
@@ -138,10 +136,7 @@ const deleteItem = async () => {
   if (!itemToDelete.value) return
   deleting.value = true
   try {
-    await $fetch(`${apiBase}/admin/changelog/${itemToDelete.value.id}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    })
+    await remove(itemToDelete.value.id)
     showDeleteConfirm.value = false
     await fetchItems()
   } catch (e) {

@@ -44,8 +44,7 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
+const { getById, update } = useAdminContact()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -67,16 +66,12 @@ const statusOptions = [
 const handleSubmit = async () => {
   saving.value = true
   try {
-    await $fetch(`${apiBase}/admin/contact-messages/${route.params.id}`, {
-      method: 'PATCH',
-      body: {
-        name: form.value.name,
-        email: form.value.email,
-        phone: form.value.phone || '',
-        message: form.value.message,
-        status: form.value.status
-      },
-      credentials: 'include'
+    await update(Number(route.params.id), {
+      name: form.value.name,
+      email: form.value.email,
+      phone: form.value.phone || '',
+      message: form.value.message,
+      status: form.value.status
     })
     navigateTo('/admin/landing/contact')
   } catch (e) {
@@ -88,14 +83,16 @@ const handleSubmit = async () => {
 
 onMounted(async () => {
   try {
-    const item = await $fetch<any>(`${apiBase}/admin/contact-messages/${route.params.id}`, { credentials: 'include' })
-    form.value = {
-      name: item.name || '',
-      email: item.email || '',
-      phone: item.phone || '',
-      message: item.message || '',
-      status: item.status || 'pending',
-      likes: item.likes ?? 0
+    const item = await getById(Number(route.params.id))
+    if (item) {
+      form.value = {
+        name: (item as any).name || '',
+        email: (item as any).email || '',
+        phone: (item as any).phone || '',
+        message: (item as any).message || '',
+        status: (item as any).status || 'pending',
+        likes: (item as any).likes ?? 0
+      }
     }
   } catch (e) {
     console.error(e)

@@ -53,9 +53,11 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const { locale } = useI18n()
+const { getById, update } = useAdminCourses()
+const { getAll: getAllCategories } = useAdminCategories()
+const { getAll: getAllSubcategories } = useAdminSubcategories()
+const { uploadFile } = useUpload()
 
 const categories = ref<any[]>([])
 const subcategories = ref<any[]>([])
@@ -93,8 +95,8 @@ const onCategoryChange = async () => {
     subcategories.value = []
     return
   }
-  const all = await $fetch<any[]>(`${apiBase}/admin/subcategories`, { credentials: 'include' })
-  subcategories.value = all.filter((s: any) => s.categoryId === form.value.category_id || s.category_id === form.value.category_id)
+  const all = await getAllSubcategories()
+  subcategories.value = (all as any[]).filter((s: any) => s.categoryId === form.value.category_id || s.category_id === form.value.category_id)
   if (!subcategories.value.some((s: any) => s.id === form.value.subcategory_id)) {
     form.value.subcategory_id = null
   }
@@ -102,25 +104,19 @@ const onCategoryChange = async () => {
 
 const handleImageUpload = async (file: File | null) => {
   if (!file) return
-  const fd = new FormData()
-  fd.append('file', file)
-  const res = await $fetch<{ url: string }>(`${apiBase}/upload`, { method: 'POST', body: fd, credentials: 'include' })
-  form.value.image = res.url
+  const res = await uploadFile(file)
+  form.value.image = (res as any).url
 }
 
 const handleSubmit = async () => {
   const id = Number(route.params.id)
   saving.value = true
   try {
-    await $fetch(`${apiBase}/admin/courses/${id}`, {
-      method: 'PATCH',
-      body: {
-        ...form.value,
-        price: String(form.value.price || 0),
-        discount_price: form.value.discount_price ? String(form.value.discount_price) : null
-      },
-      credentials: 'include'
-    })
+    await update(id, {
+      ...form.value,
+      price: String(form.value.price || 0),
+      discount_price: form.value.discount_price ? String(form.value.discount_price) : null
+    } as any)
     navigateTo('/admin/landing/courses')
   } catch (e) {
     console.error(e)
@@ -132,25 +128,27 @@ const handleSubmit = async () => {
 onMounted(async () => {
   try {
     const [item, cats] = await Promise.all([
-      $fetch<any>(`${apiBase}/admin/courses/${route.params.id}`, { credentials: 'include' }),
-      $fetch<any[]>(`${apiBase}/admin/categories`, { credentials: 'include' })
+      getById(Number(route.params.id)),
+      getAllCategories()
     ])
     categories.value = cats
-    form.value = {
-      category_id: item.categoryId ?? item.category_id,
-      subcategory_id: item.subcategoryId ?? item.subcategory_id,
-      title_tm: item.title_tm || '',
-      title_ru: item.title_ru || '',
-      title_en: item.title_en || '',
-      description_tm: item.description_tm || '',
-      description_ru: item.description_ru || '',
-      description_en: item.description_en || '',
-      image: item.image || '',
-      duration_weeks: item.duration_weeks ?? 0,
-      hours_per_week: item.hours_per_week ?? 0,
-      price: item.price ?? '',
-      discount_price: item.discount_price ?? null,
-      is_active: item.is_active ?? true
+    if (item) {
+      form.value = {
+        category_id: item.categoryId ?? item.category_id,
+        subcategory_id: item.subcategoryId ?? item.subcategory_id,
+        title_tm: item.title_tm || '',
+        title_ru: item.title_ru || '',
+        title_en: item.title_en || '',
+        description_tm: item.description_tm || '',
+        description_ru: item.description_ru || '',
+        description_en: item.description_en || '',
+        image: item.image || '',
+        duration_weeks: item.duration_weeks ?? 0,
+        hours_per_week: item.hours_per_week ?? 0,
+        price: item.price ?? '',
+        discount_price: item.discount_price ?? null,
+        is_active: item.is_active ?? true
+      }
     }
     await onCategoryChange()
     if (!form.value.subcategory_id && subcategories.value.length) {

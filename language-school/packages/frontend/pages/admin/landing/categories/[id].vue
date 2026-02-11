@@ -41,8 +41,8 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
+const { getById, update } = useAdminCategories()
+const { uploadFile } = useUpload()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -60,11 +60,9 @@ const form = ref({
 
 const handleImageUpload = async (file: File | null) => {
   if (!file) return
-  const fd = new FormData()
-  fd.append('file', file)
   try {
-    const res = await $fetch<{ url: string }>(`${apiBase}/upload`, { method: 'POST', body: fd, credentials: 'include' })
-    form.value.image = res.url
+    const res = await uploadFile(file)
+    form.value.image = (res as any).url
   } catch (e) {
     console.error(e)
   }
@@ -73,18 +71,14 @@ const handleImageUpload = async (file: File | null) => {
 const handleSubmit = async () => {
   saving.value = true
   try {
-    await $fetch(`${apiBase}/admin/categories/${form.value.id}`, {
-      method: 'PATCH',
-      body: {
-        name: form.value.name_ru || form.value.name_tm || form.value.name_en,
-        name_tm: form.value.name_tm,
-        name_ru: form.value.name_ru,
-        name_en: form.value.name_en,
-        image: form.value.image,
-        order: form.value.order,
-        is_active: form.value.is_active
-      },
-      credentials: 'include'
+    await update(form.value.id as any, {
+      name: form.value.name_ru || form.value.name_tm || form.value.name_en,
+      name_tm: form.value.name_tm,
+      name_ru: form.value.name_ru,
+      name_en: form.value.name_en,
+      image: form.value.image,
+      order: form.value.order,
+      is_active: form.value.is_active
     })
     navigateTo('/admin/landing/categories')
   } catch (e) {
@@ -101,7 +95,11 @@ onMounted(async () => {
     return
   }
   try {
-    const item = await $fetch<any>(`${apiBase}/admin/categories/${id}`, { credentials: 'include' })
+    const item = await getById(id)
+    if (!item) {
+      navigateTo('/admin/landing/categories')
+      return
+    }
     form.value = {
       id: item.id,
       name_tm: item.name_tm || '',

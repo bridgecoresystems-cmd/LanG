@@ -97,8 +97,7 @@
 </template>
 
 <script setup lang="ts">
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase as string
+const { getMessages, sendMessage, likeMessage: likeMessageApi } = useLandingContact()
 
 const form = reactive({ name: '', phone: '', email: '', message: '' })
 const loading = ref(false)
@@ -123,11 +122,12 @@ const formatDate = (dateStr: string) => {
 
 const fetchMessages = async (page = 1) => {
   try {
-    const res = await $fetch<{ results: any[]; count: number }>(`${apiBase}/landing/contact-messages`, {
-      query: { page: String(page), page_size: String(pagination.pageSize) },
+    const res = await getMessages({
+      page: page,
+      page_size: pagination.pageSize
     })
-    messages.value = res.results || []
-    pagination.totalPages = Math.ceil((res.count || 0) / pagination.pageSize) || 1
+    messages.value = (res as any).results || []
+    pagination.totalPages = Math.ceil(((res as any).count || 0) / pagination.pageSize) || 1
     pagination.currentPage = page
   } catch (_) {
     messages.value = []
@@ -143,8 +143,8 @@ const loadPage = (page: number) => {
 
 const likeMessage = async (message: any) => {
   try {
-    const res = await $fetch<any>(`${apiBase}/landing/contact-messages/${message.id}/like`, { method: 'POST' })
-    if (res?.likes !== undefined) message.likes = res.likes
+    const res = await likeMessageApi(message.id)
+    if ((res as any)?.likes !== undefined) message.likes = (res as any).likes
   } catch (_) {}
 }
 
@@ -153,12 +153,12 @@ const submitForm = async () => {
   submitError.value = null
   submitSuccess.value = false
   try {
-    await $fetch(`${apiBase}/landing/contact-messages`, { method: 'POST', body: form })
+    await sendMessage(form)
     submitSuccess.value = true
     form.name = form.phone = form.email = form.message = ''
     setTimeout(() => { submitSuccess.value = false }, 5000)
   } catch (err: any) {
-    submitError.value = err.data?.message || 'Error'
+    submitError.value = err.message || 'Error'
   } finally {
     loading.value = false
   }

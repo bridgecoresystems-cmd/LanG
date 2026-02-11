@@ -54,9 +54,10 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const { locale } = useI18n()
+const { getById, update } = useAdminSubcategories()
+const { getAll: getAllCategories } = useAdminCategories()
+const { uploadFile } = useUpload()
 
 const categories = ref<any[]>([])
 const loading = ref(true)
@@ -83,11 +84,9 @@ const categoryOptions = computed(() =>
 
 const handleImageUpload = async (file: File | null) => {
   if (!file) return
-  const fd = new FormData()
-  fd.append('file', file)
   try {
-    const res = await $fetch<{ url: string }>(`${apiBase}/upload`, { method: 'POST', body: fd, credentials: 'include' })
-    form.value.image = res.url
+    const res = await uploadFile(file)
+    form.value.image = (res as any).url
   } catch (e) {
     console.error(e)
   }
@@ -97,19 +96,15 @@ const handleSubmit = async () => {
   const id = Number(route.params.id)
   saving.value = true
   try {
-    await $fetch(`${apiBase}/admin/subcategories/${id}`, {
-      method: 'PATCH',
-      body: {
-        category_id: form.value.category_id,
-        name_tm: form.value.name_tm,
-        name_ru: form.value.name_ru,
-        name_en: form.value.name_en,
-        description: form.value.description,
-        image: form.value.image,
-        order: form.value.order,
-        is_active: form.value.is_active
-      },
-      credentials: 'include'
+    await update(id, {
+      category_id: form.value.category_id as any,
+      name_tm: form.value.name_tm,
+      name_ru: form.value.name_ru,
+      name_en: form.value.name_en,
+      description: form.value.description,
+      image: form.value.image,
+      order: form.value.order,
+      is_active: form.value.is_active
     })
     navigateTo('/admin/landing/subcategories')
   } catch (e) {
@@ -122,19 +117,21 @@ const handleSubmit = async () => {
 onMounted(async () => {
   try {
     const [item, cats] = await Promise.all([
-      $fetch<any>(`${apiBase}/admin/subcategories/${route.params.id}`, { credentials: 'include' }),
-      $fetch<any[]>(`${apiBase}/admin/categories`, { credentials: 'include' })
+      getById(Number(route.params.id)),
+      getAllCategories()
     ])
     categories.value = cats
-    form.value = {
-      category_id: item.categoryId ?? item.category_id,
-      name_tm: item.name_tm || '',
-      name_ru: item.name_ru || '',
-      name_en: item.name_en || '',
-      description: item.description || '',
-      image: item.image || '',
-      order: item.order ?? 0,
-      is_active: item.is_active ?? true
+    if (item) {
+      form.value = {
+        category_id: item.categoryId ?? item.category_id,
+        name_tm: item.name_tm || '',
+        name_ru: item.name_ru || '',
+        name_en: item.name_en || '',
+        description: item.description || '',
+        image: item.image || '',
+        order: item.order ?? 0,
+        is_active: item.is_active ?? true
+      }
     }
   } catch (e) {
     console.error(e)

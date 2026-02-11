@@ -92,10 +92,9 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const router = useRouter()
 const { pagination, rowsPerPageOptions, resetPage, savePagination } = useAdminPagination('categories')
+const { getAll, remove } = useAdminCategories()
 
 const categories = ref<any[]>([])
 const loading = ref(false)
@@ -125,8 +124,7 @@ const filteredCategories = computed(() => {
 const fetchCategories = async () => {
   loading.value = true
   try {
-    const data = await $fetch<any[]>(`${apiBase}/admin/categories`, { credentials: 'include' })
-    categories.value = data
+    categories.value = await getAll()
   } catch (e) {
     console.error('Fetch error:', e)
   } finally {
@@ -143,10 +141,7 @@ const deleteCategory = async () => {
   if (!categoryToDelete.value) return
   deleting.value = true
   try {
-    await $fetch(`${apiBase}/admin/categories/${categoryToDelete.value.id}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    })
+    await remove(categoryToDelete.value.id)
     showDeleteConfirm.value = false
     await fetchCategories()
   } catch (e) {

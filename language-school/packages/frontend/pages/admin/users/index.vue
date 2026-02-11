@@ -93,9 +93,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const { pagination, rowsPerPageOptions, resetPage, savePagination } = useAdminPagination('users')
+const { getAll, remove } = useAdminUsers()
 
 const items = ref<any[]>([])
 const loading = ref(false)
@@ -205,7 +204,7 @@ const confirmDelete = async () => {
   if (!userToDelete.value) return
   deleting.value = true
   try {
-    await $fetch(`${apiBase}/admin/users/${userToDelete.value.id}`, { method: 'DELETE', credentials: 'include' })
+    await remove(userToDelete.value.id)
     await loadItems()
     showDeleteConfirm.value = false
     userToDelete.value = null
@@ -219,10 +218,7 @@ const confirmDelete = async () => {
 const loadItems = async () => {
   loading.value = true
   try {
-    items.value = await $fetch<any[]>(`${apiBase}/admin/users`, {
-      credentials: 'include',
-      query: { role: roleFilter.value || undefined, search: searchQuery.value || undefined }
-    })
+    items.value = await getAll()
   } catch (e) {
     console.error(e)
   } finally {

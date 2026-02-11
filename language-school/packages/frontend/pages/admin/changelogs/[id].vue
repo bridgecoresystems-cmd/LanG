@@ -38,11 +38,10 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
 const router = useRouter()
 const route = useRoute()
 const $q = useQuasar()
+const { getAll, update } = useAdminChangelogs()
 
 const saving = ref(false)
 const form = ref({
@@ -52,8 +51,8 @@ const form = ref({
 
 const fetchItem = async () => {
   try {
-    const all = await $fetch<any[]>(`${apiBase}/admin/changelog`, { credentials: 'include' })
-    const item = all.find((r: any) => String(r.id) === String(route.params.id))
+    const all = await getAll()
+    const item = (all as any[]).find((r: any) => String(r.id) === String(route.params.id))
     if (!item) {
       router.push('/admin/changelogs')
       return
@@ -75,10 +74,9 @@ const save = async () => {
   }
   saving.value = true
   try {
-    await $fetch(`${apiBase}/admin/changelog/${route.params.id}`, {
-      method: 'PATCH',
-      body: { date: form.value.date, text: form.value.text },
-      credentials: 'include'
+    await update(Number(route.params.id), {
+      date: form.value.date,
+      text: form.value.text
     })
     $q.notify({ color: 'positive', message: 'Changelog обновлён', icon: 'check' })
     router.push('/admin/changelogs')

@@ -130,8 +130,9 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const config = useRuntimeConfig()
-const apiBase = config.public.apiBase
+const { create, getAll } = useAdminUsers()
+const { getAll: getAllSchools } = useAdminSchools()
+const { uploadFile } = useUpload()
 
 const schools = ref<any[]>([])
 const parents = ref<any[]>([])
@@ -245,10 +246,8 @@ const handleSubmit = async () => {
   try {
     let avatarUrl = form.value.avatar
     if (avatarFile.value) {
-      const fd = new FormData()
-      fd.append('file', avatarFile.value)
-      const res = await $fetch<{ url: string }>(`${apiBase}/upload`, { method: 'POST', body: fd, credentials: 'include' })
-      avatarUrl = res.url
+      const res = await uploadFile(avatarFile.value)
+      avatarUrl = (res as any).url
       if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value)
       avatarPreview.value = null
       avatarFile.value = null
@@ -270,13 +269,9 @@ const handleSubmit = async () => {
     body.password = form.value.password
   }
 
-  const res = await $fetch<{ user: any; credentials?: { username: string; password: string } }>(`${apiBase}/admin/users`, {
-      method: 'POST',
-      body,
-      credentials: 'include'
-    })
-    if (res.credentials) {
-      createdCredentials.value = res.credentials
+    const res = await create(body)
+    if ((res as any).credentials) {
+      createdCredentials.value = (res as any).credentials
     } else {
       navigateTo('/admin/users')
     }
@@ -291,9 +286,12 @@ const handleSubmit = async () => {
 }
 
 onMounted(async () => {
-  schools.value = await $fetch<any[]>(`${apiBase}/admin/schools`, { credentials: 'include' })
-  const allUsers = await $fetch<any[]>(`${apiBase}/admin/users`, { credentials: 'include' })
-  parents.value = allUsers.filter(u => u.role === 'PARENT')
+  const [schoolsList, allUsers] = await Promise.all([
+    getAllSchools(),
+    getAll()
+  ])
+  schools.value = schoolsList as any[]
+  parents.value = (allUsers as any[]).filter((u: any) => u.role === 'PARENT')
 })
 </script>
 
