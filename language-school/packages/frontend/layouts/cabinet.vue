@@ -133,6 +133,7 @@ import {
   CalendarOutline as CalendarIcon,
   LogOutOutline as LogoutIcon,
   ChevronDownOutline as ChevronDownIcon,
+  CallOutline as CallIcon,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '~/stores/authStore'
 import { useI18n } from 'vue-i18n'
@@ -195,11 +196,11 @@ const menuOptions = computed<MenuOption[]>(() => {
       key: 'content-group',
       icon: renderIcon(DocumentIcon),
       children: [
-        { label: 'Все курсы', key: '/cabinet/editor/courses' },
-        { label: 'Лента новостей', key: '/cabinet/editor/news' },
-        { label: 'Категории', key: '/cabinet/editor/categories' },
-        { label: 'Подкатегории', key: '/cabinet/editor/subcategories' },
-        { label: 'Входящие сообщения', key: '/cabinet/editor/contact' },
+        { label: 'Все курсы', key: '/cabinet/editor/courses', icon: renderIcon(BookIcon) },
+        { label: 'Лента новостей', key: '/cabinet/editor/news', icon: renderIcon(DocumentIcon) },
+        { label: 'Категории', key: '/cabinet/editor/categories', icon: renderIcon(ChartIcon) },
+        { label: 'Подкатегории', key: '/cabinet/editor/subcategories', icon: renderIcon(HomeIcon) },
+        { label: 'Входящие сообщения', key: '/cabinet/editor/contact', icon: renderIcon(PeopleIcon) },
       ],
     })
   }
@@ -215,6 +216,12 @@ const menuOptions = computed<MenuOption[]>(() => {
     options.push(
       { label: 'Мои курсы', key: '/cabinet/student/courses', icon: renderIcon(BookIcon) },
       { label: 'Календарь', key: '/cabinet/student/calendar', icon: renderIcon(CalendarIcon) }
+    )
+  }
+
+  if (userRole === 'SALES') {
+    options.push(
+      { label: 'Дневник звонков', key: '/cabinet/sales', icon: renderIcon(CallIcon) }
     )
   }
 
@@ -238,11 +245,13 @@ const activePageTitle = computed(() => {
   const path = route.path
   if (path === '/cabinet') return 'Обзор'
   if (path.includes('/profile')) return 'Мой профиль'
+  if (path.includes('/sales')) return 'Sales дневник'
   if (path.includes('/news')) return 'Новости'
   if (path.includes('/courses')) return 'Курсы'
   if (path.includes('/contact')) return 'Сообщения'
   if (path.includes('/categories')) return 'Категории'
   if (path.includes('/subcategories')) return 'Подкатегории'
+  if (path.includes('/sales')) return 'Sales дневник'
   return 'Рабочий стол'
 })
 
@@ -301,28 +310,38 @@ async function handleLogout() {
   margin-top: 10px;
 }
 
+:deep(.n-menu-item-content:hover) {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
 :deep(.n-menu-item-content--selected) {
-  background-color: rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(255, 255, 255, 1) !important;
+}
+:deep(.n-menu-item-content:hover .n-menu-item-content-header),
+:deep(.n-menu-item-content--selected .n-menu-item-content-header) {
+  color: #18a058 !important;
+  font-weight: 600;
+}
+:deep(.n-menu-item-content:hover .n-icon),
+:deep(.n-menu-item-content--selected .n-icon),
+:deep(.n-menu-item-content--child-active .n-icon) {
+  color: #18a058 !important;
+}
+:deep(.n-menu-item-content:hover .n-menu-item-content__arrow),
+:deep(.n-menu-item-content--selected .n-menu-item-content__arrow),
+:deep(.n-menu-item-content--child-active .n-menu-item-content__arrow) {
+  color: #18a058 !important;
 }
 :deep(.n-menu-item-content) {
   color: rgba(255, 255, 255, 0.85) !important;
 }
-:deep(.n-menu-item-content:hover) {
-  color: white !important;
-  background-color: rgba(255, 255, 255, 0.1) !important;
-}
-:deep(.n-menu-item-content--selected .n-menu-item-content-header) {
-  color: white !important;
-  font-weight: 600;
-}
-:deep(.n-menu-item-content--selected .n-icon) {
-  color: white !important;
+:deep(.n-menu-item-content-header) {
+  color: rgba(255, 255, 255, 0.85) !important;
 }
 :deep(.n-menu-item-content .n-icon) {
   color: rgba(255, 255, 255, 0.8) !important;
 }
-:deep(.n-menu-item-content:hover .n-icon) {
-  color: white !important;
+:deep(.n-menu-item-content .n-menu-item-content__arrow) {
+  color: rgba(255, 255, 255, 0.6) !important;
 }
 
 .sidebar-footer {

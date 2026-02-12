@@ -168,3 +168,20 @@ export const teachers = pgTable("teacher", {
   likes: integer("likes").default(0).notNull(),
   hireDate: timestamp("hire_date"),
 });
+
+// --- Sales Calls ---
+
+export const salesCalls = pgTable("sales_call", {
+  id: serial("id").primaryKey(),
+  salesManagerId: text("sales_manager_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  phone: text("phone").notNull(),
+  datetime: timestamp("datetime").notNull(),
+  outcome: text("outcome").notNull(), // no_answer, interested, not_interested, follow_up
+  notes: text("notes"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});

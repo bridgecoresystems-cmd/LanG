@@ -58,7 +58,13 @@
             <QItemSection>Дашборд</QItemSection>
           </QItem>
 
-          <QExpansionItem icon="public" label="Лендинг" default-opened header-class="nav-section-header" expand-icon-class="text-dark">
+          <QExpansionItem 
+            icon="public" 
+            label="Лендинг" 
+            v-model="isLandingExpanded"
+            header-class="nav-section-header" 
+            expand-icon-class="text-dark"
+          >
             <QItem to="/admin/landing/categories" clickable v-ripple :inset-level="1" active-class="nav-item-active" class="nav-subitem">
               <QItemSection avatar>
                 <QIcon name="category" />
@@ -102,6 +108,13 @@
               <QIcon name="people" />
             </QItemSection>
             <QItemSection>Пользователи</QItemSection>
+          </QItem>
+
+          <QItem to="/admin/sales" clickable v-ripple active-class="nav-item-active" class="nav-item">
+            <QItemSection avatar>
+              <QIcon name="phone" />
+            </QItemSection>
+            <QItemSection>Sales дневник</QItemSection>
           </QItem>
 
           <QItem clickable v-ripple @click="router.push('/admin/profile')" class="nav-item">
@@ -157,6 +170,16 @@ const $q = useQuasar()
 
 const loading = ref(false)
 
+// Landing expansion state - ref для QExpansionItem
+const isLandingExpanded = ref(false)
+
+// Автоматически открывать Landing при навигации на landing страницы
+watch(() => route.path, (newPath) => {
+  if (newPath.startsWith('/admin/landing')) {
+    isLandingExpanded.value = true
+  }
+}, { immediate: true })
+
 const breadcrumbItems = computed(() => {
   const items: Array<{ label: string; path?: string }> = []
   const path = route.path
@@ -182,6 +205,10 @@ const breadcrumbItems = computed(() => {
     items.push({ label: 'Пользователи', path: '/admin/users' })
     if (path.match(/\/users\/add$/)) items.push({ label: 'Добавить' })
     if (path.match(/\/users\/[^/]+$/) && !path.endsWith('/add')) items.push({ label: 'Редактировать' })
+  } else if (path.includes('/sales')) {
+    items.push({ label: 'Sales дневник', path: '/admin/sales' })
+    if (path.match(/\/sales\/add$/)) items.push({ label: 'Добавить' })
+    if (path.match(/\/sales\/[\d]+$/) && !path.endsWith('/add')) items.push({ label: 'Редактировать' })
   } else if (path.includes('/profile')) {
     items.push({ label: 'Профиль' })
   } else if (path.includes('/changelogs')) {
