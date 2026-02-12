@@ -182,6 +182,7 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
       if (body.is_active !== undefined) updates.is_active = body.is_active as boolean;
       if (body.school_id !== undefined) updates.school_id = body.school_id as number | null;
       if (body.parent_id !== undefined) updates.parent_id = body.parent_id as string | null;
+      if (body.avatar !== undefined) updates.avatar = (body.avatar as string)?.trim() || null;
 
       if (body.password && (body.password as string).length >= 6) {
         updates.password_hash = await Bun.password.hash(body.password as string, { algorithm: "bcrypt" });
@@ -222,6 +223,7 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
         password: t.Optional(t.String()),
         role: t.Optional(t.String()),
         is_active: t.Optional(t.Boolean()),
+        avatar: t.Optional(t.String()),
         school_id: t.Optional(t.Union([t.Number(), t.Null()])),
         parent_id: t.Optional(t.Union([t.String(), t.Null()])),
       }),

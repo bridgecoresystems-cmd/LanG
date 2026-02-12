@@ -68,11 +68,17 @@ const handleLogin = async () => {
     // Определяем путь на основе роли пользователя из store
     // После логина user уже должен быть установлен в store
     const user = authStore.user
-    const isAdmin = user?.role === 'SUPERUSER'
+    const role = user?.role?.toUpperCase()
     
-    const path = isAdmin ? '/admin' : '/landing'
+    // Определяем путь на основе роли
+    let path = '/landing'
+    if (role === 'SUPERUSER') {
+      path = '/admin'
+    } else if (role && ['EDITOR', 'TEACHER', 'STUDENT', 'SALES', 'RECEPTIONIST', 'DIRECTOR', 'GEN_DIRECTOR'].includes(role)) {
+      path = '/cabinet'
+    }
     
-    if (isAdmin && import.meta.client) {
+    if (role === 'SUPERUSER' && import.meta.client) {
       sessionStorage.setItem('auth_just_logged_in', '1')
     }
     

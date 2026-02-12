@@ -74,7 +74,7 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const $q = useQuasar()
-const { fetchSchools, deleteSchool: deleteSchoolApi } = useAdminSchools()
+const { getAll: fetchSchools, remove: deleteSchoolApi } = useAdminSchools()
 const { pagination, rowsPerPageOptions, resetPage, savePagination } = useAdminPagination('schools')
 
 const items = ref<any[]>([])

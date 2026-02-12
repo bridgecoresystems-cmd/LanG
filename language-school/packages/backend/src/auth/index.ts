@@ -19,7 +19,7 @@ export const lucia = new Lucia(adapter, {
        * - SameSite=lax и secure=true (обычное поведение)
        */
       secure: isProduction,
-      sameSite: isProduction ? "lax" : "none",
+      sameSite: "lax",
       path: "/",
       // Не устанавливаем Domain для localhost
       // domain: undefined,

@@ -29,7 +29,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
-const { createSchool } = useAdminSchools()
+const { create } = useAdminSchools()
 const saving = ref(false)
 
 const form = ref({

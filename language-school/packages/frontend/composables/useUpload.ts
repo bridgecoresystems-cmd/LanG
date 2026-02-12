@@ -7,10 +7,9 @@ export const useUpload = () => {
   const api = useEden()
 
   const uploadFile = async (file: File) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    
-    const { data, error } = await api.api.v1.upload.post(formData)
+    const { data, error } = await api.api.v1.upload.post({
+      file
+    })
     if (error) throw error
     return data
   }

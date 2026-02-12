@@ -45,6 +45,20 @@
 
           <q-input v-model="form.password" label="Новый пароль (оставьте пустым, чтобы не менять)" type="password" outlined class="q-mb-md" autocomplete="new-password" hint="Минимум 6 символов" />
 
+          <!-- Фото -->
+          <div class="q-mb-md">
+            <div class="text-subtitle2 q-mb-sm">Фото</div>
+            <div class="row items-center q-gutter-md">
+              <div class="relative-position">
+                <img v-if="avatarPreview || form.avatar" :src="avatarPreview || form.avatar" alt="Avatar" class="edit-user-avatar" />
+                <q-avatar v-else size="80px" icon="person" font-size="32px" color="grey-4" />
+                <q-btn round dense color="primary" icon="photo_camera" size="xs" class="absolute" style="bottom: 0; right: 0" @click="avatarInput?.click()" />
+                <input ref="avatarInput" type="file" accept="image/*" class="hidden-input" @change="handleAvatarSelect" />
+              </div>
+              <q-btn v-if="form.avatar || avatarPreview" flat densely color="negative" icon="delete" label="Удалить" @click="clearAvatar" />
+            </div>
+          </div>
+
           <q-select
             v-if="showSchoolField"
             v-model="form.school_id"
@@ -91,11 +105,16 @@ definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 const route = useRoute()
 const { getById, update, getAll } = useAdminUsers()
 const { getAll: getAllSchools } = useAdminSchools()
+const { uploadFile } = useUpload()
 
 const schools = ref<any[]>([])
 const parents = ref<any[]>([])
 const loading = ref(true)
 const saving = ref(false)
+
+const avatarInput = ref<HTMLInputElement | null>(null)
+const avatarPreview = ref<string | null>(null)
+const avatarFile = ref<File | null>(null)
 
 const ROLE_LABELS: Record<string, string> = {
   SUPERUSER: 'Суперпользователь',
@@ -123,6 +142,7 @@ const form = ref({
   phone: '',
   username: '',
   password: '',
+  avatar: '',
   school_id: null as number | null,
   parent_id: null as string | null,
   is_active: true
@@ -147,6 +167,23 @@ const parentOptions = computed(() =>
   }))
 )
 
+const handleAvatarSelect = (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value)
+  avatarPreview.value = URL.createObjectURL(file)
+  avatarFile.value = file
+  input.value = ''
+}
+
+const clearAvatar = () => {
+  if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value)
+  avatarPreview.value = null
+  avatarFile.value = null
+  form.value.avatar = ''
+}
+
 const onRoleChange = () => {
   if (!showSchoolField.value) form.value.school_id = null
   if (form.value.role !== 'STUDENT') form.value.parent_id = null
@@ -155,6 +192,12 @@ const onRoleChange = () => {
 const handleSubmit = async () => {
   saving.value = true
   try {
+    let avatarUrl = form.value.avatar
+    if (avatarFile.value) {
+      const res = await uploadFile(avatarFile.value)
+      avatarUrl = (res as any).url
+    }
+
     const body: Record<string, any> = {
       first_name: form.value.first_name.trim(),
       last_name: form.value.last_name.trim(),
@@ -162,6 +205,7 @@ const handleSubmit = async () => {
       phone: form.value.phone?.trim() || undefined,
       username: form.value.username.trim(),
       role: form.value.role,
+      avatar: avatarUrl || '',
       is_active: form.value.is_active,
       school_id: form.value.school_id ?? undefined,
       parent_id: form.value.parent_id ?? undefined
@@ -205,6 +249,7 @@ onMounted(async () => {
       role: user.role || 'STUDENT',
       first_name: user.first_name || '',
       last_name: user.last_name || '',
+      avatar: user.avatar || '',
       email: user.email || '',
       phone: user.phone || '',
       username: user.username || '',
@@ -226,5 +271,19 @@ onMounted(async () => {
 .admin-form :deep(.q-input),
 .admin-form :deep(.q-select) {
   max-width: 600px;
+}
+.edit-user-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e0e0e0;
+}
+.hidden-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
 }
 </style>

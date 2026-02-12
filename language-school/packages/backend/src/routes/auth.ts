@@ -25,7 +25,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       username,
       password_hash: passwordHash,
       email,
-      role: "student" // default role
+      role: "STUDENT" // default role
     });
 
     // 3. Create session

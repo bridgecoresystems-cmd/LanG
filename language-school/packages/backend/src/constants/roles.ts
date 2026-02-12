@@ -18,8 +18,16 @@ export const ROLES = {
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
-/** Роли с доступом к админ-панели (Quasar) */
-export const ADMIN_ROLES: Role[] = [ROLES.SUPERUSER];
+/** Роли с доступом к админ-панели (инструменты управления) */
+export const ADMIN_ROLES: Role[] = [
+  ROLES.SUPERUSER,
+  ROLES.EDITOR,
+  ROLES.HEAD_TEACHER,
+  ROLES.SALES,
+  ROLES.RECEPTIONIST,
+  ROLES.DIRECTOR,
+  ROLES.GEN_DIRECTOR
+];
 
 /** Роли с доступом к личному кабинету */
 export const CABINET_ROLES: Role[] = [

@@ -34,7 +34,7 @@
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const route = useRoute()
-const { fetchSchool, updateSchool } = useAdminSchools()
+const { getById: fetchSchool, update: updateSchool } = useAdminSchools()
 
 const loading = ref(true)
 const saving = ref(false)

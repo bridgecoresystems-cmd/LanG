@@ -3,7 +3,10 @@ export default defineNuxtConfig({
   devtools: {enabled: false},
   compatibilityDate: '2024-11-01',
   ssr: false, // SPA mode — временно отключено для разработки (меньше нагрузка на Chrome)
-  modules: ['@nuxtjs/i18n', '@pinia/nuxt', 'nuxt-quasar-ui'],
+  modules: ['@nuxtjs/i18n', '@pinia/nuxt', 'nuxt-quasar-ui', '@nuxt/ui', 'nuxtjs-naive-ui'],
+  colorMode: {
+    preference: 'light'
+  },
   quasar: {
     plugins: ['Notify', 'Dialog'],
     extras: {

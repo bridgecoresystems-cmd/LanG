@@ -25,7 +25,7 @@ export const useAdminUsers = () => {
   }
 
   const update = async (id: number, user: any) => {
-    const { data, error } = await api.api.v1.admin.users[id].put(user)
+    const { data, error } = await api.api.v1.admin.users[id].patch(user)
     if (error) throw error
     return data
   }
