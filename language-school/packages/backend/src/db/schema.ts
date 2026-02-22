@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, boolean, serial, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, boolean, serial, decimal, uniqueIndex } from "drizzle-orm/pg-core";
 
 // --- Schools (for DIRECTOR, HEAD_TEACHER scope) ---
 
@@ -23,16 +23,44 @@ export const users = pgTable("user", {
   email: text("email").unique(),
   first_name: text("first_name"),
   last_name: text("last_name"),
-  role: text("role").default("student").notNull(),
+  role: text("role").default("student").notNull(), // Основная роль
   phone: text("phone"),
+  rfid_uid: text("rfid_uid"), // Mifare UID для браслета (RC522), оплата гемов
   avatar: text("avatar"),
   video: text("video"),
   is_active: boolean("is_active").default(true).notNull(),
+  can_export_excel: boolean("can_export_excel").default(false).notNull(), // Право на экспорт в Excel
   created_at: timestamp("created_at").defaultNow().notNull(),
   // DIRECTOR, HEAD_TEACHER — привязаны к school_id
   school_id: integer("school_id").references(() => schools.id, { onDelete: "set null" }),
   // PARENT — связь: у STUDENT parent_id → родитель
   parent_id: text("parent_id").references(() => users.id, { onDelete: "set null" }),
+});
+
+// Ученик может быть в нескольких школах. users.school_id = основная, user_school = дополнительные.
+export const userSchools = pgTable(
+  "user_school",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    schoolId: integer("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("user_school_unique").on(t.userId, t.schoolId)]
+);
+
+// Дополнительные роли пользователя (many-to-many)
+export const userRoles = pgTable("user_role", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  role: text("role").notNull(), // Дополнительная роль (не может быть SUPERUSER)
+  created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const sessions = pgTable("session", {
@@ -167,6 +195,101 @@ export const teachers = pgTable("teacher", {
   views: integer("views").default(0).notNull(),
   likes: integer("likes").default(0).notNull(),
   hireDate: timestamp("hire_date"),
+});
+
+// --- Mailing (Head Teacher) ---
+
+export const mailingMessages = pgTable("mailing_message", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  recipientType: text("recipient_type").notNull(), // all, students, parents, teachers
+  createdById: text("created_by_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  schoolId: integer("school_id").references(() => schools.id, { onDelete: "set null" }),
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true, mode: "date" }),
+  sentAt: timestamp("sent_at", { withTimezone: true, mode: "date" }),
+  isSent: boolean("is_sent").default(false).notNull(),
+  totalRecipients: integer("total_recipients").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const mailingRecipients = pgTable("mailing_recipient", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id")
+    .notNull()
+    .references(() => mailingMessages.id, { onDelete: "cascade" }),
+  recipientId: text("recipient_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  isRead: boolean("is_read").default(false).notNull(),
+  readAt: timestamp("read_at", { withTimezone: true, mode: "date" }),
+  receivedAt: timestamp("received_at").defaultNow().notNull(),
+});
+
+// --- Head Teacher: Courses, Groups, Lessons ---
+
+export const htCourses = pgTable("ht_course", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  language: text("language").notNull(),
+  level: text("level").notNull(),
+  description: text("description"),
+  durationMonths: integer("duration_months").default(3).notNull(),
+  schoolId: integer("school_id").references(() => schools.id, { onDelete: "set null" }),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const htGroups = pgTable("ht_group", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  courseId: integer("course_id")
+    .notNull()
+    .references(() => htCourses.id, { onDelete: "cascade" }),
+  teacherId: text("teacher_id").references(() => users.id, { onDelete: "set null" }),
+  schoolId: integer("school_id").references(() => schools.id, { onDelete: "set null" }),
+  maxStudents: integer("max_students").default(15).notNull(),
+  timeSlot: text("time_slot"), // A, B, C
+  weekDays: text("week_days"), // 1 = Mon/Wed/Fri, 2 = Tue/Thu/Sat
+  startDate: timestamp("start_date", { withTimezone: true, mode: "date" }),
+  endDate: timestamp("end_date", { withTimezone: true, mode: "date" }),
+  schedule: text("schedule"), // JSON
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const htGroupStudents = pgTable(
+  "ht_group_student",
+  {
+    id: serial("id").primaryKey(),
+    groupId: integer("group_id")
+      .notNull()
+      .references(() => htGroups.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("ht_group_student_unique").on(t.groupId, t.userId)]
+);
+
+export const htLessons = pgTable("ht_lesson", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id")
+    .notNull()
+    .references(() => htGroups.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  lessonDate: timestamp("lesson_date", { withTimezone: true, mode: "date" }).notNull(),
+  durationMinutes: integer("duration_minutes").default(90).notNull(),
+  homework: text("homework"),
+  materials: text("materials"), // JSON array
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // --- Sales Calls ---

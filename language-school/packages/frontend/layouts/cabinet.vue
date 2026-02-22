@@ -71,6 +71,17 @@
             </NH1>
           </div>
           <div class="header-right">
+            <div v-if="rolesDisplay.length" class="header-roles">
+              <NTag
+                v-for="(label, idx) in rolesDisplay"
+                :key="idx"
+                :type="idx === 0 ? 'primary' : 'default'"
+                size="small"
+                round
+              >
+                {{ label }}
+              </NTag>
+            </div>
             <NSelect
               v-model:value="currentLang"
               :options="languageOptions"
@@ -120,6 +131,7 @@ import {
   NAvatar,
   NH1,
   NH2,
+  NTag,
   NMessageProvider,
   type MenuOption,
 } from 'naive-ui'
@@ -134,6 +146,7 @@ import {
   LogOutOutline as LogoutIcon,
   ChevronDownOutline as ChevronDownIcon,
   CallOutline as CallIcon,
+  MailOutline as MailIcon,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '~/stores/authStore'
 import { useI18n } from 'vue-i18n'
@@ -148,6 +161,33 @@ const userName = computed(() => {
   const user = authStore.user
   if (!user) return 'Пользователь'
   return [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username
+})
+
+const ROLE_LABELS: Record<string, string> = {
+  SUPERUSER: 'Суперпользователь',
+  GEN_DIRECTOR: 'Ген. директор',
+  HEAD_ACCOUNTANT: 'Гл. бухгалтер',
+  DIRECTOR: 'Директор',
+  HEAD_TEACHER: 'Завуч',
+  TEACHER: 'Учитель',
+  STUDENT: 'Ученик',
+  PARENT: 'Родитель',
+  MERCHANT: 'Мерчант',
+  SALES: 'Продажи',
+  RECEPTIONIST: 'Рецепция',
+  EDITOR: 'Редактор',
+}
+
+const rolesDisplay = computed(() => {
+  const user = authStore.user
+  if (!user) return []
+  const main = (user.role || '').toUpperCase()
+  const mainLabel = ROLE_LABELS[main] || main || ''
+  const additional = (user.additional_roles || [])
+    .map((r: string) => (r || '').toUpperCase())
+    .filter((r: string) => r && r !== main)
+  const additionalLabels = additional.map((r: string) => ROLE_LABELS[r] || r)
+  return [mainLabel, ...additionalLabels].filter(Boolean)
 })
 
 const avatarSrc = computed(() => authStore.user?.avatar || undefined)
@@ -177,6 +217,20 @@ const userMenuOptions = [
   { label: 'Выйти', key: 'logout', icon: renderIcon(LogoutIcon) },
 ]
 
+// Хелпер для проверки роли (основная или дополнительная)
+const hasRole = (user: any, role: string): boolean => {
+  if (!user) return false
+  const mainRole = (user.role || '').toUpperCase()
+  const additionalRoles = (user.additional_roles || []).map((r: string) => (r || '').toUpperCase())
+  const roleUpper = role.toUpperCase()
+  return mainRole === roleUpper || additionalRoles.includes(roleUpper)
+}
+
+// Хелпер для проверки наличия любой из ролей
+const hasAnyRole = (user: any, roles: string[]): boolean => {
+  return roles.some(role => hasRole(user, role))
+}
+
 const menuOptions = computed<MenuOption[]>(() => {
   const user = authStore.user
   if (!user) return []
@@ -189,7 +243,8 @@ const menuOptions = computed<MenuOption[]>(() => {
     { label: 'Профиль', key: '/cabinet/profile', icon: renderIcon(PersonIcon) }
   )
 
-  const isEditor = ['EDITOR', 'SUPERUSER', 'HEAD_TEACHER'].includes(userRole)
+  // EDITOR и SUPERUSER видят контент; HEAD_TEACHER — нет (только ученики и родители)
+  const isEditor = hasAnyRole(user, ['EDITOR', 'SUPERUSER'])
   if (isEditor) {
     options.push({
       label: 'Контент сайта',
@@ -205,21 +260,53 @@ const menuOptions = computed<MenuOption[]>(() => {
     })
   }
 
-  if (userRole === 'TEACHER') {
+  // Завуч: ученики, родители, курсы, рассылки
+  if (hasRole(user, 'HEAD_TEACHER')) {
+    options.push(
+      {
+        label: 'Ученики и родители',
+        key: '/cabinet/head-teacher/users',
+        icon: renderIcon(PeopleIcon),
+      },
+      {
+        label: 'Курсы',
+        key: '/cabinet/head-teacher/courses',
+        icon: renderIcon(BookIcon),
+      },
+      {
+        label: 'Группы',
+        key: '/cabinet/head-teacher/groups',
+        icon: renderIcon(PeopleIcon),
+      },
+      {
+        label: 'Уроки',
+        key: '/cabinet/head-teacher/lessons',
+        icon: renderIcon(CalendarIcon),
+      },
+      {
+        label: 'Рассылки',
+        key: '/cabinet/head-teacher/mailing',
+        icon: renderIcon(MailIcon),
+      }
+    )
+  }
+
+  if (hasRole(user, 'TEACHER')) {
     options.push(
       { label: 'Группы', key: '/cabinet/teacher/groups', icon: renderIcon(PeopleIcon) },
       { label: 'Успеваемость', key: '/cabinet/teacher/journal', icon: renderIcon(ChartIcon) }
     )
   }
 
-  if (userRole === 'STUDENT') {
+  if (hasRole(user, 'STUDENT')) {
     options.push(
       { label: 'Мои курсы', key: '/cabinet/student/courses', icon: renderIcon(BookIcon) },
       { label: 'Календарь', key: '/cabinet/student/calendar', icon: renderIcon(CalendarIcon) }
     )
   }
 
-  if (userRole === 'SALES') {
+  // Проверяем роль SALES в основной или дополнительных ролях
+  if (hasRole(user, 'SALES')) {
     options.push(
       { label: 'Дневник звонков', key: '/cabinet/sales', icon: renderIcon(CallIcon) }
     )
@@ -251,6 +338,11 @@ const activePageTitle = computed(() => {
   if (path.includes('/contact')) return 'Сообщения'
   if (path.includes('/categories')) return 'Категории'
   if (path.includes('/subcategories')) return 'Подкатегории'
+  if (path.includes('/head-teacher/users')) return 'Ученики и родители'
+  if (path.includes('/head-teacher/courses')) return 'Курсы'
+  if (path.includes('/head-teacher/groups')) return 'Группы'
+  if (path.includes('/head-teacher/lessons')) return 'Уроки'
+  if (path.includes('/head-teacher/mailing')) return 'Рассылки'
   if (path.includes('/sales')) return 'Sales дневник'
   return 'Рабочий стол'
 })
@@ -376,6 +468,13 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   gap: 20px;
+}
+
+.header-roles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .user-profile {

@@ -21,14 +21,14 @@
           <h4>{{ $t('footer.contact') }}</h4>
           <ul class="footer-contact">
             <li><i class="pi pi-map-marker"></i> {{ $t('footer.address') }}</li>
-            <li><i class="pi pi-phone"></i> +993 12 34 56 78</li>
-            <li><i class="pi pi-envelope"></i> info@langschool.tm</li>
+            <li><i class="pi pi-phone"></i> +993 64 58 59 58</li>
+            <li><i class="pi pi-envelope"></i> info@bridgecore.tech</li>
           </ul>
         </div>
       </div>
 
       <div class="footer-bottom">
-        <p>&copy; {{ currentYear }} Language School. {{ $t('footer.rights') }}</p>
+        <p>&copy; {{ currentYear }} Language School by BridgeCore SYSTEMS. {{ $t('footer.rights') }}</p>
       </div>
     </div>
   </footer>

@@ -1,220 +1,166 @@
 <template>
-  <div class="cabinet-page-content">
-    <!-- Page Header -->
-    <div class="row items-center q-mb-md">
-      <div class="col">
-        <h1 class="text-h4 q-ma-none">Новости (Редактор)</h1>
+  <div class="cabinet-page">
+    <header class="page-header">
+      <div class="page-header__text">
+        <NH2 class="page-header__title">Новости (Редактор)</NH2>
+        <p class="page-header__subtitle">Управление новостями и публикациями.</p>
       </div>
-      <div class="col-auto">
-        <div class="row items-center q-gutter-sm">
-          <q-btn
-            color="positive"
-            label="Экспорт в Excel"
-            icon="file_download"
-            @click="showExportDialog = true"
-          />
-          <q-btn
-            color="primary"
-            label="Добавить новость"
-            icon="add"
-            to="/cabinet/editor/news/add"
-          />
-        </div>
-      </div>
-    </div>
-
-    <!-- Filters -->
-    <q-card flat bordered class="q-mb-md">
-      <q-card-section>
-        <div class="row q-col-gutter-md">
-          <div class="col-12 col-md-4">
-            <q-input
-              v-model="searchQuery"
-              placeholder="Поиск"
-              outlined
-              dense
-              clearable
-            >
-              <template v-slot:prepend>
-                <q-icon name="search" />
-              </template>
-            </q-input>
-          </div>
-          <div class="col-12 col-md-2">
-            <q-input
-              v-model="dateFrom"
-              type="date"
-              label="Дата от"
-              outlined
-              dense
-              clearable
-            />
-          </div>
-          <div class="col-12 col-md-2">
-            <q-input
-              v-model="dateTo"
-              type="date"
-              label="Дата до"
-              outlined
-              dense
-              clearable
-            />
-          </div>
-          <div class="col-12 col-md-2">
-            <q-select
-              v-model="statusFilter"
-              :options="statusOptions"
-              label="Статус"
-              outlined
-              dense
-              clearable
-              emit-value
-              map-options
-            />
-          </div>
-        </div>
-      </q-card-section>
-    </q-card>
-
-    <!-- Loading State -->
-    <q-inner-loading :showing="loading">
-      <q-spinner size="50px" color="primary" />
-    </q-inner-loading>
-
-    <!-- Error State -->
-    <q-banner v-if="error" class="bg-negative text-white q-mb-md">
-      {{ error }}
-    </q-banner>
-
-    <!-- News Table -->
-    <q-card v-if="!loading && !error" flat bordered>
-      <q-card-section>
-        <q-table
-          :rows="sortedItems"
-          :columns="columns"
-          row-key="id"
-          :loading="loading"
-          v-model:pagination="pagination"
-          :rows-per-page-options="rowsPerPageOptions"
-          @update:pagination="savePagination"
-          @row-click="(_evt, row) => editItem(row.id)"
-          class="cursor-pointer"
-          binary-state-sort
+      <div class="page-header__actions">
+        <NButton 
+          v-if="canExportExcel"
+          type="default" 
+          @click="showExportDialog = true"
         >
-          <template v-slot:body-cell-title="props">
-            <q-td :props="props" style="max-width: 300px">
-              <div class="text-weight-medium text-ellipsis" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px">
-                {{ getTitle(props.row) }}
-              </div>
-            </q-td>
+          <template #icon>
+            <NIcon><component :is="DownloadIcon" /></NIcon>
           </template>
+          Экспорт в Excel
+        </NButton>
+        <NButton type="primary" size="large" @click="navigateTo('/cabinet/editor/news/add')">
+          <template #icon>
+            <NIcon><component :is="AddIcon" /></NIcon>
+          </template>
+          Добавить новость
+        </NButton>
+      </div>
+    </header>
 
-            <template v-slot:body-cell-status="props">
-            <q-td :props="props">
-              <q-badge
-                :color="props.row.is_featured ? 'positive' : 'grey'"
-                :label="props.row.is_featured ? 'Главная' : 'Обычная'"
-              />
-            </q-td>
-          </template>
+    <NCard class="cabinet-card search-card">
+      <NSpace align="center" :size="24">
+        <div style="flex: 1; min-width: 200px;">
+          <NInput
+            v-model:value="searchQuery"
+            placeholder="Поиск по заголовку..."
+            clearable
+            size="large"
+          >
+            <template #prefix>
+              <NIcon><component :is="SearchIcon" /></NIcon>
+            </template>
+          </NInput>
+        </div>
+        <div style="width: 180px">
+          <NInput
+            v-model:value="dateFrom"
+            type="date"
+            clearable
+            size="large"
+            placeholder=""
+          />
+          <div style="font-size: 12px; color: var(--n-text-color-3); margin-top: 4px;">Дата от</div>
+        </div>
+        <div style="width: 180px">
+          <NInput
+            v-model:value="dateTo"
+            type="date"
+            clearable
+            size="large"
+            placeholder=""
+          />
+          <div style="font-size: 12px; color: var(--n-text-color-3); margin-top: 4px;">Дата до</div>
+        </div>
+        <div style="width: 150px">
+          <NSelect
+            v-model:value="statusFilter"
+            :options="statusOptions"
+            placeholder="Статус"
+            clearable
+            size="large"
+          />
+        </div>
+      </NSpace>
+    </NCard>
 
-          <template v-slot:body-cell-views="props">
-            <q-td :props="props">
-              <div class="row items-center">
-                <q-icon name="visibility" size="16px" class="q-mr-xs" />
-                <span>{{ props.row.views || 0 }}</span>
-              </div>
-            </q-td>
-          </template>
-
-          <template v-slot:body-cell-created_at="props">
-            <q-td :props="props">
-              {{ formatDate(props.row.created_at) }}
-            </q-td>
-          </template>
-
-          <template v-slot:body-cell-actions="props">
-            <q-td :props="props" @click.stop>
-              <q-btn
-                flat
-                round
-                dense
-                icon="edit"
-                color="primary"
-                @click="editItem(props.row.id)"
-                class="q-mr-xs"
-              />
-              <q-btn
-                flat
-                round
-                dense
-                icon="delete"
-                color="negative"
-                @click.stop="handleDelete(props.row.id)"
-              />
-            </q-td>
-          </template>
-
-          <template v-slot:no-data>
-            <div class="full-width row flex-center text-grey q-gutter-sm q-pa-lg">
-              <q-icon name="inbox" size="2em" />
-              <span>Нет данных</span>
-            </div>
-          </template>
-        </q-table>
-      </q-card-section>
-    </q-card>
+    <NCard class="cabinet-card table-card" :content-style="{ padding: 0 }">
+      <NDataTable
+        remote
+        ref="tableRef"
+        :columns="columns"
+        :data="sortedItems"
+        :loading="loading"
+        :pagination="naivePagination"
+        :row-key="(row) => row.id"
+        @update:sorter="handleUpdateSorter"
+        :row-props="rowProps"
+        class="cabinet-data-table"
+      />
+    </NCard>
 
     <!-- Export Dialog -->
-    <q-dialog v-model="showExportDialog">
-      <q-card style="min-width: 400px">
-        <q-card-section>
-          <div class="text-h6">Экспорт в Excel</div>
-        </q-card-section>
-
-        <q-card-section>
-          <q-select
-            v-model="exportPeriod"
+    <NModal v-model:show="showExportDialog" preset="card" title="Экспорт в Excel" style="width: 400px;">
+      <NForm label-placement="top">
+        <NFormItem label="Период">
+          <NSelect
+            v-model:value="exportPeriod"
             :options="exportPeriodOptions"
-            label="Период"
-            outlined
-            emit-value
-            map-options
+            placeholder="Выберите период"
           />
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Отмена" color="grey" v-close-popup />
-          <q-btn label="Экспорт" color="primary" :loading="exporting" @click="handleExport" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+        </NFormItem>
+        <div class="export-actions">
+          <NButton type="default" @click="showExportDialog = false">Отмена</NButton>
+          <NButton type="primary" :loading="exporting" @click="handleExport">Экспорт</NButton>
+        </div>
+      </NForm>
+    </NModal>
   </div>
 </template>
 
 <script setup lang="ts">
-// Используем layout кабинета и базовую проверку авторизации
+import { ref, computed, onMounted, h, reactive, watch } from 'vue'
+import {
+  NCard,
+  NButton,
+  NInput,
+  NDataTable,
+  NIcon,
+  NH2,
+  NSpace,
+  NSelect,
+  NBadge,
+  NModal,
+  NForm,
+  NFormItem,
+  useMessage,
+  type DataTableColumns,
+} from 'naive-ui'
+import {
+  AddOutline as AddIcon,
+  SearchOutline as SearchIcon,
+  PencilOutline as EditIcon,
+  TrashOutline as TrashIcon,
+  DownloadOutline as DownloadIcon,
+  EyeOutline as EyeIcon,
+} from '@vicons/ionicons5'
+import { useAdminNews } from '~/composables/useAdminNews'
+import { useAdminPagination } from '~/composables/useAdminPagination'
+import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '~/stores/authStore'
+
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
-const router = useRouter()
 const { locale } = useI18n()
+const message = useMessage()
+const authStore = useAuthStore()
 const { loading, error, getAll, remove } = useAdminNews()
-// Используем ту же пагинацию, что и в админке, чтобы не плодить лишнее
-const { pagination, rowsPerPageOptions, resetPage, savePagination } = useAdminPagination('news')
+const { pagination, savePagination, resetPage } = useAdminPagination('news')
 
+const canExportExcel = computed(() => {
+  return authStore.user?.can_export_excel === true
+})
+
+const items = ref<any[]>([])
 const searchQuery = ref('')
-const statusFilter = ref('')
+const statusFilter = ref<string | null>(null)
 const dateFrom = ref('')
 const dateTo = ref('')
-const items = ref<any[]>([])
 const showExportDialog = ref(false)
 const exportPeriod = ref('30')
 const exporting = ref(false)
 
 const statusOptions = [
-  { label: 'Все', value: '' },
+  { label: 'Все', value: null },
   { label: 'Главные', value: 'featured' },
-  { label: 'Обычные', value: 'normal' }
+  { label: 'Обычные', value: 'normal' },
 ]
 
 const exportPeriodOptions = [
@@ -222,24 +168,159 @@ const exportPeriodOptions = [
   { label: '10 дней', value: '10' },
   { label: 'Месяц', value: '30' },
   { label: 'Квартал', value: '90' },
-  { label: 'Год', value: '365' }
+  { label: 'Год', value: '365' },
 ]
 
-const columns = computed(() => [
-  { name: 'id', label: 'ID', field: 'id', sortable: true },
-  { name: 'title', label: 'Заголовок', field: 'title', sortable: true, style: 'max-width: 300px' },
-  { name: 'status', label: 'Статус', field: 'is_featured', sortable: true },
-  { name: 'views', label: 'Просмотры', field: 'views', sortable: true },
-  { name: 'created_at', label: 'Дата создания', field: 'created_at', sortable: true },
-  { name: 'actions', label: 'Действия', field: 'actions' }
-])
+const naivePagination = reactive({
+  page: pagination.value.page,
+  pageSize: pagination.value.rowsPerPage,
+  showSizePicker: true,
+  pageSizes: [10, 20, 50, 100],
+  onUpdatePage: (page: number) => {
+    naivePagination.page = page
+    pagination.value.page = page
+  },
+  onUpdatePageSize: (pageSize: number) => {
+    naivePagination.pageSize = pageSize
+    pagination.value.rowsPerPage = pageSize
+    naivePagination.page = 1
+    pagination.value.page = 1
+  },
+})
+
+const getTitle = (item: any) => {
+  if (locale.value === 'tm' && item.title_tm) return item.title_tm
+  if (locale.value === 'ru' && item.title_ru) return item.title_ru
+  if (locale.value === 'en' && item.title_en) return item.title_en
+  return item.title_tm || item.title_ru || item.title_en || '-'
+}
+
+const formatDate = (dateString: string) => {
+  if (!dateString) return ''
+  try {
+    return new Date(dateString).toLocaleString('ru-RU', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return dateString
+  }
+}
+
+const columns: DataTableColumns<any> = [
+  {
+    title: 'ID',
+    key: 'id',
+    width: 90,
+    sorter: true,
+    sortOrder: computed(() =>
+      pagination.value.sortBy === 'id' ? (pagination.value.descending ? 'descend' : 'ascend') : false
+    ) as any,
+  },
+  {
+    title: 'Заголовок',
+    key: 'title',
+    sorter: true,
+    sortOrder: computed(() =>
+      pagination.value.sortBy === 'title' ? (pagination.value.descending ? 'descend' : 'ascend') : false
+    ) as any,
+    render(row) {
+      return h('div', { style: 'font-weight: 600; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;' }, getTitle(row))
+    },
+  },
+  {
+    title: 'Статус',
+    key: 'is_featured',
+    align: 'center',
+    sorter: true,
+    sortOrder: computed(() =>
+      pagination.value.sortBy === 'is_featured' ? (pagination.value.descending ? 'descend' : 'ascend') : false
+    ) as any,
+    render(row) {
+      return h(
+        NBadge,
+        {
+          type: row.is_featured ? 'success' : 'default',
+          value: row.is_featured ? 'Главная' : 'Обычная',
+        }
+      )
+    },
+  },
+  {
+    title: 'Просмотры',
+    key: 'views',
+    align: 'center',
+    sorter: true,
+    sortOrder: computed(() =>
+      pagination.value.sortBy === 'views' ? (pagination.value.descending ? 'descend' : 'ascend') : false
+    ) as any,
+    render(row) {
+      return h('div', { style: 'display: flex; align-items: center; justify-content: center; gap: 4px;' }, [
+        h(NIcon, { size: 16 }, { default: () => h(EyeIcon) }),
+        h('span', String(row.views || 0)),
+      ])
+    },
+  },
+  {
+    title: 'Дата создания',
+    key: 'created_at',
+    sorter: true,
+    sortOrder: computed(() =>
+      pagination.value.sortBy === 'created_at' ? (pagination.value.descending ? 'descend' : 'ascend') : false
+    ) as any,
+    render(row) {
+      return formatDate(row.created_at)
+    },
+  },
+  {
+    title: 'Действия',
+    key: 'actions',
+    align: 'right',
+    render(row) {
+      return h(NSpace, { justify: 'end' }, {
+        default: () => [
+          h(
+            NButton,
+            {
+              quaternary: true,
+              circle: true,
+              size: 'small',
+              onClick: (e: Event) => {
+                e.stopPropagation()
+                editItem(row)
+              },
+            },
+            { icon: () => h(NIcon, null, { default: () => h(EditIcon) }) }
+          ),
+          h(
+            NButton,
+            {
+              quaternary: true,
+              circle: true,
+              size: 'small',
+              type: 'error',
+              onClick: (e: Event) => {
+                e.stopPropagation()
+                handleDelete(row.id)
+              },
+            },
+            { icon: () => h(NIcon, null, { default: () => h(TrashIcon) }) }
+          ),
+        ],
+      })
+    },
+  },
+]
 
 const filteredItems = computed(() => {
   let filtered = items.value
 
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(item =>
+    filtered = filtered.filter((item) =>
       (item.title_tm && item.title_tm.toLowerCase().includes(query)) ||
       (item.title_ru && item.title_ru.toLowerCase().includes(query)) ||
       (item.title_en && item.title_en.toLowerCase().includes(query))
@@ -247,7 +328,7 @@ const filteredItems = computed(() => {
   }
 
   if (statusFilter.value) {
-    filtered = filtered.filter(item =>
+    filtered = filtered.filter((item) =>
       statusFilter.value === 'featured' ? item.is_featured : !item.is_featured
     )
   }
@@ -255,7 +336,7 @@ const filteredItems = computed(() => {
   if (dateFrom.value) {
     const fromDate = new Date(dateFrom.value)
     fromDate.setHours(0, 0, 0, 0)
-    filtered = filtered.filter(item => {
+    filtered = filtered.filter((item) => {
       const itemDate = new Date(item.created_at)
       itemDate.setHours(0, 0, 0, 0)
       return itemDate >= fromDate
@@ -265,7 +346,7 @@ const filteredItems = computed(() => {
   if (dateTo.value) {
     const toDate = new Date(dateTo.value)
     toDate.setHours(23, 59, 59, 999)
-    filtered = filtered.filter(item => {
+    filtered = filtered.filter((item) => {
       const itemDate = new Date(item.created_at)
       return itemDate <= toDate
     })
@@ -276,9 +357,7 @@ const filteredItems = computed(() => {
 
 const sortedItems = computed(() => {
   let sorted = [...filteredItems.value]
-  const sortBy = pagination.value.sortBy
-  const descending = pagination.value.descending
-
+  const { sortBy, descending } = pagination.value
   if (!sortBy) return sorted
 
   sorted.sort((a, b) => {
@@ -309,39 +388,40 @@ const sortedItems = computed(() => {
   return sorted
 })
 
-const formatDate = (dateString: string) => {
-  if (!dateString) return ''
-  try {
-    return new Date(dateString).toLocaleString('ru-RU', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch {
-    return dateString
+const handleUpdateSorter = (sorter: any) => {
+  if (sorter) {
+    pagination.value.sortBy = sorter.columnKey
+    pagination.value.descending = sorter.order === 'descend'
+  } else {
+    pagination.value.sortBy = 'id'
+    pagination.value.descending = false
   }
 }
 
-const getTitle = (item: any) => {
-  if (locale.value === 'tm' && item.title_tm) return item.title_tm
-  if (locale.value === 'ru' && item.title_ru) return item.title_ru
-  if (locale.value === 'en' && item.title_en) return item.title_en
-  return item.title_tm || item.title_ru || item.title_en || '-'
+const rowProps = (row: any) => {
+  return {
+    style: 'cursor: pointer;',
+    onClick: (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest('.n-button')) {
+        return
+      }
+      editItem(row)
+    }
+  }
 }
 
-const editItem = (id: number) => {
-  router.push(`/cabinet/editor/news/${id}`)
-}
+const editItem = (row: any) => navigateTo(`/cabinet/editor/news/${row.id}`)
 
 const handleDelete = async (id: number) => {
   if (!confirm('Вы уверены, что хотите удалить эту новость?')) return
   try {
     await remove(id)
+    message.success('Новость удалена')
     await loadNews()
-  } catch (err) {
-    console.error('Delete error:', err)
+  } catch (e) {
+    console.error(e)
+    message.error('Ошибка при удалении')
   }
 }
 
@@ -355,23 +435,21 @@ const loadNews = async () => {
     items.value = Array.isArray(response) ? response : (response as any)?.results || []
   } catch (err) {
     console.error('Load news error:', err)
+    message.error('Ошибка загрузки данных')
   }
 }
-
-watch(() => pagination.value.rowsPerPage, resetPage)
-watch([searchQuery, statusFilter, dateFrom, dateTo], resetPage)
 
 const calculateAnalytics = (periodDays: number) => {
   const now = Date.now()
   const periodStart = now - periodDays * 24 * 60 * 60 * 1000
   const previousPeriodStart = periodStart - periodDays * 24 * 60 * 60 * 1000
 
-  const currentPeriodItems = sortedItems.value.filter(item => {
+  const currentPeriodItems = sortedItems.value.filter((item) => {
     const itemTime = new Date(item.created_at).getTime()
     return itemTime >= periodStart && itemTime <= now
   })
 
-  const previousPeriodItems = items.value.filter(item => {
+  const previousPeriodItems = items.value.filter((item) => {
     const itemTime = new Date(item.created_at).getTime()
     return itemTime >= previousPeriodStart && itemTime < periodStart
   })
@@ -379,14 +457,27 @@ const calculateAnalytics = (periodDays: number) => {
   const currentViews = currentPeriodItems.reduce((sum, item) => sum + (item.views || 0), 0)
   const previousViews = previousPeriodItems.reduce((sum, item) => sum + (item.views || 0), 0)
   const difference = currentViews - previousViews
-  const percentage = previousViews > 0 ? ((difference / previousViews) * 100).toFixed(2) : currentViews > 0 ? '100.00' : '0.00'
+  const percentage =
+    previousViews > 0
+      ? ((difference / previousViews) * 100).toFixed(2)
+      : currentViews > 0
+        ? '100.00'
+        : '0.00'
 
   return {
-    currentPeriod: { items: currentPeriodItems.length, views: currentViews, period: `${new Date(periodStart).toLocaleDateString()} - ${new Date(now).toLocaleDateString()}` },
-    previousPeriod: { items: previousPeriodItems.length, views: previousViews, period: `${new Date(previousPeriodStart).toLocaleDateString()} - ${new Date(periodStart).toLocaleDateString()}` },
+    currentPeriod: {
+      items: currentPeriodItems.length,
+      views: currentViews,
+      period: `${new Date(periodStart).toLocaleDateString()} - ${new Date(now).toLocaleDateString()}`,
+    },
+    previousPeriod: {
+      items: previousPeriodItems.length,
+      views: previousViews,
+      period: `${new Date(previousPeriodStart).toLocaleDateString()} - ${new Date(periodStart).toLocaleDateString()}`,
+    },
     difference,
     percentage,
-    trend: difference > 0 ? 'рост' : difference < 0 ? 'падение' : 'стабильность'
+    trend: difference > 0 ? 'рост' : difference < 0 ? 'падение' : 'стабильность',
   }
 }
 
@@ -399,12 +490,12 @@ const handleExport = async () => {
     const { utils, writeFile } = await import('xlsx')
     const wb = utils.book_new()
 
-    const tableData = sortedItems.value.map(item => ({
+    const tableData = sortedItems.value.map((item) => ({
       ID: item.id,
       Заголовок: getTitle(item),
       Статус: item.is_featured ? 'Главная' : 'Обычная',
       Просмотры: item.views || 0,
-      Дата_создания: formatDate(item.created_at)
+      Дата_создания: formatDate(item.created_at),
     }))
 
     const ws1 = utils.json_to_sheet(tableData)
@@ -421,7 +512,7 @@ const handleExport = async () => {
       { Показатель: '', Значение: '' },
       { Показатель: 'Разница', Значение: analytics.difference },
       { Показатель: 'Процент', Значение: `${analytics.percentage}%` },
-      { Показатель: 'Тренд', Значение: analytics.trend }
+      { Показатель: 'Тренд', Значение: analytics.trend },
     ]
     const ws2 = utils.json_to_sheet(analyticsData)
     utils.book_append_sheet(wb, ws2, 'Аналитика')
@@ -429,16 +520,91 @@ const handleExport = async () => {
     const filename = `news_export_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`
     writeFile(wb, filename)
 
+    message.success('Экспорт завершён')
     showExportDialog.value = false
   } catch (err) {
     console.error('Export error:', err)
-    alert('Ошибка при экспорте')
+    message.error('Ошибка при экспорте')
   } finally {
     exporting.value = false
   }
 }
 
-onMounted(() => {
-  loadNews()
-})
+watch([searchQuery, statusFilter, dateFrom, dateTo], resetPage)
+onMounted(() => loadNews())
 </script>
+
+<style scoped>
+.cabinet-page {
+  padding-bottom: 40px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 32px;
+}
+
+.page-header__title {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+.page-header__subtitle {
+  margin: 0;
+  color: var(--n-text-color-3);
+}
+
+.page-header__actions {
+  display: flex;
+  gap: 12px;
+}
+
+.cabinet-card {
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.search-card {
+  margin-bottom: 24px;
+  padding: 8px;
+}
+
+.table-card {
+  overflow: hidden;
+}
+
+:deep(.cabinet-data-table) {
+  --n-border-radius: 16px;
+}
+
+:deep(.n-data-table-th) {
+  background-color: transparent !important;
+  font-weight: 600 !important;
+  color: var(--n-text-color-3) !important;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 16px 24px !important;
+  white-space: nowrap !important;
+}
+
+:deep(.n-data-table-td) {
+  padding: 16px 24px !important;
+  font-size: 0.9375rem;
+}
+
+:deep(.n-data-table-tr:hover .n-data-table-td) {
+  background-color: #f9fafb !important;
+}
+
+.export-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--n-border-color);
+}
+</style>

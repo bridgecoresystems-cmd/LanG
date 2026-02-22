@@ -1,173 +1,165 @@
 <template>
-  <div class="cabinet-page-content">
-    <!-- Page Header -->
-    <div class="row items-center q-mb-lg">
-      <div class="col">
-        <h1 class="text-h4 q-ma-none">Редактировать новость</h1>
+  <div class="cabinet-page">
+    <header class="page-header">
+      <div class="page-header__text">
+        <NH2 class="page-header__title">Редактировать новость</NH2>
       </div>
-      <div class="col-auto">
-        <q-btn
-          outline
-          color="grey-7"
-          icon="arrow_back"
-          label="Назад"
-          to="/cabinet/editor/news"
-        />
+      <div class="page-header__actions">
+        <NButton type="default" @click="navigateTo('/cabinet/editor/news')">
+          <template #icon>
+            <NIcon><component :is="ArrowBackIcon" /></NIcon>
+          </template>
+          Назад
+        </NButton>
       </div>
-    </div>
+    </header>
 
-    <!-- Loading -->
-    <q-inner-loading :showing="loading && !formData.title_tm">
-      <q-spinner size="50px" color="primary" />
-    </q-inner-loading>
-
-    <!-- Error Banner -->
-    <q-banner v-if="error" class="bg-negative text-white q-mb-md">
-      {{ error }}
-    </q-banner>
-
-    <!-- Form Card -->
-    <q-card v-if="!loading || formData.title_tm" flat bordered class="cabinet-form-card">
-      <q-card-section>
-        <q-form @submit.prevent="handleSubmit" class="cabinet-form">
-          <!-- Изображение -->
-          <div class="q-mb-xl">
-            <div class="text-h6 q-mb-md">
-              <q-icon name="image" class="q-mr-sm" />
-              Изображение
-            </div>
-            <q-file
-              v-model="imageFile"
-              label="Загрузить изображение"
-              accept="image/*"
-              outlined
-              @update:model-value="handleImageChange"
-              class="q-mb-md"
-            >
-              <template v-slot:prepend>
-                <q-icon name="attach_file" />
-              </template>
-            </q-file>
-            <div v-if="previewImage || currentImage" class="q-mt-md">
-              <q-img
-                :src="(previewImage || currentImage) as string"
-                style="max-width: 300px; max-height: 200px"
-                class="rounded-borders"
+    <NCard v-if="!loading || formData.title_tm" class="cabinet-card" :content-style="{ padding: '32px' }">
+      <NSpin :show="loading && !formData.title_tm">
+        <NForm ref="formRef" :model="formData" :rules="rules" label-placement="top" @submit.prevent="handleSubmit">
+          <NDivider title-placement="left">Изображение</NDivider>
+          <NFormItem label="Загрузить изображение" path="image">
+            <div class="form-image-upload">
+              <NImage
+                v-if="previewImage || currentImage || formData.image"
+                :src="(previewImage || currentImage || formData.image) as string"
+                width="300"
+                height="200"
+                object-fit="cover"
+                class="form-image-preview"
               />
-            </div>
-          </div>
-
-          <q-separator spaced />
-
-          <!-- Заголовки -->
-          <div class="q-mb-xl">
-            <div class="text-h6 q-mb-md">
-              <q-icon name="title" class="q-mr-sm" />
-              Заголовки
-            </div>
-            <q-input
-              v-model="formData.title_tm"
-              label="Заголовок (TM)"
-              outlined
-              :rules="[val => !!val || 'Обязательно']"
-              class="q-mb-md"
-            />
-            <q-input
-              v-model="formData.title_ru"
-              label="Заголовок (RU)"
-              outlined
-              :rules="[val => !!val || 'Обязательно']"
-              class="q-mb-md"
-            />
-            <q-input
-              v-model="formData.title_en"
-              label="Заголовок (EN)"
-              outlined
-              :rules="[val => !!val || 'Обязательно']"
-              class="q-mb-md"
-            />
-          </div>
-
-          <q-separator spaced />
-
-          <!-- Основной текст -->
-          <div class="q-mb-xl">
-            <div class="text-h6 q-mb-md">
-              <q-icon name="description" class="q-mr-sm" />
-              Основной текст новости
-            </div>
-            <q-input
-              v-model="formData.content_tm"
-              label="Текст (TM)"
-              type="textarea"
-              outlined
-              rows="6"
-              :rules="[val => !!val || 'Обязательно']"
-              class="q-mb-md"
-            />
-            <q-input
-              v-model="formData.content_ru"
-              label="Текст (RU)"
-              type="textarea"
-              outlined
-              rows="6"
-              :rules="[val => !!val || 'Обязательно']"
-              class="q-mb-md"
-            />
-            <q-input
-              v-model="formData.content_en"
-              label="Текст (EN)"
-              type="textarea"
-              outlined
-              rows="6"
-              class="q-mb-md"
-            />
-          </div>
-
-          <q-separator spaced />
-
-          <!-- Настройки -->
-          <div class="q-mb-xl">
-            <div class="text-h6 q-mb-md">
-              <q-icon name="settings" class="q-mr-sm" />
-              Настройки
-            </div>
-            <q-checkbox v-model="formData.is_featured" label="Главная новость (показывать на главной)" />
-            <div v-if="formData.views !== undefined" class="q-mt-md">
-              <q-input
-                :model-value="formData.views"
-                label="Просмотры"
-                type="number"
-                outlined
-                readonly
-                style="max-width: 150px"
+              <NUpload
+                :file-list="imageFileList"
+                :max="1"
+                accept="image/*"
+                @change="handleImageUpload"
+                @remove="handleImageRemove"
               >
-                <template v-slot:append>
-                  <q-icon name="visibility" />
-                </template>
-              </q-input>
+                <NButton>
+                  <template #icon>
+                    <NIcon><component :is="AttachIcon" /></NIcon>
+                  </template>
+                  Загрузить изображение
+                </NButton>
+              </NUpload>
             </div>
-          </div>
+          </NFormItem>
 
-          <div class="row q-gutter-sm q-mt-lg">
-            <q-btn type="submit" color="primary" label="Сохранить" :loading="loading" icon="save" />
-            <q-btn outline color="grey-7" label="Отмена" to="/cabinet/editor/news" />
+          <NDivider title-placement="left">Заголовки</NDivider>
+          <NFormItem label="Заголовок (TM) *" path="title_tm">
+            <NInput v-model:value="formData.title_tm" placeholder="Введите заголовок на туркменском" size="large" />
+          </NFormItem>
+          <NFormItem label="Заголовок (RU) *" path="title_ru">
+            <NInput v-model:value="formData.title_ru" placeholder="Введите заголовок на русском" size="large" />
+          </NFormItem>
+          <NFormItem label="Заголовок (EN) *" path="title_en">
+            <NInput v-model:value="formData.title_en" placeholder="Введите заголовок на английском" size="large" />
+          </NFormItem>
+
+          <NDivider title-placement="left">Основной текст новости</NDivider>
+          <NFormItem label="Текст (TM) *" path="content_tm">
+            <NInput
+              v-model:value="formData.content_tm"
+              type="textarea"
+              placeholder="Введите текст на туркменском"
+              :rows="6"
+              size="large"
+            />
+          </NFormItem>
+          <NFormItem label="Текст (RU) *" path="content_ru">
+            <NInput
+              v-model:value="formData.content_ru"
+              type="textarea"
+              placeholder="Введите текст на русском"
+              :rows="6"
+              size="large"
+            />
+          </NFormItem>
+          <NFormItem label="Текст (EN)" path="content_en">
+            <NInput
+              v-model:value="formData.content_en"
+              type="textarea"
+              placeholder="Введите текст на английском"
+              :rows="6"
+              size="large"
+            />
+          </NFormItem>
+
+          <NDivider title-placement="left">Настройки</NDivider>
+          <NFormItem label="Статус">
+            <NSwitch v-model:value="formData.is_featured">
+              <template #checked>Главная новость</template>
+              <template #unchecked>Обычная новость</template>
+            </NSwitch>
+          </NFormItem>
+          <NFormItem v-if="formData.views !== undefined" label="Просмотры">
+            <NInputNumber
+              :value="formData.views"
+              placeholder="0"
+              readonly
+              size="large"
+              style="width: 150px"
+            >
+              <template #prefix>
+                <NIcon><component :is="EyeIcon" /></NIcon>
+              </template>
+            </NInputNumber>
+          </NFormItem>
+
+          <div class="form-actions">
+            <NButton type="default" @click="navigateTo('/cabinet/editor/news')">Отмена</NButton>
+            <NButton type="primary" :loading="loading" @click="handleSubmit">
+              <template #icon>
+                <NIcon><component :is="SaveIcon" /></NIcon>
+              </template>
+              Сохранить
+            </NButton>
           </div>
-        </q-form>
-      </q-card-section>
-    </q-card>
+        </NForm>
+      </NSpin>
+    </NCard>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import {
+  NCard,
+  NButton,
+  NInput,
+  NInputNumber,
+  NForm,
+  NFormItem,
+  NIcon,
+  NH2,
+  NImage,
+  NUpload,
+  NSwitch,
+  NDivider,
+  NSpin,
+  useMessage,
+  type FormInst,
+  type FormRules,
+  type UploadFileInfo,
+} from 'naive-ui'
+import {
+  ArrowBackOutline as ArrowBackIcon,
+  AttachOutline as AttachIcon,
+  SaveOutline as SaveIcon,
+  EyeOutline as EyeIcon,
+} from '@vicons/ionicons5'
+import { useAdminNews } from '~/composables/useAdminNews'
+import { useUpload } from '~/composables/useUpload'
+
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
 const route = useRoute()
-const router = useRouter()
+const message = useMessage()
 const { loading, error, getById, update } = useAdminNews()
 const { uploadFile } = useUpload()
 
-const imageFile = ref<File | null>(null)
+const formRef = ref<FormInst | null>(null)
+const imageFileList = ref<UploadFileInfo[]>([])
 const previewImage = ref<string | null>(null)
 const currentImage = ref<string | null>(null)
 
@@ -180,47 +172,67 @@ const formData = ref({
   content_en: '',
   image: '',
   is_featured: false,
-  views: 0
+  views: 0,
 })
 
-const handleImageChange = async (file: File | null) => {
-  if (!file) {
-    previewImage.value = null
-    imageFile.value = null
-    return
-  }
-  imageFile.value = file
-  previewImage.value = URL.createObjectURL(file)
+const rules: FormRules = {
+  title_tm: [{ required: true, message: 'Введите заголовок на туркменском', trigger: 'blur' }],
+  title_ru: [{ required: true, message: 'Введите заголовок на русском', trigger: 'blur' }],
+  title_en: [{ required: true, message: 'Введите заголовок на английском', trigger: 'blur' }],
+  content_tm: [{ required: true, message: 'Введите текст на туркменском', trigger: 'blur' }],
+  content_ru: [{ required: true, message: 'Введите текст на русском', trigger: 'blur' }],
+}
 
-  try {
-    const res = await uploadFile(file)
-    formData.value.image = (res as any).url
-  } catch (e) {
-    console.error('Upload error:', e)
-    error.value = 'Ошибка загрузки изображения'
+const handleImageUpload = async ({ fileList }: { fileList: UploadFileInfo[] }) => {
+  imageFileList.value = fileList
+  if (fileList.length > 0 && fileList[0].file) {
+    const file = fileList[0].file as File
+    previewImage.value = URL.createObjectURL(file)
+    try {
+      const res = await uploadFile(file)
+      formData.value.image = (res as any).url
+    } catch (e) {
+      console.error('Upload error:', e)
+      message.error('Ошибка загрузки изображения')
+    }
   }
 }
 
+const handleImageRemove = () => {
+  imageFileList.value = []
+  previewImage.value = null
+  formData.value.image = ''
+}
+
 const handleSubmit = async () => {
-  if (!formData.value.image && imageFile.value) {
-    await handleImageChange(imageFile.value)
-  }
-  const id = Number(route.params.id)
-  const payload = {
-    title_tm: formData.value.title_tm,
-    title_ru: formData.value.title_ru,
-    title_en: formData.value.title_en,
-    content_tm: formData.value.content_tm || formData.value.content_ru,
-    content_ru: formData.value.content_ru || formData.value.content_tm,
-    content_en: formData.value.content_en || formData.value.content_ru,
-    image: formData.value.image,
-    is_featured: formData.value.is_featured
-  }
+  if (!formRef.value) return
   try {
+    await formRef.value.validate()
+    if (!formData.value.image && imageFileList.value.length > 0) {
+      const file = imageFileList.value[0].file as File
+      const res = await uploadFile(file)
+      formData.value.image = (res as any).url
+    }
+    const id = Number(route.params.id)
+    const payload = {
+      title_tm: formData.value.title_tm,
+      title_ru: formData.value.title_ru,
+      title_en: formData.value.title_en,
+      content_tm: formData.value.content_tm || formData.value.content_ru,
+      content_ru: formData.value.content_ru || formData.value.content_tm,
+      content_en: formData.value.content_en || formData.value.content_ru,
+      image: formData.value.image,
+      is_featured: formData.value.is_featured,
+    }
     await update(id, payload)
-    router.push('/cabinet/editor/news')
+    message.success('Новость успешно обновлена')
+    navigateTo('/cabinet/editor/news')
   } catch (err: any) {
-    console.error('Failed to update news', err)
+    if (err.message) {
+      message.error(err.message)
+    } else {
+      console.error(err)
+    }
   }
 }
 
@@ -230,33 +242,83 @@ onMounted(async () => {
     try {
       const item = await getById(id)
       if (item) {
+        const itemData = item as any
         formData.value = {
-          title_tm: (item as any).title_tm || '',
-          title_ru: (item as any).title_ru || '',
-          title_en: (item as any).title_en || '',
-          content_tm: (item as any).content_tm || '',
-          content_ru: (item as any).content_ru || '',
-          content_en: (item as any).content_en || '',
-          image: (item as any).image || '',
-          is_featured: (item as any).is_featured ?? false,
-          views: (item as any).views ?? 0
+          title_tm: itemData.title_tm || '',
+          title_ru: itemData.title_ru || '',
+          title_en: itemData.title_en || '',
+          content_tm: itemData.content_tm || '',
+          content_ru: itemData.content_ru || '',
+          content_en: itemData.content_en || '',
+          image: itemData.image || '',
+          is_featured: itemData.is_featured ?? false,
+          views: itemData.views ?? 0,
         }
-        if ((item as any).image) currentImage.value = (item as any).image
+        if (itemData.image) {
+          currentImage.value = itemData.image
+          imageFileList.value = [
+            {
+              id: 'current',
+              name: 'image',
+              status: 'finished',
+              url: itemData.image,
+            } as UploadFileInfo,
+          ]
+        }
       }
     } catch (err: any) {
       console.error('Failed to load news', err)
+      message.error('Ошибка загрузки данных')
     }
   }
+})
+
+onBeforeUnmount(() => {
+  if (previewImage.value) URL.revokeObjectURL(previewImage.value)
 })
 </script>
 
 <style scoped>
-.cabinet-form :deep(.q-input),
-.cabinet-form :deep(.q-file) {
-  max-width: 600px;
+.cabinet-page {
+  padding-bottom: 40px;
 }
 
-.cabinet-form :deep(.q-field--textarea) {
-  max-width: 800px;
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 32px;
+}
+
+.page-header__title {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+.cabinet-card {
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.form-image-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-image-preview {
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 300px;
+  max-height: 200px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--n-border-color);
 }
 </style>

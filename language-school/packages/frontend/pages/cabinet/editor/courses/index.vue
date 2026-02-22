@@ -1,117 +1,240 @@
 <template>
-  <div class="cabinet-page-content">
-    <div class="row items-center justify-between q-mb-md">
-      <h1 class="text-h4 q-ma-none">Курсы (Редактор)</h1>
-      <q-btn color="primary" icon="add" label="Добавить курс" to="/cabinet/editor/courses/add" />
-    </div>
+  <div class="cabinet-page">
+    <header class="page-header">
+      <div class="page-header__text">
+        <NH2 class="page-header__title">Курсы (Редактор)</NH2>
+        <p class="page-header__subtitle">Управление списком курсов, ценами и статусами.</p>
+      </div>
+      <div class="page-header__actions">
+        <NButton type="primary" size="large" @click="navigateTo('/cabinet/editor/courses/add')">
+          <template #icon>
+            <NIcon><component :is="AddIcon" /></NIcon>
+          </template>
+          Добавить курс
+        </NButton>
+      </div>
+    </header>
 
-    <q-card flat bordered class="q-mb-md">
-      <q-card-section>
-        <div class="row q-col-gutter-md">
-          <div class="col-12 col-md-6">
-            <q-input v-model="searchQuery" placeholder="Поиск" outlined dense clearable>
-              <template v-slot:prepend><q-icon name="search" /></template>
-            </q-input>
-          </div>
-          <div class="col-12 col-md-4">
-            <q-select v-model="statusFilter" :options="statusOptions" label="Статус" outlined dense clearable emit-value map-options />
-          </div>
+    <NCard class="cabinet-card search-card">
+      <NSpace align="center" :size="24">
+        <div style="flex: 1; min-width: 300px;">
+          <NInput
+            v-model:value="searchQuery"
+            placeholder="Поиск по названию..."
+            clearable
+            size="large"
+          >
+            <template #prefix>
+              <NIcon><component :is="SearchIcon" /></NIcon>
+            </template>
+          </NInput>
         </div>
-      </q-card-section>
-    </q-card>
+        <div style="width: 200px">
+          <NSelect
+            v-model:value="statusFilter"
+            :options="statusOptions"
+            placeholder="Статус"
+            clearable
+            size="large"
+          />
+        </div>
+      </NSpace>
+    </NCard>
 
-    <q-card flat bordered>
-      <q-card-section>
-        <q-table
-          :rows="sortedItems"
-          :columns="columns"
-          row-key="id"
-          v-model:pagination="pagination"
-          :rows-per-page-options="rowsPerPageOptions"
-          @update:pagination="savePagination"
-          flat
-          bordered
-          :loading="loading"
-          @row-click="(_evt, row) => editItem(row.id)"
-          class="cursor-pointer"
-          binary-state-sort
-        >
-          <template v-slot:body-cell-title="props">
-            <q-td :props="props" style="max-width: 250px">
-              <div class="text-weight-medium text-ellipsis" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px">
-                {{ getTitle(props.row) }}
-              </div>
-            </q-td>
-          </template>
-          <template v-slot:body-cell-category="props">
-            <q-td :props="props">{{ getCategoryName(props.row) }}</q-td>
-          </template>
-          <template v-slot:body-cell-subcategory="props">
-            <q-td :props="props">{{ getSubCategoryName(props.row) }}</q-td>
-          </template>
-          <template v-slot:body-cell-price="props">
-            <q-td :props="props">
-              <span v-if="props.row.discount_price" class="text-grey-7 text-strike" style="font-size: 0.85rem">{{ props.row.price }} 💎</span>
-              <span :class="{ 'text-negative text-weight-bold': props.row.discount_price }">{{ props.row.discount_price || props.row.price }} 💎</span>
-            </q-td>
-          </template>
-          <template v-slot:body-cell-status="props">
-            <q-td :props="props">
-              <q-badge :color="props.row.is_active ? 'positive' : 'grey'">{{ props.row.is_active ? 'Активен' : 'Неактивен' }}</q-badge>
-            </q-td>
-          </template>
-          <template v-slot:body-cell-actions="props">
-            <q-td :props="props" @click.stop>
-              <q-btn flat round dense icon="edit" color="primary" @click="editItem(props.row.id)" class="q-mr-xs" />
-              <q-btn flat round dense icon="delete" color="negative" @click.stop="handleDelete(props.row.id)" />
-            </q-td>
-          </template>
-          <template v-slot:no-data>
-            <div class="full-width row flex-center text-grey q-gutter-sm q-pa-lg">
-              <q-icon name="inbox" size="2em" />
-              <span>Нет данных</span>
-            </div>
-          </template>
-        </q-table>
-      </q-card-section>
-    </q-card>
+    <NCard class="cabinet-card table-card" :content-style="{ padding: 0 }">
+      <NDataTable
+        remote
+        ref="tableRef"
+        :columns="columns"
+        :data="sortedItems"
+        :loading="loading"
+        :pagination="naivePagination"
+        :row-key="(row) => row.id"
+        @update:sorter="handleUpdateSorter"
+        :row-props="rowProps"
+        class="cabinet-data-table"
+      />
+    </NCard>
+
+    <!-- Delete Confirm Modal -->
+    <NModal
+      v-model:show="showDeleteConfirm"
+      preset="dialog"
+      title="Удалить курс?"
+      content="Это действие необратимо. Курс будет полностью удален из базы данных."
+      positive-text="Удалить"
+      negative-text="Отмена"
+      @positive-click="confirmDelete"
+      @negative-click="showDeleteConfirm = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, computed, onMounted, h, reactive } from 'vue'
+import {
+  NCard,
+  NButton,
+  NInput,
+  NDataTable,
+  NIcon,
+  NH2,
+  NSpace,
+  NSelect,
+  NBadge,
+  NModal,
+  useMessage,
+  type DataTableColumns
+} from 'naive-ui'
+import {
+  AddOutline as AddIcon,
+  SearchOutline as SearchIcon,
+  PencilOutline as EditIcon,
+  TrashOutline as TrashIcon,
+  BookOutline as BookIcon
+} from '@vicons/ionicons5'
+import { useAdminCourses } from '~/composables/useAdminCourses'
+import { useAdminPagination } from '~/composables/useAdminPagination'
+import { useI18n } from 'vue-i18n'
+
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
-const { pagination, rowsPerPageOptions, resetPage, savePagination } = useAdminPagination('courses')
 const { locale } = useI18n()
+const message = useMessage()
 const { getAll, remove } = useAdminCourses()
+const { pagination, savePagination, resetPage } = useAdminPagination('courses')
 
 const items = ref<any[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
-const statusFilter = ref('')
+const statusFilter = ref<string | null>(null)
+const showDeleteConfirm = ref(false)
+const itemToDelete = ref<number | null>(null)
 
 const statusOptions = [
-  { label: 'Все', value: '' },
   { label: 'Активные', value: 'active' },
   { label: 'Неактивные', value: 'inactive' }
 ]
 
-const columns = [
-  { name: 'id', label: 'ID', field: 'id', align: 'left' as const, sortable: true },
-  { name: 'title', label: 'Название', field: 'title', align: 'left' as const, sortable: true },
-  { name: 'category', label: 'Категория', field: 'category_name', align: 'left' as const, sortable: true },
-  { name: 'subcategory', label: 'Подкатегория', field: 'subcategory_name', align: 'left' as const, sortable: true },
-  { name: 'price', label: 'Цена', field: 'price', align: 'right' as const, sortable: true },
-  { name: 'status', label: 'Статус', field: 'is_active', align: 'center' as const, sortable: true },
-  { name: 'actions', label: 'Действия', field: 'actions', align: 'right' as const }
+const naivePagination = reactive({
+  page: pagination.value.page,
+  pageSize: pagination.value.rowsPerPage,
+  showSizePicker: true,
+  pageSizes: [10, 20, 50, 100],
+  onUpdatePage: (page: number) => {
+    naivePagination.page = page
+    pagination.value.page = page
+  },
+  onUpdatePageSize: (pageSize: number) => {
+    naivePagination.pageSize = pageSize
+    pagination.value.rowsPerPage = pageSize
+    naivePagination.page = 1
+    pagination.value.page = 1
+  }
+})
+
+const columns: DataTableColumns<any> = [
+  {
+    title: 'ID',
+    key: 'id',
+    width: 90,
+    sorter: true,
+    sortOrder: computed(() => pagination.value.sortBy === 'id' ? (pagination.value.descending ? 'descend' : 'ascend') : false) as any
+  },
+  {
+    title: 'Название',
+    key: 'title',
+    sorter: true,
+    sortOrder: computed(() => pagination.value.sortBy === 'title' ? (pagination.value.descending ? 'descend' : 'ascend') : false) as any,
+    render(row) {
+      return h('div', { class: 'font-bold' }, getTitle(row))
+    }
+  },
+  {
+    title: 'Категория',
+    key: 'category',
+    render(row) {
+      return getCategoryName(row)
+    }
+  },
+  {
+    title: 'Цена',
+    key: 'price',
+    align: 'right',
+    render(row) {
+      if (row.discount_price) {
+        return h('div', [
+          h('div', { class: 'text-xs text-neutral-400 line-through' }, `${row.price} 💎`),
+          h('div', { class: 'text-emerald-600 font-bold' }, `${row.discount_price} 💎`)
+        ])
+      }
+      return h('div', { class: 'font-bold' }, `${row.price} 💎`)
+    }
+  },
+  {
+    title: 'Статус',
+    key: 'is_active',
+    align: 'center',
+    render(row) {
+      return h(
+        NBadge,
+        {
+          type: row.is_active ? 'success' : 'default',
+          value: row.is_active ? 'Активен' : 'Неактивен'
+        }
+      )
+    }
+  },
+  {
+    title: 'Действия',
+    key: 'actions',
+    align: 'right',
+    render(row) {
+      return h(NSpace, { justify: 'end' }, {
+        default: () => [
+          h(
+            NButton,
+            {
+              quaternary: true,
+              circle: true,
+              size: 'small',
+              onClick: (e: Event) => {
+                e.stopPropagation()
+                editItem(row)
+              }
+            },
+            { icon: () => h(NIcon, null, { default: () => h(EditIcon) }) }
+          ),
+          h(
+            NButton,
+            {
+              quaternary: true,
+              circle: true,
+              size: 'small',
+              type: 'error',
+              onClick: (e: Event) => {
+                e.stopPropagation()
+                handleDelete(row.id)
+              }
+            },
+            { icon: () => h(NIcon, null, { default: () => h(TrashIcon) }) }
+          )
+        ]
+      })
+    }
+  }
 ]
+
+const getTitle = (i: any) => (locale.value === 'tm' && i.title_tm) ? i.title_tm : (locale.value === 'ru' && i.title_ru) ? i.title_ru : (locale.value === 'en' && i.title_en) ? i.title_en : i.title_tm || i.title_ru || i.title_en || '-'
+const getCategoryName = (i: any) => (locale.value === 'tm' && i.category_name_tm) ? i.category_name_tm : (locale.value === 'ru' && i.category_name_ru) ? i.category_name_ru : (locale.value === 'en' && i.category_name_en) ? i.category_name_en : i.category_name_tm || i.category_name_ru || i.category_name_en || '-'
 
 const filteredItems = computed(() => {
   let filtered = items.value
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     filtered = filtered.filter(i =>
-      (i.title_tm?.toLowerCase().includes(q)) || (i.title_ru?.toLowerCase().includes(q)) || (i.title_en?.toLowerCase().includes(q))
+      getTitle(i).toLowerCase().includes(q) ||
+      getCategoryName(i).toLowerCase().includes(q)
     )
   }
   if (statusFilter.value) {
@@ -125,8 +248,8 @@ const sortedItems = computed(() => {
   const { sortBy, descending } = pagination.value
   if (!sortBy) return sorted
   sorted.sort((a, b) => {
-    let aVal: any = sortBy === 'title' ? getTitle(a).toLowerCase() : sortBy === 'category' ? getCategoryName(a).toLowerCase() : sortBy === 'subcategory' ? getSubCategoryName(a).toLowerCase() : sortBy === 'price' ? parseFloat(a.discount_price || a.price || 0) : sortBy === 'status' ? (a.is_active ? 1 : 0) : a[sortBy]
-    let bVal: any = sortBy === 'title' ? getTitle(b).toLowerCase() : sortBy === 'category' ? getCategoryName(b).toLowerCase() : sortBy === 'subcategory' ? getSubCategoryName(b).toLowerCase() : sortBy === 'price' ? parseFloat(b.discount_price || b.price || 0) : sortBy === 'status' ? (b.is_active ? 1 : 0) : b[sortBy]
+    let aVal: any = sortBy === 'title' ? getTitle(a).toLowerCase() : sortBy === 'price' ? parseFloat(a.discount_price || a.price || 0) : a[sortBy]
+    let bVal: any = sortBy === 'title' ? getTitle(b).toLowerCase() : sortBy === 'price' ? parseFloat(b.discount_price || b.price || 0) : b[sortBy]
     if (aVal == null) return 1
     if (bVal == null) return -1
     if (aVal < bVal) return descending ? 1 : -1
@@ -136,28 +259,58 @@ const sortedItems = computed(() => {
   return sorted
 })
 
-const getTitle = (i: any) => (locale.value === 'tm' && i.title_tm) ? i.title_tm : (locale.value === 'ru' && i.title_ru) ? i.title_ru : (locale.value === 'en' && i.title_en) ? i.title_en : i.title_tm || i.title_ru || i.title_en || '-'
-const getCategoryName = (i: any) => (locale.value === 'tm' && i.category_name_tm) ? i.category_name_tm : (locale.value === 'ru' && i.category_name_ru) ? i.category_name_ru : (locale.value === 'en' && i.category_name_en) ? i.category_name_en : i.category_name_tm || i.category_name_ru || i.category_name_en || '-'
-const getSubCategoryName = (i: any) => (locale.value === 'tm' && i.subcategory_name_tm) ? i.subcategory_name_tm : (locale.value === 'ru' && i.subcategory_name_ru) ? i.subcategory_name_ru : (locale.value === 'en' && i.subcategory_name_en) ? i.subcategory_name_en : i.subcategory_name_tm || i.subcategory_name_ru || i.subcategory_name_en || '-'
+const handleUpdateSorter = (sorter: any) => {
+  if (sorter) {
+    pagination.value.sortBy = sorter.columnKey
+    pagination.value.descending = sorter.order === 'descend'
+  } else {
+    pagination.value.sortBy = 'id'
+    pagination.value.descending = false
+  }
+}
 
-const editItem = (id: number) => navigateTo(`/cabinet/editor/courses/${id}`)
+const rowProps = (row: any) => {
+  return {
+    style: 'cursor: pointer;',
+    onClick: (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest('.n-button')) {
+        return
+      }
+      editItem(row)
+    }
+  }
+}
 
-const handleDelete = async (id: number) => {
-  if (!confirm('Удалить курс?')) return
+const editItem = (row: any) => navigateTo(`/cabinet/editor/courses/${row.id}`)
+
+const handleDelete = (id: number) => {
+  itemToDelete.value = id
+  showDeleteConfirm.value = true
+}
+
+const confirmDelete = async () => {
+  if (!itemToDelete.value) return
   try {
-    await remove(id)
+    await remove(itemToDelete.value)
+    message.success('Курс удален')
     await loadItems()
   } catch (e) {
     console.error(e)
+    message.error('Ошибка при удалении')
+  } finally {
+    showDeleteConfirm.value = false
+    itemToDelete.value = null
   }
 }
 
 const loadItems = async () => {
   loading.value = true
   try {
-    items.value = await getAll()
+    items.value = await getAll() as any[]
   } catch (e) {
     console.error(e)
+    message.error('Ошибка загрузки данных')
   } finally {
     loading.value = false
   }
@@ -166,3 +319,68 @@ const loadItems = async () => {
 watch([searchQuery, statusFilter], resetPage)
 onMounted(() => loadItems())
 </script>
+
+<style scoped>
+.cabinet-page {
+  padding-bottom: 40px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 32px;
+}
+
+.page-header__title {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+.page-header__subtitle {
+  margin: 0;
+  color: var(--n-text-color-3);
+}
+
+.cabinet-card {
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.search-card {
+  margin-bottom: 24px;
+  padding: 8px;
+}
+
+.table-card {
+  overflow: hidden;
+}
+
+:deep(.cabinet-data-table) {
+  --n-border-radius: 16px;
+}
+
+:deep(.n-data-table-th) {
+  background-color: transparent !important;
+  font-weight: 600 !important;
+  color: var(--n-text-color-3) !important;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 16px 24px !important;
+  white-space: nowrap !important;
+}
+
+:deep(.n-data-table-td) {
+  padding: 16px 24px !important;
+  font-size: 0.9375rem;
+}
+
+:deep(.n-data-table-tr:hover .n-data-table-td) {
+  background-color: #f9fafb !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+</style>

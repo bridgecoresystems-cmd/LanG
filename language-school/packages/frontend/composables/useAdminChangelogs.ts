@@ -25,7 +25,7 @@ export const useAdminChangelogs = () => {
   }
 
   const update = async (id: number, changelog: any) => {
-    const { data, error } = await api.api.v1.admin.changelog[id].put(changelog)
+    const { data, error } = await api.api.v1.admin.changelog[id].patch(changelog)
     if (error) throw error
     return data
   }

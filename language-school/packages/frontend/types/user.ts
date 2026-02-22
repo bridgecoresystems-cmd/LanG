@@ -12,6 +12,8 @@ export interface User {
   is_active: boolean
   school_id?: number | null
   parent_id?: string | null
+  can_export_excel?: boolean
+  additional_roles?: string[]
 }
 
 export interface LoginCredentials {

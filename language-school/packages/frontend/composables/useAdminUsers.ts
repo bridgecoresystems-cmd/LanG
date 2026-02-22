@@ -6,8 +6,11 @@ import { useEden } from './useEden'
 export const useAdminUsers = () => {
   const api = useEden()
 
-  const getAll = async () => {
-    const { data, error } = await api.api.v1.admin.users.get()
+  const getAll = async (params?: { role?: string; search?: string; school_id?: number }) => {
+    const opts = params && Object.values(params).some(Boolean)
+      ? { query: { ...params, school_id: params.school_id ?? undefined } }
+      : undefined
+    const { data, error } = await api.api.v1.admin.users.get(opts as any)
     if (error) throw error
     return data
   }

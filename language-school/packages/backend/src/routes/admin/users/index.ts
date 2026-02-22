@@ -4,7 +4,7 @@
  */
 import { Elysia, t } from "elysia";
 import { db } from "../../../db";
-import { users, schools } from "../../../db/schema";
+import { users, schools, userRoles, userSchools } from "../../../db/schema";
 import { desc, eq } from "drizzle-orm";
 import { ROLES } from "../../../constants/roles";
 import { generateUniqueUsername, generateRandomPassword } from "../../../services/user-services";
@@ -14,6 +14,7 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
   .get("/", async ({ query }) => {
     const role = query.role as string | undefined;
     const search = query.search as string | undefined;
+    const schoolIdFilter = query.school_id != null ? Number(query.school_id) : undefined;
 
     let q = db
       .select({
@@ -25,9 +26,11 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
         role: users.role,
         phone: users.phone,
         avatar: users.avatar,
+        rfid_uid: users.rfid_uid,
         is_active: users.is_active,
         school_id: users.school_id,
         parent_id: users.parent_id,
+        can_export_excel: users.can_export_excel,
         created_at: users.created_at,
         school_name: schools.name,
       })
@@ -36,6 +39,35 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
       .orderBy(desc(users.created_at));
 
     const rows = await q;
+    
+    // Дополнительные роли
+    const allUserRoles = await db.select().from(userRoles);
+    const rolesByUserId = new Map<string, string[]>();
+    for (const ur of allUserRoles) {
+      if (!rolesByUserId.has(ur.userId)) {
+        rolesByUserId.set(ur.userId, []);
+      }
+      rolesByUserId.get(ur.userId)!.push(ur.role);
+    }
+
+    // Дополнительные школы (user_school) — ученик может быть в нескольких школах
+    const allUserSchools = await db.select().from(userSchools);
+    const additionalSchoolsByUserId = new Map<string, number[]>();
+    const userIdsInSchool = new Set<string>();
+    for (const us of allUserSchools) {
+      if (schoolIdFilter != null && us.schoolId === schoolIdFilter) userIdsInSchool.add(us.userId);
+      if (!additionalSchoolsByUserId.has(us.userId)) {
+        additionalSchoolsByUserId.set(us.userId, []);
+      }
+      additionalSchoolsByUserId.get(us.userId)!.push(us.schoolId);
+    }
+
+    // Все школы для отображения (получаем названия)
+    const allSchoolRows = await db.select().from(schools);
+    const schoolNamesById = new Map<number, string>();
+    for (const s of allSchoolRows) {
+      schoolNamesById.set(s.id, s.name || s.name_ru || s.name_tm || s.name_en || `Школа #${s.id}`);
+    }
 
     let filtered = rows;
     if (role) {
@@ -52,14 +84,34 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
       );
     }
 
-    return filtered.map((r) => ({
-      ...r,
-      full_name: [r.first_name, r.last_name].filter(Boolean).join(" ") || r.username,
-    }));
+    // Фильтр по школе: ученики, у которых school_id = X или в user_school есть школа X
+    if (schoolIdFilter != null) {
+      filtered = filtered.filter(
+        (r) =>
+          r.school_id === schoolIdFilter || userIdsInSchool.has(r.id)
+      );
+    }
+
+    return filtered.map((r) => {
+      const additionalIds = additionalSchoolsByUserId.get(r.id) || [];
+      const schoolsList: string[] = [];
+      if (r.school_id) schoolsList.push(schoolNamesById.get(r.school_id) || `Школа #${r.school_id}`);
+      for (const sid of additionalIds) {
+        if (sid !== r.school_id) schoolsList.push(schoolNamesById.get(sid) || `Школа #${sid}`);
+      }
+      return {
+        ...r,
+        full_name: [r.first_name, r.last_name].filter(Boolean).join(" ") || r.username,
+        additional_roles: rolesByUserId.get(r.id) || [],
+        additional_school_ids: additionalIds,
+        schools_display: schoolsList.join(", ") || null,
+      };
+    });
   }, {
     query: t.Object({
       role: t.Optional(t.String()),
       search: t.Optional(t.String()),
+      school_id: t.Optional(t.Union([t.String(), t.Number()])),
     }),
   })
   .get("/:id", async ({ params: { id } }) => {
@@ -73,9 +125,11 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
         role: users.role,
         phone: users.phone,
         avatar: users.avatar,
+        rfid_uid: users.rfid_uid,
         is_active: users.is_active,
         school_id: users.school_id,
         parent_id: users.parent_id,
+        can_export_excel: users.can_export_excel,
         created_at: users.created_at,
         school_name: schools.name,
       })
@@ -83,7 +137,23 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
       .leftJoin(schools, eq(users.school_id, schools.id))
       .where(eq(users.id, id));
     if (!row) return { error: "Not found" };
-    return { ...row, full_name: [row.first_name, row.last_name].filter(Boolean).join(" ") || row.username };
+    
+    const additionalRoles = await db
+      .select({ role: userRoles.role })
+      .from(userRoles)
+      .where(eq(userRoles.userId, id));
+
+    const additionalSchools = await db
+      .select({ schoolId: userSchools.schoolId })
+      .from(userSchools)
+      .where(eq(userSchools.userId, id));
+
+    return {
+      ...row,
+      full_name: [row.first_name, row.last_name].filter(Boolean).join(" ") || row.username,
+      additional_roles: additionalRoles.map(r => r.role),
+      additional_school_ids: additionalSchools.map(s => s.schoolId),
+    };
   })
   .post("/", async ({ body, set }) => {
     const role = (body.role as string) || ROLES.STUDENT;
@@ -94,6 +164,8 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
     const school_id = body.school_id as number | null | undefined;
     const parent_id = body.parent_id as string | null | undefined;
     const auto_generate = body.auto_generate as boolean | undefined;
+    const additional_roles = (body.additional_roles as string[] | undefined) || [];
+    const can_export_excel = body.can_export_excel as boolean | undefined || false;
 
     if (!first_name || !last_name) {
       set.status = 400;
@@ -127,6 +199,7 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
     const password_hash = await Bun.password.hash(password, { algorithm: "bcrypt" });
 
     const avatar = (body.avatar as string)?.trim() || null;
+    const rfid_uid = role === ROLES.STUDENT ? ((body.rfid_uid as string)?.trim() || null) : null;
 
     await db.insert(users).values({
       id,
@@ -138,31 +211,71 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
       role,
       phone,
       avatar,
+      rfid_uid,
       school_id: school_id ?? null,
       parent_id: parent_id ?? null,
+      can_export_excel,
     });
+
+    // Сохраняем дополнительные роли (исключаем SUPERUSER, основную роль и пустые строки)
+    const validAdditionalRoles = (additional_roles || []).filter(
+      r => r && typeof r === 'string' && r.trim() && r !== ROLES.SUPERUSER && r !== role
+    );
+    if (validAdditionalRoles.length > 0) {
+      await db.insert(userRoles).values(
+        validAdditionalRoles.map(roleName => ({
+          userId: id,
+          role: roleName.trim(),
+        }))
+      );
+    }
+
+    // Дополнительные школы (ученик в нескольких школах)
+    const additionalSchoolIds = (body.additional_school_ids as number[] || []).filter(
+      (sid): sid is number => typeof sid === "number" && sid > 0
+    );
+    const primarySchoolId = school_id ?? null;
+    const toInsert = additionalSchoolIds.filter((sid) => sid !== primarySchoolId);
+    if (toInsert.length > 0) {
+      await db.insert(userSchools).values(
+        toInsert.map((schoolId) => ({ userId: id, schoolId }))
+      );
+    }
 
     const [created] = await db.select().from(users).where(eq(users.id, id));
     const { password_hash: _, ...profile } = created!;
+    
+    // Получаем дополнительные роли для ответа
+    const savedRoles = await db
+      .select({ role: userRoles.role })
+      .from(userRoles)
+      .where(eq(userRoles.userId, id));
 
     return {
-      user: profile,
+      user: {
+        ...profile,
+        additional_roles: savedRoles.map(r => r.role),
+      },
       credentials: role === ROLES.STUDENT && auto_generate ? { username, password } : undefined,
     };
   }, {
-    body: t.Object({
-      role: t.String(),
-      first_name: t.String(),
-      last_name: t.String(),
-      email: t.Optional(t.String()),
-      phone: t.Optional(t.String()),
-      username: t.Optional(t.String()),
-      password: t.Optional(t.String()),
-      avatar: t.Optional(t.String()),
-      school_id: t.Optional(t.Number()),
-      parent_id: t.Optional(t.String()),
-      auto_generate: t.Optional(t.Boolean()),
-    }),
+      body: t.Object({
+        role: t.String(),
+        first_name: t.String(),
+        last_name: t.String(),
+        email: t.Optional(t.String()),
+        phone: t.Optional(t.String()),
+        username: t.Optional(t.String()),
+        password: t.Optional(t.String()),
+        avatar: t.Optional(t.String()),
+        rfid_uid: t.Optional(t.String()),
+        school_id: t.Optional(t.Number()),
+        parent_id: t.Optional(t.String()),
+        auto_generate: t.Optional(t.Boolean()),
+        additional_roles: t.Optional(t.Array(t.String())),
+        additional_school_ids: t.Optional(t.Array(t.Number())),
+        can_export_excel: t.Optional(t.Boolean()),
+      }),
   })
   .patch(
     "/:id",
@@ -183,6 +296,8 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
       if (body.school_id !== undefined) updates.school_id = body.school_id as number | null;
       if (body.parent_id !== undefined) updates.parent_id = body.parent_id as string | null;
       if (body.avatar !== undefined) updates.avatar = (body.avatar as string)?.trim() || null;
+      if (existing.role === ROLES.STUDENT && body.rfid_uid !== undefined) updates.rfid_uid = (body.rfid_uid as string)?.trim() || null;
+      if (body.can_export_excel !== undefined) updates.can_export_excel = body.can_export_excel as boolean;
 
       if (body.password && (body.password as string).length >= 6) {
         updates.password_hash = await Bun.password.hash(body.password as string, { algorithm: "bcrypt" });
@@ -209,9 +324,57 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
       }
 
       await db.update(users).set(updates).where(eq(users.id, id));
+      
+      // Обновляем дополнительные школы (ученик в нескольких школах)
+      if (body.additional_school_ids !== undefined) {
+        await db.delete(userSchools).where(eq(userSchools.userId, id));
+        const ids = (body.additional_school_ids as number[] || []).filter(
+          (sid): sid is number => typeof sid === "number" && sid > 0
+        );
+        const primaryId = (updates.school_id ?? existing.school_id) as number | null;
+        const toInsert = ids.filter((sid) => sid !== primaryId); // не дублируем основную школу
+        if (toInsert.length > 0) {
+          await db.insert(userSchools).values(
+            toInsert.map((schoolId) => ({ userId: id, schoolId }))
+          );
+        }
+      }
+
+      // Обновляем дополнительные роли, если они переданы
+      if (body.additional_roles !== undefined) {
+        // Удаляем старые дополнительные роли
+        await db.delete(userRoles).where(eq(userRoles.userId, id));
+        
+        // Добавляем новые (исключаем SUPERUSER, основную роль и пустые строки)
+        const currentRole = updates.role || existing.role;
+        const validAdditionalRoles = (body.additional_roles as string[] || []).filter(
+          r => r && typeof r === 'string' && r.trim() && r !== ROLES.SUPERUSER && r !== currentRole
+        );
+        if (validAdditionalRoles.length > 0) {
+          await db.insert(userRoles).values(
+            validAdditionalRoles.map(roleName => ({
+              userId: id,
+              role: roleName.trim(),
+            }))
+          );
+        }
+      }
+      
       const [updated] = await db.select().from(users).where(eq(users.id, id));
       const { password_hash: _, ...profile } = updated!;
-      return { user: profile };
+      
+      // Получаем дополнительные роли для ответа
+      const savedRoles = await db
+        .select({ role: userRoles.role })
+        .from(userRoles)
+        .where(eq(userRoles.userId, id));
+      
+      return {
+        user: {
+          ...profile,
+          additional_roles: savedRoles.map(r => r.role),
+        },
+      };
     },
     {
       body: t.Object({
@@ -224,8 +387,12 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
         role: t.Optional(t.String()),
         is_active: t.Optional(t.Boolean()),
         avatar: t.Optional(t.String()),
+        rfid_uid: t.Optional(t.Union([t.String(), t.Null()])),
         school_id: t.Optional(t.Union([t.Number(), t.Null()])),
         parent_id: t.Optional(t.Union([t.String(), t.Null()])),
+        additional_roles: t.Optional(t.Array(t.String())),
+        additional_school_ids: t.Optional(t.Array(t.Number())),
+        can_export_excel: t.Optional(t.Boolean()),
       }),
     }
   )

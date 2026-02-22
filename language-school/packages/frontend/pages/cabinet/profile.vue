@@ -349,7 +349,8 @@ async function handleChangePassword() {
       newPassword: passwordForm.value.newPassword,
     })
     if (error) {
-      throw new Error((error.value as any)?.error || 'Ошибка при смене пароля')
+      const errorMessage = (error.value as any)?.error || 'Ошибка при смене пароля'
+      throw new Error(errorMessage)
     }
     message.success('Пароль успешно изменён')
     showPasswordModal.value = false
@@ -358,13 +359,20 @@ async function handleChangePassword() {
       newPassword: '',
       confirmPassword: '',
     }
+    if (passwordFormRef.value) {
+      passwordFormRef.value.restoreValidation()
+    }
   } catch (err: any) {
     console.error('Change password error:', err)
+    let errorMessage = 'Ошибка при смене пароля. Проверьте данные и попробуйте снова.'
     if (err.message) {
-      message.error(err.message)
-    } else {
-      message.error('Ошибка при смене пароля. Проверьте данные и попробуйте снова.')
+      errorMessage = err.message
+    } else if (err.response?.data?.error) {
+      errorMessage = err.response.data.error
+    } else if (typeof err === 'string') {
+      errorMessage = err
     }
+    message.error(errorMessage)
   } finally {
     changingPassword.value = false
   }

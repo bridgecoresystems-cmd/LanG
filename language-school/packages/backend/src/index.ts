@@ -3,7 +3,7 @@ import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { lucia } from "./auth";
 import { db } from "./db";
-import { users } from "./db/schema";
+import { users, userRoles } from "./db/schema";
 import { eq } from "drizzle-orm";
 import { landingRoutes } from "./routes/landing";
 import { userRoutes } from "./routes/users";
@@ -20,8 +20,9 @@ const app = new Elysia()
     console.log(`🦊 [Request] ${request.method} ${request.url}`);
   })
   .use(cors({
-    origin: true, // Разрешаем все origins в dev режиме
+    origin: true,
     credentials: true,
+    preflight: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     exposeHeaders: ['Set-Cookie']
   }))
@@ -76,9 +77,22 @@ const app = new Elysia()
         const [dbUser] = await db.select().from(users).where(eq(users.id, user.id));
         if (!dbUser) return { error: "User not found" };
 
+        // Получаем дополнительные роли
+        const { userRoles } = await import("./db/schema");
+        const additionalRoles = await db
+          .select({ role: userRoles.role })
+          .from(userRoles)
+          .where(eq(userRoles.userId, user.id));
+
         const { password_hash, ...profile } = dbUser;
         const full_name = [dbUser.first_name, dbUser.last_name].filter(Boolean).join(" ") || dbUser.username;
-        return { user: { ...profile, full_name } };
+        return { 
+          user: { 
+            ...profile, 
+            full_name,
+            additional_roles: additionalRoles.map(r => r.role),
+          } 
+        };
       })
       .use(userRoutes)
       .use(cabinetRoutes)

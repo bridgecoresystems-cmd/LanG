@@ -1,71 +1,224 @@
 <template>
-  <div class="cabinet-page-content">
-    <div class="row items-center q-mb-lg">
-      <div class="col">
-        <h1 class="text-h4 q-ma-none">Редактировать курс (Редактор)</h1>
+  <div class="cabinet-page">
+    <header class="page-header">
+      <div class="page-header__text">
+        <NH2 class="page-header__title">Редактировать курс (Редактор)</NH2>
       </div>
-      <div class="col-auto">
-        <q-btn outline color="grey-7" icon="arrow_back" label="Назад" to="/cabinet/editor/courses" />
+      <div class="page-header__actions">
+        <NButton type="default" @click="navigateTo('/cabinet/editor/courses')">
+          <template #icon>
+            <NIcon><component :is="ArrowBackIcon" /></NIcon>
+          </template>
+          Назад
+        </NButton>
       </div>
-    </div>
+    </header>
 
-    <q-inner-loading :showing="loading && !form.title_tm">
-      <q-spinner size="50px" color="primary" />
-    </q-inner-loading>
+    <NCard v-if="!loading || form.title_tm" class="cabinet-card" :content-style="{ padding: '32px' }">
+      <NSpin :show="loading && !form.title_tm">
+        <NForm ref="formRef" :model="form" :rules="rules" label-placement="top" @submit.prevent="handleSubmit">
+          <NFormItem label="Категория *" path="category_id">
+            <NSelect
+              v-model:value="form.category_id"
+              :options="categoryOptions"
+              placeholder="Выберите категорию"
+              size="large"
+              @update:value="onCategoryChange"
+            />
+          </NFormItem>
 
-    <q-card v-if="!loading || form.title_tm" flat bordered class="cabinet-form-card">
-      <q-card-section>
-        <q-form @submit.prevent="handleSubmit" class="cabinet-form">
-          <q-select v-model="form.category_id" :options="categoryOptions" label="Категория *" option-label="label" option-value="id" emit-value map-options outlined :rules="[val => !!val || 'Обязательно']" @update:model-value="onCategoryChange" class="q-mb-md" />
-          <q-select v-model="form.subcategory_id" :options="subcategoryOptions" label="Подкатегория *" option-label="label" option-value="id" emit-value map-options outlined :rules="[val => !!val || 'Обязательно']" :disable="!form.category_id" class="q-mb-md" />
-          <q-input v-model="form.title_tm" label="Название (TM)" outlined :rules="[val => !!val || 'Обязательно']" class="q-mb-md" />
-          <q-input v-model="form.title_ru" label="Название (RU)" outlined :rules="[val => !!val || 'Обязательно']" class="q-mb-md" />
-          <q-input v-model="form.title_en" label="Название (EN)" outlined class="q-mb-md" />
-          <q-input v-model="form.description_tm" label="Описание (TM)" type="textarea" outlined rows="4" :rules="[val => !!val || 'Обязательно']" class="q-mb-md" />
-          <q-input v-model="form.description_ru" label="Описание (RU)" type="textarea" outlined rows="4" :rules="[val => !!val || 'Обязательно']" class="q-mb-md" />
-          <q-input v-model="form.description_en" label="Описание (EN)" type="textarea" outlined rows="4" class="q-mb-md" />
-          <div class="row items-center q-gutter-md q-mb-md">
-            <q-img v-if="form.image" :src="form.image" style="width: 80px; height: 80px" fit="cover" class="rounded-borders" />
-            <q-file v-model="imageFile" label="Изображение" accept="image/*" outlined @update:model-value="handleImageUpload">
-              <template v-slot:prepend><q-icon name="attach_file" /></template>
-            </q-file>
+          <NFormItem label="Подкатегория *" path="subcategory_id">
+            <NSelect
+              v-model:value="form.subcategory_id"
+              :options="subcategoryOptions"
+              placeholder="Выберите подкатегорию"
+              size="large"
+              :disabled="!form.category_id"
+            />
+          </NFormItem>
+
+          <NFormItem label="Название (TM) *" path="title_tm">
+            <NInput v-model:value="form.title_tm" placeholder="Введите название на туркменском" size="large" />
+          </NFormItem>
+
+          <NFormItem label="Название (RU) *" path="title_ru">
+            <NInput v-model:value="form.title_ru" placeholder="Введите название на русском" size="large" />
+          </NFormItem>
+
+          <NFormItem label="Название (EN)" path="title_en">
+            <NInput v-model:value="form.title_en" placeholder="Введите название на английском" size="large" />
+          </NFormItem>
+
+          <NFormItem label="Описание (TM) *" path="description_tm">
+            <NInput
+              v-model:value="form.description_tm"
+              type="textarea"
+              placeholder="Введите описание на туркменском"
+              :rows="4"
+              size="large"
+            />
+          </NFormItem>
+
+          <NFormItem label="Описание (RU) *" path="description_ru">
+            <NInput
+              v-model:value="form.description_ru"
+              type="textarea"
+              placeholder="Введите описание на русском"
+              :rows="4"
+              size="large"
+            />
+          </NFormItem>
+
+          <NFormItem label="Описание (EN)" path="description_en">
+            <NInput
+              v-model:value="form.description_en"
+              type="textarea"
+              placeholder="Введите описание на английском"
+              :rows="4"
+              size="large"
+            />
+          </NFormItem>
+
+          <NFormItem label="Изображение" path="image">
+            <div class="form-image-upload">
+              <NImage
+                v-if="form.image"
+                :src="form.image"
+                width="80"
+                height="80"
+                object-fit="cover"
+                class="form-image-preview"
+              />
+              <NUpload
+                :file-list="imageFileList"
+                :max="1"
+                accept="image/*"
+                @change="handleImageUpload"
+                @remove="handleImageRemove"
+              >
+                <NButton>
+                  <template #icon>
+                    <NIcon><component :is="AttachIcon" /></NIcon>
+                  </template>
+                  Загрузить изображение
+                </NButton>
+              </NUpload>
+            </div>
+          </NFormItem>
+
+          <div class="form-row">
+            <NFormItem label="Недель" path="duration_weeks" class="form-row__item">
+              <NInputNumber
+                v-model:value="form.duration_weeks"
+                placeholder="0"
+                :min="0"
+                size="large"
+                style="width: 100%"
+              />
+            </NFormItem>
+
+            <NFormItem label="Часов в неделю" path="hours_per_week" class="form-row__item">
+              <NInputNumber
+                v-model:value="form.hours_per_week"
+                placeholder="0"
+                :min="0"
+                size="large"
+                style="width: 100%"
+              />
+            </NFormItem>
           </div>
-          <div class="row q-col-gutter-md">
-            <div class="col-6"><q-input v-model.number="form.duration_weeks" type="number" label="Недель" outlined min="0" class="q-mb-md" /></div>
-            <div class="col-6"><q-input v-model.number="form.hours_per_week" type="number" label="Часов в неделю" outlined min="0" class="q-mb-md" /></div>
+
+          <div class="form-row">
+            <NFormItem label="Цена (💎) *" path="price" class="form-row__item">
+              <NInputNumber
+                v-model:value="form.price"
+                placeholder="0"
+                :min="0"
+                size="large"
+                style="width: 100%"
+              />
+            </NFormItem>
+
+            <NFormItem label="Цена со скидкой (💎)" path="discount_price" class="form-row__item">
+              <NInputNumber
+                v-model:value="form.discount_price"
+                placeholder="0"
+                :min="0"
+                size="large"
+                style="width: 100%"
+              />
+            </NFormItem>
           </div>
-          <div class="row q-col-gutter-md">
-            <div class="col-6"><q-input v-model="form.price" type="number" label="Цена (💎)" outlined :rules="[val => !!val || 'Обязательно']" class="q-mb-md" /></div>
-            <div class="col-6"><q-input v-model="form.discount_price" type="number" label="Цена со скидкой (💎)" outlined class="q-mb-md" /></div>
+
+          <NFormItem label="Статус" path="is_active">
+            <NSwitch v-model:value="form.is_active">
+              <template #checked>Активен</template>
+              <template #unchecked>Неактивен</template>
+            </NSwitch>
+          </NFormItem>
+
+          <div class="form-actions">
+            <NButton type="default" @click="navigateTo('/cabinet/editor/courses')">Отмена</NButton>
+            <NButton type="primary" :loading="saving" @click="handleSubmit">
+              <template #icon>
+                <NIcon><component :is="SaveIcon" /></NIcon>
+              </template>
+              Сохранить
+            </NButton>
           </div>
-          <q-toggle v-model="form.is_active" label="Активен" class="q-mb-md" />
-          <div class="row q-gutter-sm q-mt-lg">
-            <q-btn type="submit" color="primary" label="Сохранить" :loading="saving" icon="save" />
-            <q-btn outline color="grey-7" label="Отмена" to="/cabinet/editor/courses" />
-          </div>
-        </q-form>
-      </q-card-section>
-    </q-card>
+        </NForm>
+      </NSpin>
+    </NCard>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import {
+  NCard,
+  NButton,
+  NInput,
+  NInputNumber,
+  NForm,
+  NFormItem,
+  NSelect,
+  NIcon,
+  NH2,
+  NImage,
+  NUpload,
+  NSwitch,
+  NSpin,
+  useMessage,
+  type FormInst,
+  type FormRules,
+  type UploadFileInfo,
+} from 'naive-ui'
+import {
+  ArrowBackOutline as ArrowBackIcon,
+  AttachOutline as AttachIcon,
+  SaveOutline as SaveIcon,
+} from '@vicons/ionicons5'
+import { useAdminCourses } from '~/composables/useAdminCourses'
+import { useAdminCategories } from '~/composables/useAdminCategories'
+import { useAdminSubcategories } from '~/composables/useAdminSubcategories'
+import { useUpload } from '~/composables/useUpload'
 
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
 const route = useRoute()
 const { locale } = useI18n()
+const message = useMessage()
 const { getById, update } = useAdminCourses()
 const { getAll: getAllCategories } = useAdminCategories()
 const { getAll: getAllSubcategories } = useAdminSubcategories()
 const { uploadFile } = useUpload()
 
+const formRef = ref<FormInst | null>(null)
 const categories = ref<any[]>([])
 const subcategories = ref<any[]>([])
 const loading = ref(true)
 const saving = ref(false)
-const imageFile = ref<File | null>(null)
+const imageFileList = ref<UploadFileInfo[]>([])
 
 const form = ref({
   category_id: null as number | null,
@@ -79,49 +232,97 @@ const form = ref({
   image: '',
   duration_weeks: 0,
   hours_per_week: 0,
-  price: '' as string | number,
-  discount_price: '' as string | number | null,
-  is_active: true
+  price: null as number | null,
+  discount_price: null as number | null,
+  is_active: true,
 })
 
+const rules: FormRules = {
+  category_id: [{ required: true, message: 'Выберите категорию', trigger: 'change' }],
+  subcategory_id: [{ required: true, message: 'Выберите подкатегорию', trigger: 'change' }],
+  title_tm: [{ required: true, message: 'Введите название на туркменском', trigger: 'blur' }],
+  title_ru: [{ required: true, message: 'Введите название на русском', trigger: 'blur' }],
+  description_tm: [{ required: true, message: 'Введите описание на туркменском', trigger: 'blur' }],
+  description_ru: [{ required: true, message: 'Введите описание на русском', trigger: 'blur' }],
+  price: [{ required: true, message: 'Введите цену', trigger: 'blur' }],
+}
+
 const categoryOptions = computed(() =>
-  categories.value.map(c => ({ id: c.id, label: (locale.value === 'tm' && c.name_tm) ? c.name_tm : (locale.value === 'ru' && c.name_ru) ? c.name_ru : c.name_tm || c.name_ru || c.name_en || '-' }))
+  categories.value.map((c) => ({
+    value: c.id,
+    label:
+      (locale.value === 'tm' && c.name_tm)
+        ? c.name_tm
+        : (locale.value === 'ru' && c.name_ru)
+          ? c.name_ru
+          : c.name_tm || c.name_ru || c.name_en || '-',
+  }))
 )
 
 const subcategoryOptions = computed(() =>
-  subcategories.value.map(s => ({ id: s.id, label: (locale.value === 'tm' && s.name_tm) ? s.name_tm : (locale.value === 'ru' && s.name_ru) ? s.name_ru : s.name_tm || s.name_ru || s.name_en || '-' }))
+  subcategories.value.map((s) => ({
+    value: s.id,
+    label:
+      (locale.value === 'tm' && s.name_tm)
+        ? s.name_tm
+        : (locale.value === 'ru' && s.name_ru)
+          ? s.name_ru
+          : s.name_tm || s.name_ru || s.name_en || '-',
+  }))
 )
 
 const onCategoryChange = async () => {
   if (!form.value.category_id) {
     subcategories.value = []
+    form.value.subcategory_id = null
     return
   }
   const all = await getAllSubcategories()
-  subcategories.value = (all as any[]).filter((s: any) => s.categoryId === form.value.category_id || (s as any).category_id === form.value.category_id)
+  subcategories.value = (all as any[]).filter(
+    (s: any) => s.categoryId === form.value.category_id || (s as any).category_id === form.value.category_id
+  )
   if (!subcategories.value.some((s: any) => s.id === form.value.subcategory_id)) {
     form.value.subcategory_id = null
   }
 }
 
-const handleImageUpload = async (file: File | null) => {
-  if (!file) return
-  const res = await uploadFile(file)
-  form.value.image = (res as any).url
+const handleImageUpload = async ({ fileList }: { fileList: UploadFileInfo[] }) => {
+  imageFileList.value = fileList
+  if (fileList.length > 0 && fileList[0].file) {
+    try {
+      const res = await uploadFile(fileList[0].file as File)
+      form.value.image = (res as any).url
+    } catch (e) {
+      console.error('Upload error:', e)
+      message.error('Ошибка загрузки изображения')
+    }
+  }
+}
+
+const handleImageRemove = () => {
+  imageFileList.value = []
+  form.value.image = ''
 }
 
 const handleSubmit = async () => {
-  const id = Number(route.params.id)
-  saving.value = true
+  if (!formRef.value) return
   try {
+    await formRef.value.validate()
+    saving.value = true
+    const id = Number(route.params.id)
     await update(id, {
       ...form.value,
       price: String(form.value.price || 0),
-      discount_price: form.value.discount_price ? String(form.value.discount_price) : null
+      discount_price: form.value.discount_price ? String(form.value.discount_price) : null,
     } as any)
+    message.success('Курс успешно обновлён')
     navigateTo('/cabinet/editor/courses')
-  } catch (e) {
-    console.error(e)
+  } catch (err: any) {
+    if (err.message) {
+      message.error(err.message)
+    } else {
+      console.error(err)
+    }
   } finally {
     saving.value = false
   }
@@ -131,30 +332,42 @@ onMounted(async () => {
   try {
     const [item, cats] = await Promise.all([
       getById(Number(route.params.id)),
-      getAllCategories()
+      getAllCategories(),
     ])
     categories.value = cats
     if (item) {
+      const itemData = item as any
       form.value = {
-        category_id: (item as any).categoryId ?? (item as any).category_id,
-        subcategory_id: (item as any).subcategoryId ?? (item as any).subcategory_id,
-        title_tm: (item as any).title_tm || '',
-        title_ru: (item as any).title_ru || '',
-        title_en: (item as any).title_en || '',
-        description_tm: (item as any).description_tm || '',
-        description_ru: (item as any).description_ru || '',
-        description_en: (item as any).description_en || '',
-        image: (item as any).image || '',
-        duration_weeks: (item as any).duration_weeks ?? 0,
-        hours_per_week: (item as any).hours_per_week ?? 0,
-        price: (item as any).price ?? '',
-        discount_price: (item as any).discount_price ?? null,
-        is_active: (item as any).is_active ?? true
+        category_id: itemData.categoryId ?? itemData.category_id,
+        subcategory_id: itemData.subcategoryId ?? itemData.subcategory_id,
+        title_tm: itemData.title_tm || '',
+        title_ru: itemData.title_ru || '',
+        title_en: itemData.title_en || '',
+        description_tm: itemData.description_tm || '',
+        description_ru: itemData.description_ru || '',
+        description_en: itemData.description_en || '',
+        image: itemData.image || '',
+        duration_weeks: itemData.duration_weeks ?? 0,
+        hours_per_week: itemData.hours_per_week ?? 0,
+        price: parseFloat(itemData.price) || null,
+        discount_price: itemData.discount_price ? parseFloat(itemData.discount_price) : null,
+        is_active: itemData.is_active ?? true,
+      }
+      if (form.value.image) {
+        imageFileList.value = [
+          {
+            id: 'current',
+            name: 'image',
+            status: 'finished',
+            url: form.value.image,
+          } as UploadFileInfo,
+        ]
       }
     }
     await onCategoryChange()
   } catch (e) {
     console.error(e)
+    message.error('Ошибка загрузки данных')
   } finally {
     loading.value = false
   }
@@ -162,12 +375,54 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.cabinet-form :deep(.q-input),
-.cabinet-form :deep(.q-file),
-.cabinet-form :deep(.q-select) {
-  max-width: 600px;
+.cabinet-page {
+  padding-bottom: 40px;
 }
-.cabinet-form :deep(.q-field--textarea) {
-  max-width: 800px;
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 32px;
+}
+
+.page-header__title {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+.cabinet-card {
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.form-image-upload {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.form-image-preview {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.form-row__item {
+  margin-bottom: 0;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--n-border-color);
 }
 </style>

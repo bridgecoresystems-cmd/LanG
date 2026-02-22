@@ -8,15 +8,18 @@
     <q-card flat bordered class="q-mb-md admin-table-card">
       <q-card-section>
         <div class="row q-col-gutter-md">
-          <div class="col-12 col-md-5">
+          <div class="col-12 col-md-4">
             <q-input v-model="searchQuery" placeholder="Поиск по имени, username, email" outlined dense clearable debounce="300">
               <template v-slot:prepend><q-icon name="search" /></template>
             </q-input>
           </div>
-          <div class="col-12 col-md-4">
+          <div class="col-12 col-md-3">
             <q-select v-model="roleFilter" :options="roleOptions" label="Роль" outlined dense clearable emit-value map-options />
           </div>
           <div class="col-12 col-md-3">
+            <q-select v-model="schoolFilter" :options="schoolFilterOptions" label="Школа" outlined dense clearable emit-value map-options />
+          </div>
+          <div class="col-12 col-md-2">
             <q-btn color="primary" outline label="Сбросить" @click="resetFilters" icon="refresh" />
           </div>
         </div>
@@ -42,8 +45,8 @@
           <template v-slot:body-cell-full_name="props">
             <q-td :props="props">
               <div class="row items-center q-gutter-sm">
-                <q-avatar v-if="props.row.avatar" size="32px">
-                  <img :src="props.row.avatar" />
+                <q-avatar v-if="avatarUrl(props.row.avatar)" size="32px">
+                  <img :src="avatarUrl(props.row.avatar)" @error="($event.target as HTMLImageElement).style.display = 'none'" />
                 </q-avatar>
                 <q-avatar v-else size="32px" color="primary" text-color="white" font-size="14px">
                   {{ getNameInitials(props.row) }}
@@ -93,13 +96,18 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
+const { avatarUrl } = useAvatarUrl()
+const avatarFailed = reactive<Record<string, boolean>>({})
 const { pagination, rowsPerPageOptions, resetPage, savePagination } = useAdminPagination('users')
 const { getAll, remove } = useAdminUsers()
+const { getAll: getAllSchools } = useAdminSchools()
 
 const items = ref<any[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
 const roleFilter = ref('')
+const schoolFilter = ref<number | null>(null)
+const schools = ref<any[]>([])
 const showDeleteConfirm = ref(false)
 const userToDelete = ref<any>(null)
 const deleting = ref(false)
@@ -124,12 +132,17 @@ const roleOptions = [
   ...Object.entries(ROLE_LABELS).map(([value, label]) => ({ label, value }))
 ]
 
+const schoolFilterOptions = computed(() => [
+  { label: 'Все школы', value: null },
+  ...schools.value.map((s) => ({ label: s.name_tm || s.name_ru || s.name_en || s.name || `Школа #${s.id}`, value: s.id }))
+])
+
 const columns = [
   { name: 'full_name', label: 'Имя', field: 'full_name', align: 'left' as const, sortable: true },
   { name: 'username', label: 'Логин', field: 'username', align: 'left' as const, sortable: true },
   { name: 'email', label: 'Email', field: 'email', align: 'left' as const, sortable: true },
   { name: 'role', label: 'Роль', field: 'role', align: 'center' as const, sortable: true },
-  { name: 'school_name', label: 'Школа', field: 'school_name', align: 'left' as const, sortable: true },
+  { name: 'schools_display', label: 'Школа(ы)', field: (row: any) => row.schools_display || row.school_name || '—', align: 'left' as const, sortable: true },
   { name: 'phone', label: 'Телефон', field: 'phone', align: 'left' as const },
   { name: 'actions', label: 'Действия', field: 'actions', align: 'right' as const }
 ]
@@ -158,6 +171,13 @@ const filteredItems = computed(() => {
   if (roleFilter.value) {
     filtered = filtered.filter(r => r.role === roleFilter.value)
   }
+  if (schoolFilter.value != null) {
+    const sid = schoolFilter.value
+    filtered = filtered.filter(
+      r => r.school_id === sid || (r.additional_school_ids || []).includes(sid)
+    )
+  }
+  // search делаем на бэке, но если данные уже загружены - дополнительно фильтруем при смене search без перезапроса
   if (searchQuery.value?.trim()) {
     const s = searchQuery.value.trim().toLowerCase()
     filtered = filtered.filter(r =>
@@ -188,6 +208,7 @@ const sortedItems = computed(() => {
 const resetFilters = () => {
   searchQuery.value = ''
   roleFilter.value = ''
+  schoolFilter.value = null
   resetPage()
 }
 
@@ -218,7 +239,12 @@ const confirmDelete = async () => {
 const loadItems = async () => {
   loading.value = true
   try {
-    items.value = await getAll()
+    const [usersList, schoolsList] = await Promise.all([
+      getAll({ role: roleFilter.value || undefined, search: searchQuery.value?.trim() || undefined, school_id: schoolFilter.value ?? undefined }) as Promise<any[]>,
+      getAllSchools() as Promise<any[]>,
+    ])
+    items.value = usersList ?? []
+    schools.value = schoolsList ?? []
   } catch (e) {
     console.error(e)
   } finally {
@@ -226,7 +252,7 @@ const loadItems = async () => {
   }
 }
 
-watch([searchQuery, roleFilter], () => {
+watch([searchQuery, roleFilter, schoolFilter], () => {
   resetPage()
   loadItems()
 })

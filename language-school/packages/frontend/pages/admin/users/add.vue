@@ -12,96 +12,160 @@
     <q-card flat bordered class="admin-form-card">
       <q-card-section>
         <q-form @submit.prevent="handleSubmit" class="admin-form">
-          <q-select
-            v-model="form.role"
-            :options="roleOptions"
-            label="Роль *"
-            option-label="label"
-            option-value="value"
-            emit-value
-            map-options
-            outlined
-            :rules="[val => !!val || 'Обязательно']"
-            @update:model-value="onRoleChange"
-            class="q-mb-md"
-          />
-
           <div class="row q-col-gutter-md">
+            <!-- Первая колонка -->
             <div class="col-6">
+              <q-select
+                v-model="form.role"
+                :options="roleOptions"
+                label="Роль *"
+                option-label="label"
+                option-value="value"
+                emit-value
+                map-options
+                outlined
+                :rules="[val => !!val || 'Обязательно']"
+                @update:model-value="onRoleChange"
+                class="q-mb-md"
+              />
+
               <q-input v-model="form.first_name" label="Имя *" outlined :rules="[val => !!val?.trim() || 'Обязательно']" class="q-mb-md" />
-            </div>
-            <div class="col-6">
               <q-input v-model="form.last_name" label="Фамилия *" outlined :rules="[val => !!val?.trim() || 'Обязательно']" class="q-mb-md" />
-            </div>
-          </div>
+              <q-input v-model="form.email" label="Email" type="email" outlined class="q-mb-md" />
+              <q-input v-model="form.phone" label="Телефон" outlined class="q-mb-md" />
 
-          <q-input v-model="form.email" label="Email" type="email" outlined class="q-mb-md" />
-          <q-input v-model="form.phone" label="Телефон" outlined class="q-mb-md" />
-
-          <!-- Фото -->
-          <div class="q-mb-md">
-            <div class="text-subtitle2 q-mb-sm">Фото</div>
-            <div class="row items-center q-gutter-md">
-              <div class="relative-position">
-                <img v-if="avatarPreview || form.avatar" :src="avatarPreview || form.avatar" alt="Avatar" class="add-user-avatar" />
-                <q-avatar v-else size="80px" icon="person" font-size="32px" color="grey-4" />
-                <q-btn round dense color="primary" icon="photo_camera" size="xs" class="absolute" style="bottom: 0; right: 0" @click="avatarInput?.click()" />
-                <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="handleAvatarSelect" />
+              <!-- Фото -->
+              <div class="q-mb-md">
+                <div class="text-subtitle2 q-mb-sm">Фото</div>
+                <div class="row items-center q-gutter-md">
+                  <div class="relative-position">
+                    <img v-if="avatarPreview || form.avatar" :src="avatarPreview || avatarUrl(form.avatar) || form.avatar" alt="Avatar" class="add-user-avatar" />
+                    <q-avatar v-else size="80px" icon="person" font-size="32px" color="grey-4" />
+                    <q-btn round dense color="primary" icon="photo_camera" size="xs" class="absolute" style="bottom: 0; right: 0" @click="avatarInput?.click()" />
+                    <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="handleAvatarSelect" />
+                  </div>
+                  <q-btn v-if="form.avatar || avatarPreview" flat densely color="negative" icon="delete" label="Удалить" @click="clearAvatar" />
+                </div>
               </div>
-              <q-btn v-if="form.avatar || avatarPreview" flat densely color="negative" icon="delete" label="Удалить" @click="clearAvatar" />
+
+              <!-- Автогенерация -->
+              <template v-if="form.role === 'STUDENT'">
+                <q-toggle v-model="form.auto_generate" label="Автогенерация логина и пароля (для потока учеников)" class="q-mb-md" />
+              </template>
+
+              <!-- Школа -->
+              <q-select
+                v-if="showSchoolField"
+                v-model="form.school_id"
+                :options="schoolOptions"
+                label="Основная школа"
+                option-label="label"
+                option-value="id"
+                emit-value
+                map-options
+                outlined
+                clearable
+                class="q-mb-md"
+              />
+
+              <q-select
+                v-if="form.role === 'STUDENT'"
+                v-model="form.additional_school_ids"
+                :options="additionalSchoolOptions"
+                label="Дополнительные школы"
+                option-label="label"
+                option-value="id"
+                emit-value
+                map-options
+                outlined
+                clearable
+                multiple
+                use-chips
+                class="q-mb-md"
+                hint="Ученик может учиться в нескольких школах"
+              />
+
+              <!-- Родитель -->
+              <q-select
+                v-if="form.role === 'STUDENT'"
+                v-model="form.parent_id"
+                :options="parentOptions"
+                label="Родитель (привязка)"
+                option-label="label"
+                option-value="id"
+                emit-value
+                map-options
+                outlined
+                clearable
+                class="q-mb-md"
+              />
+
+              <q-input
+                v-if="form.role === 'STUDENT'"
+                v-model="form.rfid_uid"
+                label="RFID UID (браслет Mifare)"
+                outlined
+                class="q-mb-md"
+                hint="UID с RC522 для оплаты гемов"
+              />
+
+              <!-- Логин и пароль -->
+              <template v-if="form.role === 'STUDENT' && !form.auto_generate">
+                <q-input v-model="form.username" label="Логин *" outlined :rules="[val => !!val?.trim() || 'Обязательно']" class="q-mb-md" />
+                <q-input v-model="form.password" label="Пароль *" type="password" outlined :rules="[val => (!!val && val.length >= 6) || 'Минимум 6 символов']" class="q-mb-md" autocomplete="new-password" />
+              </template>
+              <template v-else-if="form.role !== 'STUDENT'">
+                <q-input v-model="form.username" label="Логин *" outlined :rules="[val => !!val?.trim() || 'Обязательно']" class="q-mb-md" />
+                <q-input v-model="form.password" label="Пароль *" type="password" outlined :rules="[val => (!!val && val.length >= 6) || 'Минимум 6 символов']" class="q-mb-md" autocomplete="new-password" />
+              </template>
+            </div>
+
+            <!-- Вторая колонка -->
+            <div class="col-6">
+              <!-- Дополнительные роли -->
+              <div class="q-mb-md">
+                <div class="text-subtitle2 q-mb-sm">Дополнительные роли</div>
+                <div v-for="(additionalRole, index) in form.additional_roles" :key="index" class="row q-gutter-sm q-mb-sm items-center">
+                  <q-select
+                    v-model="form.additional_roles[index]"
+                    :options="getOptionsForAdditionalRole(index)"
+                    label="Роль"
+                    option-label="label"
+                    option-value="value"
+                    emit-value
+                    map-options
+                    outlined
+                    dense
+                    style="flex: 1"
+                  />
+                  <q-btn
+                    round
+                    dense
+                    color="negative"
+                    icon="close"
+                    size="sm"
+                    @click="removeAdditionalRole(index)"
+                  />
+                </div>
+                <q-btn
+                  outline
+                  color="primary"
+                  icon="add"
+                  label="Добавить роль"
+                  size="sm"
+                  @click="addAdditionalRole"
+                  :disable="!canAddMoreRoles"
+                />
+              </div>
+
+              <!-- Экспорт в Excel -->
+              <q-checkbox
+                v-model="form.can_export_excel"
+                label="Export to Excel"
+                class="q-mb-md"
+              />
             </div>
           </div>
-
-          <!-- Студент: автогенерация логина/пароля -->
-          <template v-if="form.role === 'STUDENT'">
-            <q-toggle v-model="form.auto_generate" label="Автогенерация логина и пароля (для потока учеников)" class="q-mb-md" />
-            <template v-if="!form.auto_generate">
-              <q-input v-model="form.username" label="Логин *" outlined :rules="[val => !!val?.trim() || 'Обязательно']" class="q-mb-md" />
-              <q-input v-model="form.password" label="Пароль *" type="password" outlined :rules="[val => (!!val && val.length >= 6) || 'Минимум 6 символов']" class="q-mb-md" autocomplete="new-password" />
-            </template>
-          </template>
-
-          <!-- Родитель: логин и пароль -->
-          <template v-else-if="form.role === 'PARENT'">
-            <q-input v-model="form.username" label="Логин *" outlined :rules="[val => !!val?.trim() || 'Обязательно']" class="q-mb-md" />
-            <q-input v-model="form.password" label="Пароль *" type="password" outlined :rules="[val => (!!val && val.length >= 6) || 'Минимум 6 символов']" class="q-mb-md" autocomplete="new-password" />
-          </template>
-
-          <!-- Остальные роли: логин и пароль -->
-          <template v-else>
-            <q-input v-model="form.username" label="Логин *" outlined :rules="[val => !!val?.trim() || 'Обязательно']" class="q-mb-md" />
-            <q-input v-model="form.password" label="Пароль *" type="password" outlined :rules="[val => (!!val && val.length >= 6) || 'Минимум 6 символов']" class="q-mb-md" autocomplete="new-password" />
-          </template>
-
-          <!-- Школа — для учеников, учителей, завучей и т.д. -->
-          <q-select
-            v-if="showSchoolField"
-            v-model="form.school_id"
-            :options="schoolOptions"
-            label="Школа"
-            option-label="label"
-            option-value="id"
-            emit-value
-            map-options
-            outlined
-            clearable
-            class="q-mb-md"
-          />
-
-          <!-- Родитель ученика — для учеников -->
-          <q-select
-            v-if="form.role === 'STUDENT'"
-            v-model="form.parent_id"
-            :options="parentOptions"
-            label="Родитель (привязка)"
-            option-label="label"
-            option-value="id"
-            emit-value
-            map-options
-            outlined
-            clearable
-            class="q-mb-md"
-          />
 
           <!-- Успешно создан — показываем credentials -->
           <q-banner v-if="createdCredentials" class="bg-positive text-white q-mb-md rounded-borders">
@@ -130,6 +194,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
+const { avatarUrl } = useAvatarUrl()
 const { create, getAll } = useAdminUsers()
 const { getAll: getAllSchools } = useAdminSchools()
 const { uploadFile } = useUpload()
@@ -159,6 +224,36 @@ const ROLE_LABELS: Record<string, string> = {
 
 const roleOptions = Object.entries(ROLE_LABELS).map(([value, label]) => ({ label, value }))
 
+// Для каждого дополнительного селекта: включаем выбранную роль в options, чтобы отображалось имя, а не код
+const getOptionsForAdditionalRole = (index: number) => {
+  const currentValue = form.value.additional_roles[index]
+  const otherSelected = form.value.additional_roles.filter((_, i) => i !== index).filter(Boolean)
+  const exclude = new Set([form.value.role, 'SUPERUSER', ...otherSelected])
+  const base = roleOptions.filter(opt => !exclude.has(opt.value))
+  // Включаем текущую выбранную роль, чтобы q-select показывал label, а не value
+  if (currentValue) {
+    const currentOpt = roleOptions.find(o => o.value === currentValue)
+    if (currentOpt && !base.some(b => b.value === currentValue)) {
+      return [currentOpt, ...base]
+    }
+  }
+  return base
+}
+
+const canAddMoreRoles = computed(() => {
+  return form.value.additional_roles.length < 5 && getOptionsForAdditionalRole(form.value.additional_roles.length).length > 0
+})
+
+const addAdditionalRole = () => {
+  if (canAddMoreRoles.value) {
+    form.value.additional_roles.push('')
+  }
+}
+
+const removeAdditionalRole = (index: number) => {
+  form.value.additional_roles.splice(index, 1)
+}
+
 const form = ref({
   role: 'STUDENT' as string,
   first_name: '',
@@ -170,7 +265,11 @@ const form = ref({
   avatar: '',
   school_id: null as number | null,
   parent_id: null as string | null,
-  auto_generate: true
+  auto_generate: true,
+  additional_roles: [] as string[],
+  additional_school_ids: [] as number[],
+  can_export_excel: false,
+  rfid_uid: ''
 })
 
 const showSchoolField = computed(() => {
@@ -184,6 +283,16 @@ const schoolOptions = computed(() =>
     label: s.name_tm || s.name_ru || s.name_en || s.name || `Школа #${s.id}`
   }))
 )
+
+const additionalSchoolOptions = computed(() => {
+  const primaryId = form.value.school_id
+  return schools.value
+    .filter(s => s.id !== primaryId)
+    .map(s => ({
+      id: s.id,
+      label: s.name_tm || s.name_ru || s.name_en || s.name || `Школа #${s.id}`
+    }))
+})
 
 const parentOptions = computed(() =>
   parents.value.map(p => ({
@@ -213,6 +322,8 @@ const onRoleChange = () => {
   form.value.auto_generate = form.value.role === 'STUDENT'
   form.value.school_id = null
   form.value.parent_id = null
+  // Удаляем дополнительные роли, которые совпадают с новой основной ролью
+  form.value.additional_roles = form.value.additional_roles.filter(r => r !== form.value.role)
 }
 
 const copyCredentials = () => {
@@ -236,7 +347,10 @@ const resetForm = () => {
     avatar: '',
     school_id: form.value.school_id,
     parent_id: null,
-    auto_generate: form.value.role === 'STUDENT'
+    auto_generate: form.value.role === 'STUDENT',
+    additional_roles: [],
+    can_export_excel: false,
+    rfid_uid: ''
   }
 }
 
@@ -260,7 +374,14 @@ const handleSubmit = async () => {
       phone: form.value.phone?.trim() || undefined,
       avatar: avatarUrl || undefined,
       school_id: form.value.school_id || undefined,
-      parent_id: form.value.parent_id || undefined
+      parent_id: form.value.parent_id || undefined,
+      additional_roles: form.value.additional_roles
+        .filter(r => r && typeof r === 'string' && r.trim() && r !== form.value.role && r !== 'SUPERUSER'),
+      additional_school_ids: form.value.role === 'STUDENT' ? (form.value.additional_school_ids || []).filter(id => id !== form.value.school_id) : undefined,
+      can_export_excel: form.value.can_export_excel
+    }
+    if (form.value.role === 'STUDENT' && form.value.rfid_uid?.trim()) {
+      body.rfid_uid = form.value.rfid_uid.trim()
     }
   if (form.value.role === 'STUDENT' && form.value.auto_generate) {
     body.auto_generate = true

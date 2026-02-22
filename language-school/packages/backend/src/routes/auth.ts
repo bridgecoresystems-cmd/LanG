@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { db } from "../db";
-import { users } from "../db/schema";
+import { users, userRoles } from "../db/schema";
 import { lucia } from "../auth";
 import { eq } from "drizzle-orm";
 import { generateId } from "lucia";
@@ -28,12 +28,30 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       role: "STUDENT" // default role
     });
 
-    // 3. Create session
     const session = await lucia.createSession(userId, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
     
     set.headers["Set-Cookie"] = sessionCookie.serialize();
-    return { message: "Registered successfully", user: { username, email } };
+
+    const [newUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password_hash: _, ...profile } = newUser!;
+    const full_name = [newUser.first_name, newUser.last_name].filter(Boolean).join(" ") || newUser.username;
+    
+    // Получаем дополнительные роли
+    const additionalRoles = await db
+      .select({ role: userRoles.role })
+      .from(userRoles)
+      .where(eq(userRoles.userId, userId));
+
+    return { 
+      message: "Registered successfully", 
+      user: { 
+        ...profile, 
+        full_name,
+        additional_roles: additionalRoles.map(r => r.role),
+      } 
+    };
   }, {
     body: t.Object({
       username: t.String(),
@@ -59,22 +77,40 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     const session = await lucia.createSession(user.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
     
-    console.log(`[Login] Created session for user: ${user.username}`);
-    console.log(`[Login] Session ID: ${session.id}`);
-    console.log(`[Login] Cookie: ${sessionCookie.serialize()}`);
-    
     set.headers["Set-Cookie"] = sessionCookie.serialize();
-    return { message: "Logged in successfully", user: { id: user.id, username: user.username, role: user.role } };
+    
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password_hash: _, ...profile } = user;
+    const full_name = [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username;
+    
+    // Получаем дополнительные роли
+    const additionalRoles = await db
+      .select({ role: userRoles.role })
+      .from(userRoles)
+      .where(eq(userRoles.userId, user.id));
+    
+    return { 
+      message: "Logged in successfully", 
+      user: { 
+        ...profile, 
+        full_name,
+        additional_roles: additionalRoles.map(r => r.role),
+      } 
+    };
   }, {
     body: t.Object({
       username: t.String(),
       password: t.String()
     })
   })
-  .post("/logout", async ({ session, set }) => {
-    if (session) {
-      await lucia.invalidateSession(session.id);
+  .post("/logout", async ({ request, set }) => {
+    const cookieHeader = request.headers.get("Cookie") ?? "";
+    const sessionId = lucia.readSessionCookie(cookieHeader);
+    
+    if (sessionId) {
+      await lucia.invalidateSession(sessionId);
     }
+    
     const sessionCookie = lucia.createBlankSessionCookie();
     set.headers["Set-Cookie"] = sessionCookie.serialize();
     return { message: "Logged out successfully" };
