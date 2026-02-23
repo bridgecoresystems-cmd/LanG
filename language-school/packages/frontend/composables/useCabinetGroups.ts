@@ -7,6 +7,7 @@ export interface HtGroup {
   course_name?: string
   teacher_id?: string | null
   teacher_name?: string
+  exam_scheme_id?: number | null
   max_students: number
   time_slot?: string | null
   week_days?: string | null
@@ -94,10 +95,67 @@ export const useCabinetGroups = () => {
     return data ?? []
   }
 
-  const saveGrade = async (body: { group_id: number; user_id: string; type: string; title: string; grade: string; max_grade?: string; comment?: string; date?: string }) => {
+  const saveGrade = async (body: { group_id: number; user_id: string; type: string; grade: string; comment?: string }) => {
     const { data, error } = await api.api.v1.cabinet['head-teacher'].grades.post(body)
     if (error) throw error
     return data
+  }
+
+  const getExamGrades = async (groupId: number) => {
+    const { data, error } = await ht.groups({ id: String(groupId) })['exam-grades'].get()
+    if (error) throw error
+    return data ?? []
+  }
+
+  const saveExamGrade = async (body: { group_id: number; user_id: string; scheme_item_id: number; writing?: number | null; listening?: number | null; reading?: number | null; speaking?: number | null }) => {
+    const { data, error } = await api.api.v1.cabinet['head-teacher']['exam-grades'].post(body)
+    if (error) throw error
+    return data
+  }
+
+  const getExamSchemes = async () => {
+    const { data, error } = await ht['exam-schemes'].get()
+    if (error) throw error
+    return data ?? []
+  }
+
+  const getExamTypes = async () => {
+    const { data, error } = await ht['exam-types'].get()
+    if (error) throw error
+    return data ?? []
+  }
+
+  const saveExamType = async (body: { name: string; writingWeight?: number; listeningWeight?: number; readingWeight?: number; speakingWeight?: number }) => {
+    const { data, error } = await ht['exam-types'].post(body)
+    if (error) throw error
+    return data
+  }
+
+  const saveExamScheme = async (body: { name: string; items?: { examTypeId: number; weightPercentage: number; order?: number }[] }) => {
+    const { data, error } = await ht['exam-schemes'].post(body)
+    if (error) throw error
+    return data
+  }
+
+  const deleteExamType = async (id: number) => {
+    const { error } = await ht['exam-types']({ id: String(id) }).delete()
+    if (error) throw error
+  }
+
+  const deleteExamScheme = async (id: number) => {
+    const { error } = await ht['exam-schemes']({ id: String(id) }).delete()
+    if (error) throw error
+  }
+
+  const generateSchedule = async (id: number) => {
+    const { data, error } = await ht.groups({ id: String(id) })['generate-schedule'].post()
+    if (error) throw error
+    return data
+  }
+
+  const getCourseStats = async (courseId: string) => {
+    const { data, error } = await ht.courses({ id: courseId }).statistics.get()
+    return { data, error }
   }
 
   const getGames = async (groupId: number) => {
@@ -106,13 +164,26 @@ export const useCabinetGroups = () => {
     return data ?? []
   }
 
-  const saveGame = async (body: { group_id: number; title: string; type: string; config?: any }) => {
+  const saveGame = async (body: { group_id: number; lesson_id?: number | null; title: string; type: string; data?: any }) => {
     const { data, error } = await api.api.v1.cabinet['head-teacher'].games.post(body)
     if (error) throw error
     return data
   }
 
-  return { getList, getById, create, update, remove, addStudents, removeStudents, getAvailableStudents, getGroupStudents, getAttendance, saveAttendance, getGrades, saveGrade, getGames, saveGame }
+  const deleteGame = async (id: number) => {
+    const { error } = await ht.games({ id: String(id) }).delete()
+    if (error) throw error
+  }
+
+  return { 
+    getList, getById, create, update, remove, 
+    addStudents, removeStudents, getAvailableStudents, getGroupStudents, 
+    getAttendance, saveAttendance, 
+    getGrades, saveGrade, 
+    getExamGrades, saveExamGrade, getExamSchemes, getExamTypes, saveExamType, saveExamScheme, deleteExamType, deleteExamScheme,
+    generateSchedule, getCourseStats,
+    getGames, saveGame, deleteGame 
+  }
 }
 
 export const useCabinetTeachers = () => {

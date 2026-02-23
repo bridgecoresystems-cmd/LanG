@@ -74,7 +74,7 @@ import {
   NGi,
   type DataTableColumns,
 } from 'naive-ui'
-import { AddOutline as AddIcon, SearchOutline as SearchIcon, PencilOutline as EditIcon, TrashOutline as DeleteIcon } from '@vicons/ionicons5'
+import { AddOutline as AddIcon, SearchOutline as SearchIcon, PencilOutline as EditIcon, TrashOutline as DeleteIcon, BarChartOutline as ChartIcon } from '@vicons/ionicons5'
 import { useMessage } from 'naive-ui'
 
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
@@ -122,6 +122,20 @@ const columns: DataTableColumns<HtCourse> = [
   },
   { title: 'Язык', key: 'language', width: 120 },
   { title: 'Уровень', key: 'level', width: 100 },
+  {
+    title: 'Статистика',
+    key: 'stats',
+    width: 100,
+    render: (row) => h(NButton, {
+      size: 'small',
+      quaternary: true,
+      type: 'primary',
+      onClick: (e: Event) => {
+        e.stopPropagation()
+        navigateTo(`/cabinet/head-teacher/courses/stats/${row.id}`)
+      }
+    }, { icon: () => h(ChartIcon) })
+  },
   {
     title: 'Статус',
     key: 'is_active',

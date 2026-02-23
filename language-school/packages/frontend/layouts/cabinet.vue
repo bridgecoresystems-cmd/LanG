@@ -333,6 +333,11 @@ const menuOptions = computed<MenuOption[]>(() => {
         label: 'Рассылки',
         key: '/cabinet/head-teacher/mailing',
         icon: renderIcon(MailIcon),
+      },
+      {
+        label: 'Экзамены',
+        key: '/cabinet/head-teacher/exam-settings',
+        icon: renderIcon(ListIcon),
       }
     )
   }
@@ -425,6 +430,7 @@ const activePageTitle = computed(() => {
   if (path.includes('/head-teacher/groups')) return 'Группы'
   if (path.includes('/head-teacher/lessons')) return 'Уроки'
   if (path.includes('/head-teacher/mailing')) return 'Рассылки'
+  if (path.includes('/head-teacher/exam-settings')) return 'Настройки экзаменов'
   if (path.includes('/cabinet/mailing')) return 'Сообщения'
   if (path.includes('/sales')) return 'Sales дневник'
   return 'Рабочий стол'

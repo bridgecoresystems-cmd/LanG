@@ -1,7 +1,9 @@
-import { pgTable, text, timestamp, integer, boolean, serial, decimal, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, boolean, serial, decimal, uniqueIndex, pgEnum } from "drizzle-orm/pg-core";
 
-// --- Cabinet Tables (Attendance, Grades, Games) ---
-export * from "./schema-cabinet";
+// --- Enums ---
+export const attendanceStatusEnum = pgEnum("attendance_status", ["present", "absent", "late", "excused"]);
+export const gradeTypeEnum = pgEnum("grade_type", ["homework", "test", "participation", "exam"]);
+export const gameTypeEnum = pgEnum("game_type", ["matching", "sprint", "memory"]);
 
 // --- Schools (for DIRECTOR, HEAD_TEACHER scope) ---
 
@@ -246,12 +248,43 @@ export const htCourses = pgTable("ht_course", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// --- Экзамены и Схемы (Exam Types & Schemes) ---
+export const htExamTypes = pgTable("ht_exam_type", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  writingWeight: integer("writing_weight").default(25).notNull(),
+  listeningWeight: integer("listening_weight").default(25).notNull(),
+  readingWeight: integer("reading_weight").default(25).notNull(),
+  speakingWeight: integer("speaking_weight").default(25).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const htExamSchemes = pgTable("ht_exam_scheme", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const htExamSchemeItems = pgTable("ht_exam_scheme_item", {
+  id: serial("id").primaryKey(),
+  schemeId: integer("scheme_id")
+    .notNull()
+    .references(() => htExamSchemes.id, { onDelete: "cascade" }),
+  examTypeId: integer("exam_type_id")
+    .notNull()
+    .references(() => htExamTypes.id, { onDelete: "cascade" }),
+  weightPercentage: integer("weight_percentage").notNull(), // Напр. 20%
+  order: integer("order").default(1).notNull(),
+});
+
 export const htGroups = pgTable("ht_group", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   courseId: integer("course_id")
     .notNull()
     .references(() => htCourses.id, { onDelete: "cascade" }),
+  examSchemeId: integer("exam_scheme_id")
+    .references(() => htExamSchemes.id, { onDelete: "set null" }),
   teacherId: text("teacher_id").references(() => users.id, { onDelete: "set null" }),
   schoolId: integer("school_id").references(() => schools.id, { onDelete: "set null" }),
   maxStudents: integer("max_students").default(15).notNull(),
@@ -293,6 +326,91 @@ export const htLessons = pgTable("ht_lesson", {
   materials: text("materials"), // JSON array
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// --- Посещаемость (Attendance) ---
+export const htAttendance = pgTable("ht_attendance", {
+  id: serial("id").primaryKey(),
+  lessonId: integer("lesson_id")
+    .notNull()
+    .references(() => htLessons.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull(), // present, absent, late, excused
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("ht_attendance_lesson_user_unique").on(t.lessonId, t.userId)
+]);
+
+// --- Оценки (Grades - для обычных уроков) ---
+export const htGrades = pgTable("ht_grade", {
+  id: serial("id").primaryKey(),
+  lessonId: integer("lesson_id")
+    .references(() => htLessons.id, { onDelete: "cascade" }),
+  groupId: integer("group_id")
+    .notNull()
+    .references(() => htGroups.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // homework, test, participation
+  grade: text("grade").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// --- Экзаменационные оценки (Exam Grades) ---
+export const htExamGrades = pgTable("ht_exam_grade", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id")
+    .notNull()
+    .references(() => htGroups.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  schemeItemId: integer("scheme_item_id")
+    .notNull()
+    .references(() => htExamSchemeItems.id, { onDelete: "cascade" }),
+  writing: decimal("writing", { precision: 5, scale: 2 }),
+  listening: decimal("listening", { precision: 5, scale: 2 }),
+  reading: decimal("reading", { precision: 5, scale: 2 }),
+  speaking: decimal("speaking", { precision: 5, scale: 2 }),
+  totalScore: decimal("total_score", { precision: 5, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("ht_exam_grade_unique").on(t.userId, t.groupId, t.schemeItemId)
+]);
+
+// --- Игры (Games) ---
+export const htGames = pgTable("ht_game", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id")
+    .references(() => htGroups.id, { onDelete: "cascade" }),
+  lessonId: integer("lesson_id")
+    .references(() => htLessons.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  type: text("type").notNull(), // matching, sprint, memory
+  data: text("data"), // JSON configuration (words, translations)
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// --- Результаты игр (Game Results) ---
+export const htGameResults = pgTable("ht_game_result", {
+  id: serial("id").primaryKey(),
+  gameId: integer("game_id")
+    .notNull()
+    .references(() => htGames.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  score: integer("score").notNull(),
+  data: text("data"), // JSON detailed results
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // --- Sales Calls ---

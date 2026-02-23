@@ -42,7 +42,7 @@ import { ref, computed, onMounted, watch, h } from 'vue'
 import { useCabinetGroups } from '~/composables/useCabinetGroups'
 import { useCabinetCourses } from '~/composables/useCabinetCourses'
 import { NCard, NButton, NInput, NSelect, NIcon, NH2, NDataTable, NTag, NSpin, NAlert, NGrid, NGi } from 'naive-ui'
-import { AddOutline as AddIcon, SearchOutline as SearchIcon, PencilOutline as EditIcon, TrashOutline as DeleteIcon, PeopleOutline as PeopleIcon } from '@vicons/ionicons5'
+import { AddOutline as AddIcon, SearchOutline as SearchIcon, PencilOutline as EditIcon, TrashOutline as DeleteIcon, PeopleOutline as PeopleIcon, BarChartOutline as ChartIcon } from '@vicons/ionicons5'
 import { useMessage } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 
@@ -81,6 +81,20 @@ const columns: DataTableColumns<any> = [
   { title: 'Макс. учеников', key: 'max_students', width: 120 },
   { title: 'Расписание', key: 'time_slot', width: 120, render: (r) => r.time_slot ? ({ A: '08:00-11:00', B: '13:00-17:00', C: '17:00-19:00' }[r.time_slot] || r.time_slot) : '—' },
   { title: 'Статус', key: 'is_active', width: 100, render: (r) => h(NTag, { type: r.is_active ? 'success' : 'error', round: true, size: 'small' }, () => (r.is_active ? 'Активна' : 'Неактивна')) },
+  {
+    title: 'Статистика',
+    key: 'stats',
+    width: 100,
+    render: (row) => h(NButton, {
+      size: 'small',
+      quaternary: true,
+      type: 'primary',
+      onClick: (e: Event) => {
+        e.stopPropagation()
+        navigateTo(`/cabinet/head-teacher/courses/stats/${row.course_id}`)
+      }
+    }, { icon: () => h(ChartIcon) })
+  },
   {
     title: '',
     key: 'actions',

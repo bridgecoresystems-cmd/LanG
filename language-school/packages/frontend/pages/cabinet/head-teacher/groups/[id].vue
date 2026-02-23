@@ -28,6 +28,9 @@
               <NGi><NFormItem label="Время"><NSelect v-model:value="formData.time_slot" :options="timeSlotOptions" placeholder="Слот" clearable size="large" /></NFormItem></NGi>
               <NGi><NFormItem label="Дни"><NSelect v-model:value="formData.week_days" :options="weekDayOptions" placeholder="Дни" clearable size="large" /></NFormItem></NGi>
             </NGrid>
+            <NFormItem label="Схема экзаменов">
+              <NSelect v-model:value="formData.exam_scheme_id" :options="examSchemeOptions" placeholder="Выберите схему" clearable size="large" />
+            </NFormItem>
             <NGrid cols="1 s:2" :x-gap="16">
               <NGi><NFormItem label="Дата начала"><NDatePicker v-model:value="startDateTs" type="date" style="width: 100%" size="large" /></NFormItem></NGi>
               <NGi><NFormItem label="Дата окончания"><NDatePicker v-model:value="endDateTs" type="date" clearable style="width: 100%" size="large" /></NFormItem></NGi>
@@ -128,7 +131,7 @@ definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 const route = useRoute()
 const authStore = useAuthStore()
 const message = useMessage()
-const { getById, update, addStudents, removeStudents, getAvailableStudents } = useCabinetGroups()
+const { getById, update, addStudents, removeStudents, getAvailableStudents, getExamSchemes } = useCabinetGroups()
 const { getList: getCourses } = useCabinetCourses()
 const { getList: getTeachers } = useCabinetTeachers()
 const { getUsers } = useCabinetHeadTeacher()
@@ -136,6 +139,7 @@ const { getUsers } = useCabinetHeadTeacher()
 const group = ref<any>(null)
 const courses = ref<any[]>([])
 const teachers = ref<any[]>([])
+const examSchemes = ref<any[]>([])
 const allUsers = ref<any[]>([])
 const availableStudents = ref<{ id: string; full_name: string; username: string; current_group_name: string | null }[]>([])
 const loading = ref(true)
@@ -148,6 +152,7 @@ const selectedStudentIds = ref<string[]>([])
 
 const courseOptions = computed(() => courses.value.map((c) => ({ label: c.name, value: c.id })))
 const teacherOptions = computed(() => teachers.value.map((t) => ({ label: t.full_name, value: t.id })))
+const examSchemeOptions = computed(() => examSchemes.value.map((s) => ({ label: s.name, value: s.id })))
 
 const timeSlotOptions = [
   { label: '08:00 - 11:00', value: 'A' },
@@ -163,6 +168,7 @@ const formData = ref({
   name: '',
   course_id: null as number | null,
   teacher_id: null as string | null,
+  exam_scheme_id: null as number | null,
   max_students: 15,
   time_slot: null as string | null,
   week_days: null as string | null,
@@ -210,20 +216,23 @@ async function loadGroup() {
   if (!id) return
   loading.value = true
   try {
-    const [g, cList, tList, usersList] = await Promise.all([
+    const [g, cList, tList, usersList, schemesList] = await Promise.all([
       getById(id),
       getCourses(),
       getTeachers(),
       getUsers(),
+      getExamSchemes(),
     ])
     group.value = g
     courses.value = cList
     teachers.value = tList
     allUsers.value = usersList as any[]
+    examSchemes.value = schemesList
     formData.value = {
       name: g.name || '',
       course_id: g.course_id,
       teacher_id: g.teacher_id || null,
+      exam_scheme_id: g.exam_scheme_id || null,
       max_students: g.max_students ?? 15,
       time_slot: g.time_slot || null,
       week_days: g.week_days || null,
@@ -296,6 +305,7 @@ async function handleSubmit() {
       name: formData.value.name.trim(),
       course_id: formData.value.course_id,
       teacher_id: formData.value.teacher_id,
+      exam_scheme_id: formData.value.exam_scheme_id,
       max_students: formData.value.max_students,
       time_slot: formData.value.time_slot,
       week_days: formData.value.week_days,

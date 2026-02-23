@@ -27,6 +27,9 @@
           <NGi><NFormItem label="Время"><NSelect v-model:value="formData.time_slot" :options="timeSlotOptions" placeholder="Слот" clearable size="large" /></NFormItem></NGi>
           <NGi><NFormItem label="Дни недели"><NSelect v-model:value="formData.week_days" :options="weekDayOptions" placeholder="Дни" clearable size="large" /></NFormItem></NGi>
         </NGrid>
+        <NFormItem label="Схема экзаменов">
+          <NSelect v-model:value="formData.exam_scheme_id" :options="examSchemeOptions" placeholder="Выберите схему" clearable size="large" />
+        </NFormItem>
         <NGrid cols="1 s:2" :x-gap="16">
           <NGi><NFormItem label="Дата начала"><NDatePicker v-model:value="startDateTs" type="date" style="width: 100%" size="large" /></NFormItem></NGi>
           <NGi><NFormItem label="Дата окончания"><NDatePicker v-model:value="endDateTs" type="date" clearable style="width: 100%" size="large" /></NFormItem></NGi>
@@ -57,14 +60,16 @@ import { useMessage } from 'naive-ui'
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 const authStore = useAuthStore()
 const message = useMessage()
-const { create } = useCabinetGroups()
+const { create, getExamSchemes } = useCabinetGroups()
 const { getList: getCourses } = useCabinetCourses()
 const { getList: getTeachers } = useCabinetTeachers()
 
 const courses = ref<any[]>([])
 const teachers = ref<any[]>([])
+const examSchemes = ref<any[]>([])
 const courseOptions = ref<{ label: string; value: number }[]>([])
 const teacherOptions = ref<{ label: string; value: string }[]>([])
+const examSchemeOptions = ref<{ label: string; value: number }[]>([])
 const startDateTs = ref<number>(Date.now())
 const endDateTs = ref<number | null>(null)
 
@@ -82,6 +87,7 @@ const formData = ref({
   name: '',
   course_id: null as number | null,
   teacher_id: null as string | null,
+  exam_scheme_id: null as number | null,
   max_students: 15,
   time_slot: null as string | null,
   week_days: null as string | null,
@@ -106,6 +112,7 @@ async function handleSubmit() {
       name: formData.value.name.trim(),
       course_id: formData.value.course_id,
       teacher_id: formData.value.teacher_id || undefined,
+      exam_scheme_id: formData.value.exam_scheme_id || undefined,
       max_students: formData.value.max_students || 15,
       time_slot: formData.value.time_slot || undefined,
       week_days: formData.value.week_days || undefined,
@@ -124,10 +131,17 @@ async function handleSubmit() {
 }
 
 async function loadData() {
-  courses.value = await getCourses()
-  teachers.value = await getTeachers()
+  const [cList, tList, schemesList] = await Promise.all([
+    getCourses(),
+    getTeachers(),
+    getExamSchemes()
+  ])
+  courses.value = cList
+  teachers.value = tList
+  examSchemes.value = schemesList
   courseOptions.value = courses.value.map((c) => ({ label: c.name, value: c.id }))
   teacherOptions.value = teachers.value.map((t) => ({ label: t.full_name, value: t.id }))
+  examSchemeOptions.value = examSchemes.value.map((s) => ({ label: s.name, value: s.id }))
 }
 
 function canAccess() {

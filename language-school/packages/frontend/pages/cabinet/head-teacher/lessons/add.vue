@@ -27,6 +27,9 @@
           <NGi><NFormItem label="Дата и время *" required><NDatePicker v-model:value="lessonDateTs" type="datetime" style="width: 100%" size="large" /></NFormItem></NGi>
           <NGi><NFormItem label="Длительность (мин)"><NInputNumber v-model:value="formData.duration_minutes" :min="30" style="width: 100%" size="large" /></NFormItem></NGi>
         </NGrid>
+        <NFormItem label="Материалы (JSON)">
+          <NInput v-model:value="formData.materials" type="textarea" placeholder='["url1", "url2"]' :autosize="{ minRows: 2 }" size="large" />
+        </NFormItem>
         <NFormItem label="Домашнее задание"><NInput v-model:value="formData.homework" type="textarea" placeholder="ДЗ" :autosize="{ minRows: 2 }" size="large" /></NFormItem>
         <NAlert v-if="submitError" type="error" closable @close="submitError = null">{{ submitError }}</NAlert>
         <NDivider />
@@ -62,6 +65,7 @@ const formData = ref({
   title: '',
   description: '',
   duration_minutes: 90,
+  materials: '',
   homework: '',
 })
 
@@ -80,12 +84,23 @@ async function handleSubmit() {
   submitting.value = true
   submitError.value = null
   try {
+    let materialsArr = null
+    if (formData.value.materials.trim()) {
+      try {
+        materialsArr = JSON.parse(formData.value.materials)
+      } catch (e) {
+        submitError.value = 'Некорректный формат JSON для материалов'
+        return
+      }
+    }
+
     await create({
       group_id: formData.value.group_id,
       title: formData.value.title.trim(),
       description: formData.value.description.trim() || undefined,
       lesson_date: new Date(lessonDateTs.value).toISOString(),
       duration_minutes: formData.value.duration_minutes || 90,
+      materials: materialsArr,
       homework: formData.value.homework.trim() || undefined,
     })
     message.success('Урок создан')
