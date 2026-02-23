@@ -24,6 +24,19 @@
           </NuxtLink>
         </div>
 
+        <div v-if="!isSidebarCollapsed && groupOptions.length > 0" class="group-selector-container">
+          <div class="group-selector-label">Текущая группа:</div>
+          <NSelect
+            :value="contextStore.selectedGroupId"
+            :options="groupOptions"
+            size="small"
+            placeholder="Выберите группу"
+            @update:value="handleGroupChange"
+            class="group-selector"
+          />
+          <NDivider style="margin: 12px 0 0 0; background-color: rgba(255,255,255,0.1);" />
+        </div>
+
         <NMenu
           :collapsed="isSidebarCollapsed"
           :collapsed-width="64"
@@ -116,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h, type Component } from 'vue'
+import { ref, computed, h, onMounted, type Component } from 'vue'
 import {
   NConfigProvider,
   NLayout,
@@ -133,6 +146,7 @@ import {
   NH2,
   NTag,
   NMessageProvider,
+  NDivider,
   type MenuOption,
 } from 'naive-ui'
 import {
@@ -147,15 +161,48 @@ import {
   ChevronDownOutline as ChevronDownIcon,
   CallOutline as CallIcon,
   MailOutline as MailIcon,
+  GameControllerOutline as GameIcon,
+  ListOutline as ListIcon,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '~/stores/authStore'
+import { useContextStore } from '~/stores/contextStore'
+import { useCabinetProfile } from '~/composables/useCabinetProfile'
 import { useI18n } from 'vue-i18n'
 
 const authStore = useAuthStore()
+const contextStore = useContextStore()
+const profileApi = useCabinetProfile()
 const { locale } = useI18n()
 const route = useRoute()
 
 const isSidebarCollapsed = ref(false)
+
+// Загрузка групп при монтировании
+onMounted(async () => {
+  if (hasAnyRole(authStore.user, ['TEACHER', 'STUDENT'])) {
+    try {
+      const groups = await profileApi.getMyGroups()
+      contextStore.setGroups(groups.map((g: any) => ({
+        id: g.id,
+        name: g.name,
+        course_name: g.courseName
+      })))
+    } catch (e) {
+      console.error('Failed to load groups for context', e)
+    }
+  }
+})
+
+const groupOptions = computed(() => {
+  return contextStore.availableGroups.map(g => ({
+    label: g.name, // Делаем короче, только имя группы
+    value: g.id
+  }))
+})
+
+const handleGroupChange = (value: number) => {
+  contextStore.setSelectedGroup(value)
+}
 
 const userName = computed(() => {
   const user = authStore.user
@@ -239,8 +286,7 @@ const menuOptions = computed<MenuOption[]>(() => {
   const options: MenuOption[] = []
 
   options.push(
-    { label: 'Дашборд', key: '/cabinet', icon: renderIcon(HomeIcon) },
-    { label: 'Профиль', key: '/cabinet/profile', icon: renderIcon(PersonIcon) }
+    { label: 'Дашборд', key: '/cabinet', icon: renderIcon(HomeIcon) }
   )
 
   // EDITOR и SUPERUSER видят контент; HEAD_TEACHER — нет (только ученики и родители)
@@ -292,16 +338,47 @@ const menuOptions = computed<MenuOption[]>(() => {
   }
 
   if (hasRole(user, 'TEACHER')) {
+    // Если выбрана группа, показываем плоский список меню для учителя
+    if (contextStore.selectedGroupId) {
+      options.push(
+        { label: 'Журнал / Уроки', key: `/cabinet/teacher/groups/${contextStore.selectedGroupId}/lessons`, icon: renderIcon(CalendarIcon) },
+        { label: 'Посещаемость', key: `/cabinet/teacher/groups/${contextStore.selectedGroupId}/attendance`, icon: renderIcon(DocumentIcon) },
+        { label: 'Оценки', key: `/cabinet/teacher/groups/${contextStore.selectedGroupId}/grades`, icon: renderIcon(ChartIcon) },
+        { label: 'Игры', key: `/cabinet/teacher/groups/${contextStore.selectedGroupId}/games`, icon: renderIcon(GameIcon) },
+      )
+    }
+    
+    // Рассылки (Mailing) для учителя
     options.push(
-      { label: 'Группы', key: '/cabinet/teacher/groups', icon: renderIcon(PeopleIcon) },
-      { label: 'Успеваемость', key: '/cabinet/teacher/journal', icon: renderIcon(ChartIcon) }
+      { label: 'Рассылки', key: '/cabinet/mailing', icon: renderIcon(MailIcon) }
     )
   }
 
   if (hasRole(user, 'STUDENT')) {
     options.push(
       { label: 'Мои курсы', key: '/cabinet/student/courses', icon: renderIcon(BookIcon) },
-      { label: 'Календарь', key: '/cabinet/student/calendar', icon: renderIcon(CalendarIcon) }
+      { label: 'Сообщения', key: '/cabinet/mailing', icon: renderIcon(MailIcon) }
+    )
+
+    // Если выбрана группа, показываем контекстное меню ученика
+    if (contextStore.selectedGroupId) {
+      options.push({
+        label: 'Моё обучение',
+        key: 'student-group-context',
+        icon: renderIcon(ListIcon),
+        children: [
+          { label: 'Уроки и материалы', key: `/cabinet/student/groups/${contextStore.selectedGroupId}/lessons`, icon: renderIcon(CalendarIcon) },
+          { label: 'Моя успеваемость', key: `/cabinet/student/groups/${contextStore.selectedGroupId}/grades`, icon: renderIcon(ChartIcon) },
+          { label: 'Игры', key: `/cabinet/student/groups/${contextStore.selectedGroupId}/games`, icon: renderIcon(GameIcon) },
+        ]
+      })
+    }
+  }
+
+  if (hasRole(user, 'PARENT')) {
+    options.push(
+      { label: 'Мои дети', key: '/cabinet/children', icon: renderIcon(PeopleIcon) },
+      { label: 'Сообщения', key: '/cabinet/mailing', icon: renderIcon(MailIcon) }
     )
   }
 
@@ -311,6 +388,11 @@ const menuOptions = computed<MenuOption[]>(() => {
       { label: 'Дневник звонков', key: '/cabinet/sales', icon: renderIcon(CallIcon) }
     )
   }
+
+  // Профиль всегда в самом низу
+  options.push(
+    { label: 'Профиль', key: '/cabinet/profile', icon: renderIcon(PersonIcon) }
+  )
 
   return options
 })
@@ -343,6 +425,7 @@ const activePageTitle = computed(() => {
   if (path.includes('/head-teacher/groups')) return 'Группы'
   if (path.includes('/head-teacher/lessons')) return 'Уроки'
   if (path.includes('/head-teacher/mailing')) return 'Рассылки'
+  if (path.includes('/cabinet/mailing')) return 'Сообщения'
   if (path.includes('/sales')) return 'Sales дневник'
   return 'Рабочий стол'
 })
@@ -396,6 +479,36 @@ async function handleLogout() {
   text-decoration: none;
   display: flex;
   align-items: center;
+}
+
+.group-selector-container {
+  padding: 12px 16px;
+}
+
+.group-selector-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.group-selector :deep(.n-base-selection) {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.group-selector :deep(.n-base-selection-label) {
+  color: white !important;
+}
+
+.group-selector :deep(.n-base-selection__placeholder) {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.group-selector :deep(.n-base-selection__suffix-arrow) {
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 
 .cabinet-menu {

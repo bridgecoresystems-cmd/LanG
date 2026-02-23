@@ -4,7 +4,7 @@
  */
 import { Elysia, t } from "elysia";
 import { db } from "../../db";
-import { users, schools, salesCalls, userRoles, userSchools, mailingMessages, mailingRecipients, htCourses, htGroups, htGroupStudents, htLessons } from "../../db/schema";
+import { users, schools, salesCalls, userRoles, userSchools, mailingMessages, mailingRecipients, htCourses, htGroups, htGroupStudents, htLessons, htAttendance, htGrades, htGames, htGameResults } from "../../db/schema";
 import { eq, ne, desc, and, gte, lte, or, inArray } from "drizzle-orm";
 import { ROLES } from "../../constants/roles";
 import { generateId } from "lucia";
@@ -128,6 +128,90 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
       ...r,
       full_name: [r.first_name, r.last_name].filter(Boolean).join(" ") || r.username,
     }));
+  })
+  // Получение входящих сообщений (рассылок) для текущего пользователя
+  .get("/mailing", async (context: any) => {
+    const { user } = context;
+    const rows = await db
+      .select({
+        id: mailingRecipients.id,
+        messageId: mailingMessages.id,
+        title: mailingMessages.title,
+        content: mailingMessages.content,
+        isRead: mailingRecipients.isRead,
+        readAt: mailingRecipients.readAt,
+        receivedAt: mailingRecipients.receivedAt,
+        senderUsername: users.username,
+      })
+      .from(mailingRecipients)
+      .innerJoin(mailingMessages, eq(mailingRecipients.messageId, mailingMessages.id))
+      .leftJoin(users, eq(mailingMessages.createdById, users.id))
+      .where(eq(mailingRecipients.recipientId, user!.id))
+      .orderBy(desc(mailingRecipients.receivedAt));
+    
+    return rows.map(r => ({
+      id: r.id,
+      message_id: r.messageId,
+      title: r.title,
+      content: r.content,
+      is_read: r.isRead,
+      read_at: r.readAt?.toISOString(),
+      received_at: r.receivedAt.toISOString(),
+      sender: r.senderUsername,
+    }));
+  })
+  .post("/mailing/:id/read", async (context: any) => {
+    const { user, params: { id } } = context;
+    await db
+      .update(mailingRecipients)
+      .set({ isRead: true, readAt: new Date() })
+      .where(and(eq(mailingRecipients.id, parseInt(id)), eq(mailingRecipients.recipientId, user!.id)));
+    return { success: true };
+  })
+  .post("/mailing/read-all", async (context: any) => {
+    const { user } = context;
+    await db
+      .update(mailingRecipients)
+      .set({ isRead: true, readAt: new Date() })
+      .where(and(eq(mailingRecipients.recipientId, user!.id), eq(mailingRecipients.isRead, false)));
+    return { success: true };
+  })
+  // Группы для текущего пользователя (учителя или ученика)
+  .get("/my-groups", async (context: any) => {
+    const { user } = context;
+    const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, user!.id)).limit(1);
+    
+    if (u?.role === ROLES.TEACHER) {
+      const rows = await db
+        .select({
+          id: htGroups.id,
+          name: htGroups.name,
+          courseName: htCourses.name,
+          timeSlot: htGroups.timeSlot,
+          weekDays: htGroups.weekDays,
+        })
+        .from(htGroups)
+        .leftJoin(htCourses, eq(htGroups.courseId, htCourses.id))
+        .where(eq(htGroups.teacherId, user!.id))
+        .orderBy(desc(htGroups.createdAt));
+      return rows;
+    } else if (u?.role === ROLES.STUDENT) {
+      const rows = await db
+        .select({
+          id: htGroups.id,
+          name: htGroups.name,
+          courseName: htCourses.name,
+          timeSlot: htGroups.timeSlot,
+          weekDays: htGroups.weekDays,
+        })
+        .from(htGroupStudents)
+        .innerJoin(htGroups, eq(htGroupStudents.groupId, htGroups.id))
+        .leftJoin(htCourses, eq(htGroups.courseId, htCourses.id))
+        .where(eq(htGroupStudents.userId, user!.id))
+        .orderBy(desc(htGroups.createdAt));
+      return rows;
+    }
+    return [];
   })
   // SALES: Дневник звонков
   .get("/sales/calls", async (context: any) => {
@@ -319,10 +403,16 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
       .onBeforeHandle(async (context: any) => {
         const { user, set } = context;
         const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, user!.id)).limit(1);
-        if (u?.role !== ROLES.HEAD_TEACHER && u?.role !== ROLES.SUPERUSER) {
-          // Проверяем доп. роли
+        
+        // Разрешаем доступ: Суперпользователю, Завучу ИЛИ Учителю
+        const allowedRoles = [ROLES.SUPERUSER, ROLES.HEAD_TEACHER, ROLES.TEACHER];
+        
+        if (!allowedRoles.includes(u?.role as any)) {
+          // Если основной роли нет в списке, проверяем дополнительные роли
           const isHt = await hasRole(user!.id, ROLES.HEAD_TEACHER);
-          if (!isHt) {
+          const isTeacher = await hasRole(user!.id, ROLES.TEACHER);
+          
+          if (!isHt && !isTeacher) {
             set.status = 403;
             return { error: "Forbidden" };
           }
@@ -684,6 +774,10 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
           fromMain.forEach((r) => schoolUserIds.add(r.id));
           const fromExtra = await db.select({ userId: userSchools.userId }).from(userSchools).where(eq(userSchools.schoolId, schoolId));
           fromExtra.forEach((r) => schoolUserIds.add(r.userId));
+        } else if (u?.role === ROLES.SUPERUSER) {
+          // Если суперпользователь и школа не указана, берем всех пользователей системы
+          const allUsers = await db.select({ id: users.id }).from(users);
+          allUsers.forEach((r) => schoolUserIds.add(r.id));
         }
         const ids = Array.from(schoolUserIds);
         if (ids.length > 0) {
@@ -697,8 +791,16 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
             const rows = await db.select({ id: users.id }).from(users).where(and(inArray(users.id, ids), eq(users.role, ROLES.TEACHER)));
             targetUserIds = rows.map((r) => r.id);
           } else {
+            // "all" - students, parents, and teachers
             const rows = await db.select({ id: users.id }).from(users).where(
-              and(inArray(users.id, ids), or(eq(users.role, ROLES.STUDENT), eq(users.role, ROLES.PARENT), eq(users.role, ROLES.TEACHER)))
+              and(
+                inArray(users.id, ids), 
+                or(
+                  eq(users.role, ROLES.STUDENT), 
+                  eq(users.role, ROLES.PARENT), 
+                  eq(users.role, ROLES.TEACHER)
+                )
+              )
             );
             targetUserIds = rows.map((r) => r.id);
           }
@@ -1381,5 +1483,111 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
         }
         await db.delete(htLessons).where(eq(htLessons.id, parseInt(id)));
         return { message: "Deleted" };
+      })
+
+      // Attendance
+      .get("/groups/:id/attendance", async (context: any) => {
+        const { params: { id } } = context;
+        const rows = await db.select({
+          id: htAttendance.id,
+          lessonId: htAttendance.lessonId,
+          userId: htAttendance.userId,
+          status: htAttendance.status,
+          notes: htAttendance.notes,
+          lessonDate: htLessons.lessonDate,
+        }).from(htAttendance)
+          .innerJoin(htLessons, eq(htAttendance.lessonId, htLessons.id))
+          .where(eq(htLessons.groupId, parseInt(id)));
+        return rows;
+      })
+      .get("/groups/:id/students", async (context: any) => {
+        const { params: { id } } = context;
+        const rows = await db.select({
+          id: users.id,
+          firstName: users.first_name,
+          lastName: users.last_name,
+          username: users.username,
+          avatar: users.avatar,
+        }).from(htGroupStudents)
+          .innerJoin(users, eq(htGroupStudents.userId, users.id))
+          .where(eq(htGroupStudents.groupId, parseInt(id)));
+        return rows;
+      })
+      .post("/attendance", async (context: any) => {
+        const { body } = context;
+        const { lesson_id, user_id, status, notes } = body;
+        const [row] = await db.insert(htAttendance).values({
+          lessonId: lesson_id,
+          userId: user_id,
+          status,
+          notes,
+        }).onConflictDoUpdate({
+          target: [htAttendance.lessonId, htAttendance.userId],
+          set: { status, notes, updatedAt: new Date() }
+        }).returning();
+        return row;
+      }, {
+        body: t.Object({
+          lesson_id: t.Number(),
+          user_id: t.String(),
+          status: t.String(),
+          notes: t.Optional(t.String()),
+        })
+      })
+
+      // Grades
+      .get("/groups/:id/grades", async (context: any) => {
+        const { params: { id } } = context;
+        const rows = await db.select().from(htGrades).where(eq(htGrades.groupId, parseInt(id)));
+        return rows;
+      })
+      .post("/grades", async (context: any) => {
+        const { body } = context;
+        const [row] = await db.insert(htGrades).values({
+          groupId: body.group_id,
+          userId: body.user_id,
+          type: body.type,
+          title: body.title,
+          grade: body.grade,
+          maxGrade: body.max_grade,
+          comment: body.comment,
+          date: body.date ? new Date(body.date) : new Date(),
+        }).returning();
+        return row;
+      }, {
+        body: t.Object({
+          group_id: t.Number(),
+          user_id: t.String(),
+          type: t.String(),
+          title: t.String(),
+          grade: t.String(),
+          max_grade: t.Optional(t.String()),
+          comment: t.Optional(t.String()),
+          date: t.Optional(t.String()),
+        })
+      })
+
+      // Games
+      .get("/groups/:id/games", async (context: any) => {
+        const { params: { id } } = context;
+        const rows = await db.select().from(htGames).where(eq(htGames.groupId, parseInt(id)));
+        return rows;
+      })
+      .post("/games", async (context: any) => {
+        const { body } = context;
+        const [row] = await db.insert(htGames).values({
+          groupId: body.group_id,
+          title: body.title,
+          type: body.type,
+          config: body.config ? JSON.stringify(body.config) : null,
+        }).returning();
+        return row;
+      }, {
+        body: t.Object({
+          group_id: t.Number(),
+          title: t.String(),
+          type: t.String(),
+          config: t.Optional(t.Any()),
+        })
       })
   );

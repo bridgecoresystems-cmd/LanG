@@ -1,5 +1,8 @@
 import { pgTable, text, timestamp, integer, boolean, serial, decimal, uniqueIndex } from "drizzle-orm/pg-core";
 
+// --- Cabinet Tables (Attendance, Grades, Games) ---
+export * from "./schema-cabinet";
+
 // --- Schools (for DIRECTOR, HEAD_TEACHER scope) ---
 
 export const schools = pgTable("school", {

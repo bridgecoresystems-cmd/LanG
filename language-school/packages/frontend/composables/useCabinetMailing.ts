@@ -70,5 +70,23 @@ export const useCabinetMailing = () => {
     return (data as { recipients: MailingRecipient[] })?.recipients ?? []
   }
 
-  return { getList, getById, create, send, remove, getRecipients }
+  const getMyMessages = async () => {
+    const { data, error } = await api.api.v1.cabinet.mailing.get()
+    if (error) throw error
+    return data ?? []
+  }
+
+  const markAsRead = async (id: number) => {
+    const { data, error } = await api.api.v1.cabinet.mailing({ id: String(id) }).read.post()
+    if (error) throw error
+    return data
+  }
+
+  const markAllAsRead = async () => {
+    const { data, error } = await api.api.v1.cabinet.mailing['read-all'].post()
+    if (error) throw error
+    return data
+  }
+
+  return { getList, getById, create, send, remove, getRecipients, getMyMessages, markAsRead, markAllAsRead }
 }

@@ -70,7 +70,49 @@ export const useCabinetGroups = () => {
     return (data ?? []) as { id: string; full_name: string; username: string; current_group_name: string | null }[]
   }
 
-  return { getList, getById, create, update, remove, addStudents, removeStudents, getAvailableStudents }
+  const getGroupStudents = async (id: number) => {
+    const { data, error } = await ht.groups({ id: String(id) }).students.get()
+    if (error) throw error
+    return (data ?? []) as { id: string; firstName: string; lastName: string; username: string; avatar?: string }[]
+  }
+
+  const getAttendance = async (groupId: number) => {
+    const { data, error } = await ht.groups({ id: String(groupId) }).attendance.get()
+    if (error) throw error
+    return data ?? []
+  }
+
+  const saveAttendance = async (body: { lesson_id: number; user_id: string; status: string; notes?: string }) => {
+    const { data, error } = await api.api.v1.cabinet['head-teacher'].attendance.post(body)
+    if (error) throw error
+    return data
+  }
+
+  const getGrades = async (groupId: number) => {
+    const { data, error } = await ht.groups({ id: String(groupId) }).grades.get()
+    if (error) throw error
+    return data ?? []
+  }
+
+  const saveGrade = async (body: { group_id: number; user_id: string; type: string; title: string; grade: string; max_grade?: string; comment?: string; date?: string }) => {
+    const { data, error } = await api.api.v1.cabinet['head-teacher'].grades.post(body)
+    if (error) throw error
+    return data
+  }
+
+  const getGames = async (groupId: number) => {
+    const { data, error } = await ht.groups({ id: String(groupId) }).games.get()
+    if (error) throw error
+    return data ?? []
+  }
+
+  const saveGame = async (body: { group_id: number; title: string; type: string; config?: any }) => {
+    const { data, error } = await api.api.v1.cabinet['head-teacher'].games.post(body)
+    if (error) throw error
+    return data
+  }
+
+  return { getList, getById, create, update, remove, addStudents, removeStudents, getAvailableStudents, getGroupStudents, getAttendance, saveAttendance, getGrades, saveGrade, getGames, saveGame }
 }
 
 export const useCabinetTeachers = () => {

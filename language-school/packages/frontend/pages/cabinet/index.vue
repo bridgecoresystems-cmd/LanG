@@ -10,7 +10,7 @@
           C возвращением, {{ authStore.user?.first_name || 'друг' }}! 👋
         </h1>
         <p class="text-lg lg:text-xl text-primary-50/90 leading-relaxed font-medium">
-          Это твой персональный кабинет Language School. Здесь собрано всё необходимое для управления обучением и контентом.
+          Это твой персональный кабинет Academy. Здесь собрано всё необходимое для управления обучением и контентом.
         </p>
       </div>
 
@@ -24,69 +24,64 @@
       </div>
     </header>
 
-    <!-- Content Sections -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <!-- Editor Management Stats/Links -->
-      <div v-if="isEditor" class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <UCard
-          v-for="card in editorShortcuts"
-          :key="card.path"
-          class="group hover:shadow-xl transition-all duration-300 ring-1 ring-gray-200 dark:ring-gray-700"
-          :ui="{ body: { padding: 'p-6' } }"
-        >
-          <div class="flex items-start justify-between">
-            <div :class="['p-3 rounded-2xl transition-colors duration-300', card.colorClass]">
-              <UIcon :name="card.icon" class="w-8 h-8" />
-            </div>
-            <UButton
-              :to="card.path"
-              variant="ghost"
-              color="gray"
-              icon="i-heroicons-arrow-right-20-solid"
-              class="opacity-0 group-hover:opacity-100 transition-opacity"
-            />
-          </div>
-          <div class="mt-6">
-            <h3 class="text-xl font-bold text-gray-800 dark:text-white">{{ card.label }}</h3>
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-              {{ card.description }}
-            </p>
-          </div>
-          <template #footer>
-            <UButton :to="card.path" variant="soft" color="primary" block label="Перейти" />
-          </template>
-        </UCard>
+    <!-- Группы для Учителя и Ученика -->
+    <div v-if="isTeacher || isStudent" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+          <UIcon name="i-heroicons-user-group" class="text-primary-500" />
+          {{ isTeacher ? 'Мои группы' : 'Мои курсы' }}
+        </h2>
       </div>
 
-      <!-- Student Info Widget -->
-      <div v-if="isStudent" class="space-y-6">
-        <UCard class="bg-indigo-50/50 dark:bg-indigo-900/10 ring-indigo-100 dark:ring-indigo-900/30">
-          <div class="flex items-center gap-4 mb-6">
-            <div class="p-3 bg-indigo-500 rounded-2xl text-white">
-              <UIcon name="i-heroicons-book-open" class="w-7 h-7" />
-            </div>
-            <h3 class="text-lg font-bold text-gray-800 dark:text-white">Моё обучение</h3>
-          </div>
-          <div class="space-y-4">
-            <UButton to="/cabinet/student/courses" color="indigo" variant="soft" block label="Мои курсы" icon="i-heroicons-academic-cap" />
-            <UButton to="/cabinet/student/schedule" color="indigo" variant="soft" block label="Расписание" icon="i-heroicons-calendar" />
-          </div>
-        </UCard>
-
-        <!-- Stats Mockup (Cool look) -->
-        <UCard class="bg-emerald-50/50 dark:bg-emerald-900/10 ring-emerald-100 dark:ring-emerald-900/30">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-emerald-600 dark:text-emerald-400">Прогресс обучения</p>
-              <h4 class="text-2xl font-bold text-gray-800 dark:text-white mt-1">75%</h4>
-            </div>
-            <div class="p-2 bg-emerald-500/20 rounded-full">
-              <UIcon name="i-heroicons-chart-bar" class="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-            </div>
-          </div>
-          <UMeter :value="75" color="emerald" class="mt-4" />
-        </UCard>
+      <div v-if="contextStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <USkeleton v-for="i in 3" :key="i" class="h-48 rounded-2xl" />
       </div>
+
+      <div v-else-if="contextStore.availableGroups.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <CabinetGroupCard
+          v-for="group in contextStore.availableGroups"
+          :key="group.id"
+          :group="group"
+          @click="selectGroup(group.id)"
+        />
+      </div>
+
+      <div v-else class="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700">
+        <UIcon name="i-heroicons-information-circle" class="w-12 h-12 text-gray-400 mb-4 mx-auto" />
+        <p class="text-gray-500 dark:text-gray-400 text-lg">У вас пока нет активных групп.</p>
+      </div>
+    </div>
+
+    <!-- Content Sections for Editors/Admins -->
+    <div v-if="isEditor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <UCard
+        v-for="card in editorShortcuts"
+        :key="card.path"
+        class="group hover:shadow-xl transition-all duration-300 ring-1 ring-gray-200 dark:ring-gray-700"
+        :ui="{ body: { padding: 'p-6' } }"
+      >
+        <div class="flex items-start justify-between">
+          <div :class="['p-3 rounded-2xl transition-colors duration-300', card.colorClass]">
+            <UIcon :name="card.icon" class="w-8 h-8" />
+          </div>
+          <UButton
+            :to="card.path"
+            variant="ghost"
+            color="gray"
+            icon="i-heroicons-arrow-right-20-solid"
+            class="opacity-0 group-hover:opacity-100 transition-opacity"
+          />
+        </div>
+        <div class="mt-6">
+          <h3 class="text-xl font-bold text-gray-800 dark:text-white">{{ card.label }}</h3>
+          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+            {{ card.description }}
+          </p>
+        </div>
+        <template #footer>
+          <UButton :to="card.path" variant="soft" color="primary" block label="Перейти" />
+        </template>
+      </UCard>
     </div>
   </div>
 </template>
@@ -94,6 +89,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAuthStore } from '~/stores/authStore'
+import { useContextStore } from '~/stores/contextStore'
 
 definePageMeta({ 
   layout: 'cabinet', 
@@ -101,10 +97,21 @@ definePageMeta({
 })
 
 const authStore = useAuthStore()
+const contextStore = useContextStore()
 
 const userRole = computed(() => (authStore.user?.role || '').toUpperCase())
 const isEditor = computed(() => ['EDITOR', 'SUPERUSER', 'HEAD_TEACHER'].includes(userRole.value))
-const isStudent = computed(() => ['STUDENT', 'SUPERUSER'].includes(userRole.value))
+const isStudent = computed(() => ['STUDENT'].includes(userRole.value))
+const isTeacher = computed(() => ['TEACHER'].includes(userRole.value))
+
+const selectGroup = (id: number) => {
+  contextStore.setSelectedGroup(id)
+  // Можно добавить уведомление или сразу перенаправить на первую страницу контекста
+  const targetPath = isTeacher.value 
+    ? `/cabinet/teacher/groups/${id}/lessons` 
+    : `/cabinet/student/groups/${id}/lessons`
+  navigateTo(targetPath)
+}
 
 const editorShortcuts = [
   {
@@ -132,7 +139,6 @@ const editorShortcuts = [
 </script>
 
 <style scoped>
-/* Individual page animations */
 .space-y-8 {
   animation: slideUp 0.4s ease-out;
 }

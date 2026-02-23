@@ -18,8 +18,15 @@ export const useCabinetProfile = () => {
     return data
   }
 
+  const getMyGroups = async () => {
+    const { data, error } = await api.api.v1.cabinet['my-groups'].get()
+    if (error) throw error
+    return data ?? []
+  }
+
   return {
     get,
-    update
+    update,
+    getMyGroups
   }
 }
