@@ -9,7 +9,9 @@
     "dev": "node scripts/dev.mjs",
     "build": "nuxt build",
     "generate": "nuxt generate",
-    "preview": "nuxt preview"
+    "preview": "nuxt preview",
+    "typecheck": "nuxt typecheck",
+    "lint": "eslint . --ext .ts,.vue"
   },
   "dependencies": {
     "@elysiajs/eden": "^1.4.6",
