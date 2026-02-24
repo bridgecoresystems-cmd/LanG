@@ -24,7 +24,7 @@ export const useEden = () => {
   // В браузере — через Nuxt proxy (тот же origin), чтобы избежать CORS и 404 при hot-reload
   const baseUrl = import.meta.client
     ? (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
-    : (process.env.API_URL || process.env.NITRO_HOST || 'http://127.0.0.1:8000')
+    : (process.env.API_URL || process.env.NITRO_HOST || 'http://127.0.0.1:8010')
 
   const serverHeaders =
     import.meta.server

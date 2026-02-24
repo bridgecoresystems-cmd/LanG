@@ -36,8 +36,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       // Прямой URL на backend. Используем localhost (не 127.0.0.1) чтобы cookies совпадали с доменом страницы.
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || `${process.env.NUXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:8000'}/api/v1`,
-      wsUrl: process.env.NUXT_PUBLIC_WS_URL || 'ws://localhost:8000',
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || `${process.env.NUXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:8010'}/api/v1`,
+      wsUrl: process.env.NUXT_PUBLIC_WS_URL || 'ws://localhost:8010',
     },
   },
   // Remove vite and nitro proxy blocks as we will use a server route instead
@@ -54,7 +54,7 @@ export default defineNuxtConfig({
     '/admin/**': { ssr: false },
     '/uploads/**': {
       proxy: {
-        to: `${process.env.API_URL || 'http://127.0.0.1:8000'}/uploads/**`,
+        to: `${process.env.API_URL || 'http://127.0.0.1:8010'}/uploads/**`,
         cookieDomainRewrite: { '*': '' },
       },
     },

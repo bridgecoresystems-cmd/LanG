@@ -24,9 +24,17 @@ export const useCabinetProfile = () => {
     return data ?? []
   }
 
+  const getStudentCourses = async () => {
+    const { data, error } = await api.api.v1.cabinet['my-groups'].get()
+    if (error) throw error
+    // In the future, we can add more details here if needed
+    return data ?? []
+  }
+
   return {
     get,
     update,
-    getMyGroups
+    getMyGroups,
+    getStudentCourses
   }
 }

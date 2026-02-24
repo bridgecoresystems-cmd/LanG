@@ -57,15 +57,6 @@
                 <span>{{ $t('cabinet.title') }}</span>
               </NuxtLink>
               <NuxtLink
-                v-if="!authStore.isSuperuser"
-                to="/cabinet/profile"
-                class="dropdown-item"
-                @click="closeUserMenu"
-              >
-                <i class="pi pi-user"></i>
-                <span>{{ $t('cabinet.profile') || 'Профиль' }}</span>
-              </NuxtLink>
-              <NuxtLink
                 v-if="authStore.isSuperuser"
                 to="/admin"
                 class="dropdown-item"

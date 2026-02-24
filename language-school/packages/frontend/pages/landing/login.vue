@@ -65,23 +65,19 @@ const credentials = ref<LoginCredentials>({
 const handleLogin = async () => {
   const success = await authStore.login(credentials.value)
   if (success) {
-    // После login() user уже должен быть в store
-    // Но для надёжности получаем его явно
+    // Для надёжности получаем пользователя явно
     await authStore.fetchCurrentUser()
     
     const user = authStore.user
     const role = user?.role?.toUpperCase()
 
     // Определяем путь на основе роли
-    let path = '/landing'
+    let path = '/cabinet' // По умолчанию все идут в cabinet
     if (role === 'SUPERUSER') {
-      path = '/admin'
-    } else if (role && ['EDITOR', 'TEACHER', 'STUDENT', 'SALES', 'RECEPTIONIST', 'DIRECTOR', 'GEN_DIRECTOR'].includes(role)) {
-      path = '/cabinet'
-    }
-
-    if (role === 'SUPERUSER' && import.meta.client) {
-      sessionStorage.setItem('auth_just_logged_in', '1')
+      path = '/admin' // Только SUPERUSER идёт на admin
+      if (import.meta.client) {
+        sessionStorage.setItem('auth_just_logged_in', '1')
+      }
     }
 
     // Небольшая задержка чтобы store успел обновиться

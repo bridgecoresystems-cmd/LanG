@@ -185,7 +185,7 @@ onMounted(async () => {
       contextStore.setGroups(groups.map((g: any) => ({
         id: g.id,
         name: g.name,
-        course_name: g.courseName
+        course_name: g.course_name ?? g.courseName
       })))
     } catch (e) {
       console.error('Failed to load groups for context', e)

@@ -1,17 +1,11 @@
 <template>
   <div class="space-y-8">
     <!-- Welcome Header -->
-    <header class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 to-primary-700 p-8 lg:p-12 text-white">
-      <div class="relative z-10 max-w-2xl">
-        <UBadge color="white" variant="soft" class="mb-4 text-primary-700 font-bold uppercase tracking-wider px-3 py-1">
-          {{ authStore.user?.role || 'Пользователь' }}
-        </UBadge>
-        <h1 class="text-3xl lg:text-5xl font-bold mb-4">
-          C возвращением, {{ authStore.user?.first_name || 'друг' }}! 👋
+    <header class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 p-6 text-white">
+      <div class="relative z-10">
+        <h1 class="text-2xl font-bold">
+          C возвращением, {{ authStore.user?.first_name || 'друг' }}! 👋 Личный кабинет Academy
         </h1>
-        <p class="text-lg lg:text-xl text-primary-50/90 leading-relaxed font-medium">
-          Это твой персональный кабинет Academy. Здесь собрано всё необходимое для управления обучением и контентом.
-        </p>
       </div>
 
       <!-- Decorative abstract shapes -->
