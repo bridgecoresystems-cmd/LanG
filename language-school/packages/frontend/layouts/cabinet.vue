@@ -409,7 +409,7 @@ const menuOptions = computed<MenuOption[]>(() => {
 })
 
 const activeKey = computed(() => {
-  const path = route.path
+  const path = route?.path ?? ''
   const options = menuOptions.value
   const leafKeys = options.flatMap((opt) =>
     opt.children ? opt.children.map((c) => c.key) : [opt.key]
@@ -417,12 +417,12 @@ const activeKey = computed(() => {
   const exact = leafKeys.find((k) => k === path)
   if (exact) return exact
   const sorted = [...leafKeys].sort((a, b) => b.length - a.length)
-  const found = sorted.find((k) => path.startsWith(k) && (path === k || path[k.length] === '/'))
+  const found = sorted.find((k) => path && path.startsWith(k) && (path === k || path[k.length] === '/'))
   return found || path
 })
 
 const activePageTitle = computed(() => {
-  const path = route.path
+  const path = route?.path ?? ''
   if (path === '/cabinet') return 'Обзор'
   if (path.includes('/profile')) return 'Мой профиль'
   if (path.includes('/sales')) return 'Sales дневник'

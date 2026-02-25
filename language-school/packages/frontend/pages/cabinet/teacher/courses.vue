@@ -24,98 +24,82 @@
       </NTab>
     </NTabs>
 
-    <div v-if="pending" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-      <NSkeleton v-for="i in 3" :key="i" :height="280" :sharp="false" />
+    <div v-if="pending" class="loading-state mt-8">
+      <NSpin size="large" />
     </div>
 
-    <div v-else-if="filteredCourses.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-      <NCard
-        v-for="course in filteredCourses"
-        :key="course.id"
-        class="course-card"
-        :class="{ 'course-completed': !course.is_active }"
-        hoverable
-        @click="goToCourse(course.id)"
-      >
-        <template #header-extra>
-          <NTag
-            :type="course.is_active ? 'success' : 'info'"
-            size="small"
-            round
-            :bordered="false"
-          >
-            {{ course.is_active ? 'Активен' : 'Завершён' }}
-          </NTag>
-        </template>
-
-        <div class="course-card__content">
-          <div class="course-card__header">
-            <h3 class="course-card__title">{{ course.course_name || course.courseName }}</h3>
-            <div class="course-card__group-name">{{ course.name }}</div>
-          </div>
-
-          <NSpace vertical size="small" class="mt-4">
-            <div class="info-item">
-              <NIcon><component :is="PeopleIcon" /></NIcon>
-              <span>Учеников: {{ course.students_count ?? 0 }} / {{ course.max_students ?? 15 }}</span>
-            </div>
-            <div class="info-item">
-              <NIcon><component :is="CalendarIcon" /></NIcon>
-              <span>Начало: {{ formatDate(course.start_date) || '—' }}</span>
-            </div>
-            <div class="info-item" v-if="course.end_date">
-              <NIcon><component :is="CalendarIcon" /></NIcon>
-              <span>Окончание: {{ formatDate(course.end_date) || '—' }}</span>
-            </div>
-            <div class="info-item" v-if="course.time_slot || course.week_days">
-              <NIcon><component :is="TimeIcon" /></NIcon>
-              <span>{{ formatTimeSlot(course.time_slot) }} · {{ formatWeekDays(course.week_days) }}</span>
-            </div>
-          </NSpace>
-
-          <!-- Прогресс -->
-          <div class="course-section progress-section mt-4">
-            <div class="info-row">
-              <span class="info-label">Прогресс</span>
-              <span class="info-value">{{ course.progress || 0 }}%</span>
-            </div>
-            <NProgress
-              type="line"
-              :percentage="course.progress || 0"
-              :show-indicator="false"
-              status="success"
-            />
-            <div class="info-hint mt-1">
-              Уроков: {{ course.completed_lessons || 0 }} / {{ course.total_lessons || 0 }}
-            </div>
-          </div>
-
-          <!-- Следующий урок -->
-          <NAlert
-            v-if="course.next_lesson && course.is_active"
-            type="info"
-            size="small"
-            :bordered="false"
-            class="next-lesson-alert mt-3"
-          >
-            <template #icon>
-              <NIcon><component :is="TimeIcon" /></NIcon>
-            </template>
-            <div class="next-lesson-content">
-              <div class="next-lesson-label">Следующий урок:</div>
-              <div class="next-lesson-title">{{ course.next_lesson.title }}</div>
-              <div class="next-lesson-date">{{ formatDateTime(course.next_lesson.date) }}</div>
-            </div>
-          </NAlert>
-
-          <div class="course-card__footer mt-4">
-            <NButton type="primary" secondary block>
-              Журнал / Уроки
-            </NButton>
-          </div>
-        </div>
-      </NCard>
-    </div>
+    <NCard v-else-if="filteredCourses.length > 0" bordered class="courses-table-card mt-6">
+      <div class="table-wrapper">
+        <table class="courses-table">
+          <thead>
+            <tr>
+              <th>Название курса</th>
+              <th>Уровень</th>
+              <th>Студенты</th>
+              <th>Даты</th>
+              <th>Прогресс</th>
+              <th>Следующий урок</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="course in filteredCourses"
+              :key="course.id"
+              class="course-row"
+              @click="goToCourse(course.id)"
+            >
+              <td>
+                <div class="cell-title">{{ course.course_name || course.courseName || '—' }}</div>
+                <div class="cell-subtitle">{{ course.name || '' }}</div>
+              </td>
+              <td>{{ course.name || '—' }}</td>
+              <td>
+                <span class="cell-with-icon">
+                  <NIcon size="16" class="cell-icon"><component :is="PeopleIcon" /></NIcon>
+                  {{ course.students_count ?? 0 }} / {{ course.max_students ?? 15 }}
+                </span>
+              </td>
+              <td>
+                <div class="cell-dates">
+                  <span class="cell-with-icon">
+                    <NIcon size="14" class="cell-icon"><component :is="CalendarIcon" /></NIcon>
+                    {{ formatDateShort(course.start_date) }}
+                  </span>
+                  <span class="cell-with-icon">
+                    <NIcon size="14" class="cell-icon"><component :is="CalendarIcon" /></NIcon>
+                    {{ formatDateShort(course.end_date) }}
+                  </span>
+                </div>
+              </td>
+              <td>
+                <div class="cell-progress">
+                  <div class="progress-header">
+                    <span>{{ course.progress || 0 }}%</span>
+                    <span class="progress-hint">{{ course.completed_lessons || 0 }} / {{ course.total_lessons || 0 }}</span>
+                  </div>
+                  <NProgress
+                    type="line"
+                    :percentage="course.progress || 0"
+                    :show-indicator="false"
+                    status="success"
+                  />
+                </div>
+              </td>
+              <td>
+                <template v-if="course.next_lesson && course.is_active">
+                  <span class="cell-with-icon">
+                    <NIcon size="14" class="cell-icon"><component :is="TimeIcon" /></NIcon>
+                    {{ course.next_lesson.title }}
+                  </span>
+                  <div class="cell-subtitle">{{ formatDateTime(course.next_lesson.date) }}</div>
+                </template>
+                <span v-else>—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </NCard>
 
     <div v-else class="empty-state mt-12">
       <NEmpty description="У вас пока нет групп">
@@ -130,7 +114,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import {
-  NH1, NTabs, NTab, NCard, NTag, NIcon, NButton, NEmpty, NSkeleton, NProgress, NAlert, NSpace
+  NH1, NTabs, NTab, NCard, NIcon, NEmpty, NProgress, NSpin
 } from 'naive-ui'
 import {
   CalendarOutline as CalendarIcon,
@@ -167,15 +151,6 @@ const filteredCourses = computed(() => {
   return coursesData.value.courses
 })
 
-const formatDate = (dateStr: string | null) => {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('ru-RU', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
 const formatDateTime = (dateStr: string | null) => {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleString('ru-RU', {
@@ -187,23 +162,13 @@ const formatDateTime = (dateStr: string | null) => {
   })
 }
 
-const formatTimeSlot = (slot: string | null) => {
-  if (!slot) return '—'
-  const map: Record<string, string> = {
-    A: '08:00–11:00',
-    B: '13:00–17:00',
-    C: '17:00–19:00'
-  }
-  return map[slot] || slot
-}
-
-const formatWeekDays = (days: string | null) => {
-  if (!days) return '—'
-  const map: Record<string, string> = {
-    '1': 'Пн, Ср, Пт',
-    '2': 'Вт, Чт, Сб'
-  }
-  return map[days] || days
+const formatDateShort = (dateStr: string | null) => {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleDateString('ru-RU', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
 }
 
 const syncFromContext = () => {
@@ -274,90 +239,86 @@ onMounted(() => {
   color: var(--n-text-color-3);
 }
 
-.course-card {
-  border-radius: 16px;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.course-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.course-card__title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
-.course-card__group-name {
-  color: var(--n-text-color-3);
-  font-size: 0.9rem;
-}
-
-.info-item {
+.loading-state {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
+  justify-content: center;
+  padding: 80px 0;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.courses-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.courses-table th,
+.courses-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--n-border-color);
+  vertical-align: top;
+}
+
+.courses-table th {
+  font-weight: 600;
   color: var(--n-text-color-2);
+  white-space: nowrap;
 }
 
-.course-section {
-  padding: 12px;
-  background-color: #f5f7f9;
-  border-radius: 8px;
+.course-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
+.course-row:hover {
+  background-color: var(--n-color-hover);
 }
 
-.info-label {
+.cell-title {
   font-weight: 600;
-  font-size: 0.9rem;
 }
 
-.info-value {
-  font-weight: 600;
-  color: var(--n-primary-color);
-}
-
-.info-hint {
+.cell-subtitle {
   font-size: 0.85rem;
   color: var(--n-text-color-3);
+  margin-top: 2px;
 }
 
-.next-lesson-alert {
-  border-left: 4px solid #2080f0;
+.cell-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.next-lesson-content {
+.cell-with-icon .cell-icon {
+  color: #18a058;
+  flex-shrink: 0;
+}
+
+.cell-dates {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.next-lesson-label {
-  font-weight: 600;
+.cell-progress {
+  min-width: 140px;
+}
+
+.cell-progress .progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
   font-size: 0.9rem;
 }
 
-.next-lesson-title {
-  font-size: 0.95rem;
-}
-
-.next-lesson-date {
-  font-size: 0.85rem;
+.cell-progress .progress-hint {
+  font-size: 0.8rem;
   color: var(--n-text-color-3);
-}
-
-.course-completed {
-  opacity: 0.85;
 }
 
 .empty-state {
