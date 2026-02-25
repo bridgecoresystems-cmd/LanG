@@ -60,6 +60,8 @@ export const headTeacherLessonRoutes = new Elysia()
       durationMinutes: htLessons.durationMinutes,
       homework: htLessons.homework,
       materials: htLessons.materials,
+      lessonPlan: htLessons.lessonPlan,
+      lessonNotes: htLessons.lessonNotes,
       schoolId: htGroups.schoolId,
     }).from(htLessons)
       .leftJoin(htGroups, eq(htLessons.groupId, htGroups.id))
@@ -78,6 +80,8 @@ export const headTeacherLessonRoutes = new Elysia()
       duration_minutes: row.durationMinutes,
       homework: row.homework,
       materials: row.materials,
+      lesson_plan: row.lessonPlan,
+      lesson_notes: row.lessonNotes,
     };
   })
   .post("/lessons", async (context: any) => {
@@ -133,6 +137,8 @@ export const headTeacherLessonRoutes = new Elysia()
     if (payload.duration_minutes !== undefined) updateData.durationMinutes = payload.duration_minutes as number;
     if (payload.homework !== undefined) updateData.homework = (payload.homework as string)?.trim() || null;
     if (payload.materials !== undefined) updateData.materials = payload.materials ? JSON.stringify(payload.materials) : null;
+    if (payload.lesson_plan !== undefined) updateData.lessonPlan = (payload.lesson_plan as string)?.trim() || null;
+    if (payload.lesson_notes !== undefined) updateData.lessonNotes = (payload.lesson_notes as string)?.trim() || null;
     const [updated] = await db.update(htLessons).set(updateData as any).where(eq(htLessons.id, parseInt(id))).returning();
     if (!updated) return { error: "Not found" };
     return {
@@ -151,6 +157,8 @@ export const headTeacherLessonRoutes = new Elysia()
       duration_minutes: t.Optional(t.Number()),
       homework: t.Optional(t.String()),
       materials: t.Optional(t.Any()),
+      lesson_plan: t.Optional(t.String()),
+      lesson_notes: t.Optional(t.String()),
     }),
   })
   .delete("/lessons/:id", async (context: any) => {

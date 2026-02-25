@@ -1,6 +1,7 @@
 import { useEden } from './useEden'
+import { useAuthStore } from '~/stores/authStore'
 
-export interface HtLesson {
+export interface Lesson {
   id: number
   group_id: number
   group_name?: string
@@ -10,41 +11,61 @@ export interface HtLesson {
   duration_minutes: number
   homework?: string | null
   materials?: string | null
+  lesson_plan?: string | null
+  lesson_notes?: string | null
+}
+
+function cabinetFetch<T>(path: string, opts?: { method?: string; body?: any }): Promise<T> {
+  return $fetch<T>(path, {
+    credentials: 'include',
+    method: opts?.method || 'GET',
+    body: opts?.body,
+  })
 }
 
 export const useCabinetLessons = () => {
   const api = useEden()
-  const ht = api.api.v1.cabinet['head-teacher']
+  const authStore = useAuthStore()
+  const role = authStore.user?.role
 
-  const getList = async (params?: { group_id?: number }) => {
-    const opts = params?.group_id ? { query: { group_id: params.group_id } } : undefined
-    const { data, error } = await ht.lessons.get(opts)
+  const getList = async (params: { group_id: number }) => {
+    if (role === 'TEACHER') {
+      return cabinetFetch<Lesson[]>(`/api/v1/cabinet/teacher/groups/${params.group_id}/lessons`)
+    }
+    if (role === 'STUDENT') {
+      return cabinetFetch<Lesson[]>(`/api/v1/cabinet/student/groups/${params.group_id}/lessons`)
+    }
+    const ht = api.api.v1.cabinet['head-teacher']
+    const { data, error } = await ht.lessons.get({ query: { group_id: params.group_id } })
     if (error) throw error
-    return (data ?? []) as HtLesson[]
+    return (data ?? []) as Lesson[]
   }
 
   const getById = async (id: number) => {
+    if (role === 'TEACHER') {
+      return cabinetFetch<Lesson>(`/api/v1/cabinet/teacher/lessons/${id}`)
+    }
+    if (role === 'STUDENT') {
+      return cabinetFetch<Lesson>(`/api/v1/cabinet/student/lessons/${id}`)
+    }
+    const ht = api.api.v1.cabinet['head-teacher']
     const { data, error } = await ht.lessons({ id: String(id) }).get()
     if (error) throw error
-    return data as HtLesson
+    return data as Lesson
   }
 
-  const create = async (body: { group_id: number; title: string; lesson_date: string; description?: string; duration_minutes?: number; homework?: string }) => {
-    const { data, error } = await ht.lessons.post(body)
-    if (error) throw error
-    return data
-  }
-
-  const update = async (id: number, body: Partial<HtLesson>) => {
+  const update = async (id: number, body: Partial<Lesson>) => {
+    if (role === 'TEACHER') {
+      return cabinetFetch<Lesson>(`/api/v1/cabinet/teacher/lessons/${id}`, {
+        method: 'PATCH',
+        body,
+      })
+    }
+    const ht = api.api.v1.cabinet['head-teacher']
     const { data, error } = await ht.lessons({ id: String(id) }).patch(body)
     if (error) throw error
     return data
   }
 
-  const remove = async (id: number) => {
-    const { error } = await ht.lessons({ id: String(id) }).delete()
-    if (error) throw error
-  }
-
-  return { getList, getById, create, update, remove }
+  return { getList, getById, update }
 }

@@ -324,6 +324,8 @@ export const htLessons = pgTable("ht_lesson", {
   durationMinutes: integer("duration_minutes").default(90).notNull(),
   homework: text("homework"),
   materials: text("materials"), // JSON array
+  lessonPlan: text("lesson_plan"), // Конспект урока (для завуча)
+  lessonNotes: text("lesson_notes"), // Заметки учителя по уроку
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

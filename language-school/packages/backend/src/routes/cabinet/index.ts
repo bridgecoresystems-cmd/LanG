@@ -10,7 +10,9 @@ import { headTeacherGroupRoutes } from "./head-teacher/groups";
 import { headTeacherMailingRoutes } from "./head-teacher/mailing";
 import { headTeacherLessonRoutes } from "./head-teacher/lessons";
 import { getTeacherMyGroups, getTeacherGroupIds } from "./teacher";
+import { teacherLessonRoutes } from "./teacher/lessons";
 import { getStudentMyGroups, getStudentGroupIds } from "./student";
+import { studentLessonRoutes } from "./student/lessons";
 import { getScheduleForGroups } from "./schedule";
 
 // Хелпер для проверки роли (основная или дополнительная)
@@ -161,6 +163,32 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
       group_id: t.Optional(t.String()),
     }),
   })
+  .group("/teacher", (app) =>
+    app
+      .onBeforeHandle(async (context: any) => {
+        const { user, set } = context;
+        const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, user!.id)).limit(1);
+        const isTeacher = u?.role === ROLES.TEACHER || (await hasRole(user!.id, ROLES.TEACHER));
+        if (!isTeacher) {
+          set.status = 403;
+          return { error: "Forbidden" };
+        }
+      })
+      .use(teacherLessonRoutes)
+  )
+  .group("/student", (app) =>
+    app
+      .onBeforeHandle(async (context: any) => {
+        const { user, set } = context;
+        const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, user!.id)).limit(1);
+        const isStudent = u?.role === ROLES.STUDENT;
+        if (!isStudent) {
+          set.status = 403;
+          return { error: "Forbidden" };
+        }
+      })
+      .use(studentLessonRoutes)
+  )
   .get("/sales/calls", async (context: any) => {
     const { user, query } = context;
     const isSales = await hasRole(user!.id, ROLES.SALES);

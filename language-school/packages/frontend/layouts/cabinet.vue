@@ -210,7 +210,20 @@ const groupSelectValue = computed(() => {
 })
 
 const handleGroupChange = (value: number | null) => {
-  if (value != null) contextStore.setSelectedGroup(value)
+  if (value == null) return
+  const prevId = contextStore.selectedGroupId
+  contextStore.setSelectedGroup(value)
+
+  // Если текущая страница привязана к группе — перезагружаем её с новой группой
+  const path = route?.path ?? ''
+  const teacherMatch = path.match(/^\/cabinet\/teacher\/groups\/\d+\/([^/]+)(?:\/.*)?$/)
+  const studentMatch = path.match(/^\/cabinet\/student\/groups\/\d+\/([^/]+)(?:\/.*)?$/)
+  const match = teacherMatch || studentMatch
+  if (match && prevId !== value) {
+    const page = match[1] // students, lessons, attendance, grades, games
+    const base = teacherMatch ? '/cabinet/teacher' : '/cabinet/student'
+    navigateTo(`${base}/groups/${value}/${page}`)
+  }
 }
 
 const userName = computed(() => {
@@ -359,6 +372,7 @@ const menuOptions = computed<MenuOption[]>(() => {
     // Если выбрана группа, показываем плоский список меню для учителя
     if (contextStore.selectedGroupId) {
       options.push(
+        { label: 'Список учеников', key: `/cabinet/teacher/groups/${contextStore.selectedGroupId}/students`, icon: renderIcon(PeopleIcon) },
         { label: 'Журнал / Уроки', key: `/cabinet/teacher/groups/${contextStore.selectedGroupId}/lessons`, icon: renderIcon(CalendarIcon) },
         { label: 'Посещаемость', key: `/cabinet/teacher/groups/${contextStore.selectedGroupId}/attendance`, icon: renderIcon(DocumentIcon) },
         { label: 'Оценки', key: `/cabinet/teacher/groups/${contextStore.selectedGroupId}/grades`, icon: renderIcon(ChartIcon) },
@@ -428,6 +442,7 @@ const activePageTitle = computed(() => {
   if (path.includes('/sales')) return 'Sales дневник'
   if (path.includes('/news')) return 'Новости'
   if (path.includes('/courses')) return 'Курсы'
+  if (path.includes('/students')) return 'Список учеников'
   if (path.includes('/contact')) return 'Сообщения'
   if (path.includes('/categories')) return 'Категории'
   if (path.includes('/subcategories')) return 'Подкатегории'

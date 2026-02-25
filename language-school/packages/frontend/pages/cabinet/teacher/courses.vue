@@ -211,7 +211,7 @@ watch(() => contextStore.availableGroups, (groups) => {
 const goToCourse = (id: number) => {
   nextTick(() => {
     contextStore.setSelectedGroup(id)
-    navigateTo(`/cabinet/teacher/groups/${id}/lessons`)
+    navigateTo(`/cabinet/teacher/groups/${id}/students`)
   })
 }
 
