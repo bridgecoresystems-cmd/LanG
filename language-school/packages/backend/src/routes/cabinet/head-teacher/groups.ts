@@ -249,8 +249,22 @@ export const headTeacherGroupRoutes = new Elysia()
       '1': [1, 3, 5],
       '2': [2, 4, 6],
     };
-    const config = timeSlotMap[group.timeSlot];
-    const targetDays = weekDaysMap[group.weekDays];
+    let config = timeSlotMap[group.timeSlot];
+    if (!config && group.timeSlot && /^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$/.test(group.timeSlot)) {
+      const m = group.timeSlot.match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+      if (m) {
+        const startMin = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+        const endMin = parseInt(m[3], 10) * 60 + parseInt(m[4], 10);
+        config = { hour: parseInt(m[1], 10), duration: Math.max(60, endMin - startMin) };
+      }
+    }
+    let targetDays = weekDaysMap[group.weekDays];
+    if (!targetDays && group.weekDays) {
+      const dayMap: Record<string, number> = { 'пн': 1, 'вт': 2, 'ср': 3, 'чт': 4, 'пт': 5, 'сб': 6 };
+      const parts = group.weekDays.toLowerCase().split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
+      const days = parts.map((p) => dayMap[p.slice(0, 2)]).filter((d) => d != null);
+      if (days.length > 0) targetDays = [...new Set(days)].sort((a, b) => a - b);
+    }
     if (!config || !targetDays) {
       set.status = 400;
       return { error: "Invalid time slot or week days" };

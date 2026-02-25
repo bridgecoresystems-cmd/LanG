@@ -1,8 +1,9 @@
 <template>
-  <div class="student-courses-page">
+  <div class="teacher-courses-page">
     <div class="page-header">
       <div class="page-header__text">
-        <NH1 class="page-header__title">Мои курсы</NH1>         
+        <NH1 class="page-header__title">Мои курсы</NH1>
+        <p class="page-header__subtitle">Просмотр всех ваших курсов, активных и завершённых</p>
       </div>
     </div>
 
@@ -19,7 +20,7 @@
         Активные ({{ coursesData.active || 0 }})
       </NTab>
       <NTab name="completed">
-        Завершенные ({{ coursesData.completed || 0 }})
+        Завершённые ({{ coursesData.completed || 0 }})
       </NTab>
     </NTabs>
 
@@ -43,30 +44,30 @@
             round
             :bordered="false"
           >
-            {{ course.is_active ? 'Активен' : 'Завершен' }}
+            {{ course.is_active ? 'Активен' : 'Завершён' }}
           </NTag>
         </template>
 
         <div class="course-card__content">
           <div class="course-card__header">
-            <h3 class="course-card__title">{{ course.course_name }}</h3>
+            <h3 class="course-card__title">{{ course.course_name || course.courseName }}</h3>
             <div class="course-card__group-name">{{ course.name }}</div>
           </div>
 
           <NSpace vertical size="small" class="mt-4">
             <div class="info-item">
-              <NIcon><component :is="PersonIcon" /></NIcon>
-              <span>{{ course.teacher_name || 'Учитель не назначен' }}</span>
-            </div>
-            <div class="info-item" v-if="course.school_name">
-              <NIcon><component :is="SchoolIcon" /></NIcon>
-              <span>{{ course.school_name }}</span>
+              <NIcon><component :is="PeopleIcon" /></NIcon>
+              <span>Учеников: {{ course.students_count ?? 0 }} / {{ course.max_students ?? 15 }}</span>
             </div>
             <div class="info-item">
               <NIcon><component :is="CalendarIcon" /></NIcon>
               <span>Начало: {{ formatDate(course.start_date) || '—' }}</span>
             </div>
-            <div class="info-item">
+            <div class="info-item" v-if="course.end_date">
+              <NIcon><component :is="CalendarIcon" /></NIcon>
+              <span>Окончание: {{ formatDate(course.end_date) || '—' }}</span>
+            </div>
+            <div class="info-item" v-if="course.time_slot || course.week_days">
               <NIcon><component :is="TimeIcon" /></NIcon>
               <span>{{ formatTimeSlot(course.time_slot) }} · {{ formatWeekDays(course.week_days) }}</span>
             </div>
@@ -89,28 +90,6 @@
             </div>
           </div>
 
-          <!-- Оплата -->
-          <div class="course-section payment-section mt-3">
-            <div class="info-row">
-              <span class="info-label">Оплачено</span>
-              <span class="info-value info-value--success">{{ course.total_paid ?? 0 }} TMT</span>
-            </div>
-          </div>
-
-          <!-- Средняя оценка -->
-          <NAlert
-            v-if="course.average_grade != null"
-            type="warning"
-            size="small"
-            :bordered="false"
-            class="mt-3"
-          >
-            <template #icon>
-              <NIcon><component :is="StarIcon" /></NIcon>
-            </template>
-            Средняя оценка: <strong>{{ course.average_grade }}</strong>
-          </NAlert>
-
           <!-- Следующий урок -->
           <NAlert
             v-if="course.next_lesson && course.is_active"
@@ -131,7 +110,7 @@
 
           <div class="course-card__footer mt-4">
             <NButton type="primary" secondary block>
-              Перейти к урокам
+              Журнал / Уроки
             </NButton>
           </div>
         </div>
@@ -139,7 +118,7 @@
     </div>
 
     <div v-else class="empty-state mt-12">
-      <NEmpty description="У вас пока нет курсов">
+      <NEmpty description="У вас пока нет групп">
         <template #icon>
           <NIcon><component :is="BookIcon" /></NIcon>
         </template>
@@ -150,23 +129,21 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { 
-  NH1, NTabs, NTab, NCard, NTag, NIcon, NButton, NEmpty, NSkeleton, NProgress, NAlert, NSpace 
+import {
+  NH1, NTabs, NTab, NCard, NTag, NIcon, NButton, NEmpty, NSkeleton, NProgress, NAlert, NSpace
 } from 'naive-ui'
-import { 
+import {
   CalendarOutline as CalendarIcon,
   TimeOutline as TimeIcon,
   BookOutline as BookIcon,
-  PersonOutline as PersonIcon,
-  BusinessOutline as SchoolIcon,
-  StarOutline as StarIcon
+  PeopleOutline as PeopleIcon
 } from '@vicons/ionicons5'
 import { useCabinetProfile } from '~/composables/useCabinetProfile'
 import { useContextStore } from '~/stores/contextStore'
 
-definePageMeta({ 
-  layout: 'cabinet', 
-  middleware: 'cabinet-auth' 
+definePageMeta({
+  layout: 'cabinet',
+  middleware: 'cabinet-auth'
 })
 
 const profileApi = useCabinetProfile()
@@ -248,18 +225,17 @@ const loadCourses = async () => {
       pending.value = false
       return
     }
-    const data = await profileApi.getStudentCourses()
+    const data = await profileApi.getMyGroups()
     const courses = Array.isArray(data) ? data : []
     contextStore.setGroups(courses.map((g: any) => ({ ...g, course_name: g.course_name ?? g.courseName })))
     syncFromContext()
   } catch (e) {
-    console.error('Failed to load student courses', e)
+    console.error('Failed to load teacher courses', e)
   } finally {
     pending.value = false
   }
 }
 
-// Реактивно обновляем при загрузке layout
 watch(() => contextStore.availableGroups, (groups) => {
   if (Array.isArray(groups) && groups.length > 0) {
     syncFromContext()
@@ -270,7 +246,7 @@ watch(() => contextStore.availableGroups, (groups) => {
 const goToCourse = (id: number) => {
   nextTick(() => {
     contextStore.setSelectedGroup(id)
-    navigateTo(`/cabinet/student/groups/${id}/lessons`)
+    navigateTo(`/cabinet/teacher/groups/${id}/lessons`)
   })
 }
 
@@ -280,7 +256,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.student-courses-page {
+.teacher-courses-page {
   padding-bottom: 40px;
 }
 
@@ -349,10 +325,6 @@ onMounted(() => {
 .info-value {
   font-weight: 600;
   color: var(--n-primary-color);
-}
-
-.info-value--success {
-  color: #18a058;
 }
 
 .info-hint {

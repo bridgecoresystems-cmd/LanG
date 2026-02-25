@@ -40,6 +40,16 @@
               <NGi><NFormItem label=" "><NCheckbox v-model:checked="formData.is_active">Активна</NCheckbox></NFormItem></NGi>
             </NGrid>
             <NAlert v-if="submitError" type="error" closable @close="submitError = null">{{ submitError }}</NAlert>
+            <NAlert v-if="canGenerateSchedule" type="info" :bordered="false" style="margin-top: 16px">
+              <template #header>Расписание</template>
+              <NSpace vertical size="small">
+                <span>Создайте уроки по датам и дням недели. Без этого ученики не увидят расписание. Перед генерацией сохраните форму.</span>
+                <NButton type="primary" size="small" :loading="generatingSchedule" @click="handleGenerateSchedule">
+                  <template #icon><NIcon><component :is="CalendarIcon" /></NIcon></template>
+                  Сгенерировать расписание
+                </NButton>
+              </NSpace>
+            </NAlert>
             <NSpace justify="end" style="margin-top: 16px">
               <NButton ghost @click="navigateTo('/cabinet/head-teacher/groups')">Отмена</NButton>
               <NButton type="primary" attr-type="submit" :loading="submitting"><template #icon><NIcon><component :is="SaveIcon" /></NIcon></template>Сохранить</NButton>
@@ -125,13 +135,13 @@ import {
   useMessage,
   type DataTableColumns,
 } from 'naive-ui'
-import { ChevronBackOutline as ArrowBackIcon, SaveOutline as SaveIcon, PersonAddOutline as PersonAddIcon, TrashOutline as TrashIcon } from '@vicons/ionicons5'
+import { ChevronBackOutline as ArrowBackIcon, SaveOutline as SaveIcon, PersonAddOutline as PersonAddIcon, TrashOutline as TrashIcon, CalendarOutline as CalendarIcon } from '@vicons/ionicons5'
 
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 const route = useRoute()
 const authStore = useAuthStore()
 const message = useMessage()
-const { getById, update, addStudents, removeStudents, getAvailableStudents, getExamSchemes } = useCabinetGroups()
+const { getById, update, addStudents, removeStudents, getAvailableStudents, getExamSchemes, generateSchedule } = useCabinetGroups()
 const { getList: getCourses } = useCabinetCourses()
 const { getList: getTeachers } = useCabinetTeachers()
 const { getUsers } = useCabinetHeadTeacher()
@@ -145,6 +155,7 @@ const availableStudents = ref<{ id: string; full_name: string; username: string;
 const loading = ref(true)
 const loadingAvailable = ref(false)
 const submitting = ref(false)
+const generatingSchedule = ref(false)
 const addingStudents = ref(false)
 const submitError = ref<string | null>(null)
 const showAddModal = ref(false)
@@ -191,6 +202,10 @@ const availableStudentOptions = computed(() =>
     label: s.current_group_name ? `${s.full_name} (сейчас: ${s.current_group_name})` : s.full_name,
     value: s.id,
   }))
+)
+
+const canGenerateSchedule = computed(() =>
+  !!(formData.value.time_slot && formData.value.week_days && startDateTs.value)
 )
 
 const studentColumns: DataTableColumns<any> = [
@@ -290,6 +305,19 @@ async function handleRemoveStudent(userId: string) {
     await loadGroup()
   } catch (e: any) {
     message.error(e?.message || 'Ошибка')
+  }
+}
+
+async function handleGenerateSchedule() {
+  if (!canGenerateSchedule.value) return
+  generatingSchedule.value = true
+  try {
+    const res = await generateSchedule(parseInt(route.params.id as string))
+    message.success(res?.count != null ? `Создано ${res.count} уроков` : 'Расписание сгенерировано')
+  } catch (e: any) {
+    message.error(e?.message || 'Ошибка генерации расписания')
+  } finally {
+    generatingSchedule.value = false
   }
 }
 

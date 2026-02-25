@@ -1,18 +1,18 @@
 <template>
   <NConfigProvider :theme="null">
     <NLayout has-sider position="absolute" style="height: 100vh;">
-      <NLayoutSider
-        bordered
-        collapse-mode="width"
-        :collapsed-width="64"
-        :width="260"
-        :collapsed="isSidebarCollapsed"
-        show-trigger="arrow-circle"
-        @collapse="isSidebarCollapsed = true"
-        @expand="isSidebarCollapsed = false"
-        class="cabinet-sider"
-        :native-scrollbar="false"
-      >
+        <NLayoutSider
+          bordered
+          collapse-mode="width"
+          :collapsed-width="64"
+          :width="260"
+          :collapsed="isSidebarCollapsed"
+          show-trigger="arrow-circle"
+          @collapse="isSidebarCollapsed = true"
+          @expand="isSidebarCollapsed = false"
+          class="cabinet-sider"
+          :native-scrollbar="false"
+        >
         <div class="sidebar-header" :class="{ 'header-collapsed': isSidebarCollapsed }">
           <NuxtLink to="/cabinet" class="logo-link">
             <NIcon v-if="isSidebarCollapsed" size="28" color="white">
@@ -27,7 +27,8 @@
         <div v-if="!isSidebarCollapsed && groupOptions.length > 0" class="group-selector-container">
           <div class="group-selector-label">Текущая группа:</div>
           <NSelect
-            :value="contextStore.selectedGroupId"
+            :key="'group-' + groupOptions.length"
+            :value="groupSelectValue"
             :options="groupOptions"
             size="small"
             placeholder="Выберите группу"
@@ -43,6 +44,7 @@
           :collapsed-icon-size="22"
           :options="menuOptions"
           :value="activeKey"
+          :render-label="renderMenuLabel"
           @update:value="handleMenuUpdate"
           class="cabinet-menu"
         />
@@ -101,7 +103,7 @@
               style="width: 150px;"
               @update:value="handleLanguageChange"
             />
-            <NDropdown :options="userMenuOptions" @select="handleUserMenuSelect">
+            <NDropdown :options="userMenuOptions" trigger="click" @select="handleUserMenuSelect">
               <div class="user-profile">
                 <NAvatar
                   round
@@ -129,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h, onMounted, type Component } from 'vue'
+import { ref, computed, h, onMounted, nextTick, type Component } from 'vue'
 import {
   NConfigProvider,
   NLayout,
@@ -177,16 +179,16 @@ const route = useRoute()
 
 const isSidebarCollapsed = ref(false)
 
-// Загрузка групп при монтировании
+// Загрузка групп при монтировании (единый источник для layout и страниц)
 onMounted(async () => {
   if (hasAnyRole(authStore.user, ['TEACHER', 'STUDENT'])) {
     try {
       const groups = await profileApi.getMyGroups()
-      contextStore.setGroups(groups.map((g: any) => ({
-        id: g.id,
-        name: g.name,
+      const normalized = Array.isArray(groups) ? groups.map((g: any) => ({
+        ...g,
         course_name: g.course_name ?? g.courseName
-      })))
+      })) : []
+      contextStore.setGroups(normalized)
     } catch (e) {
       console.error('Failed to load groups for context', e)
     }
@@ -200,8 +202,15 @@ const groupOptions = computed(() => {
   }))
 })
 
-const handleGroupChange = (value: number) => {
-  contextStore.setSelectedGroup(value)
+// Безопасное значение для NSelect — только если группа есть в списке (избегаем ошибок naive-ui)
+const groupSelectValue = computed(() => {
+  const id = contextStore.selectedGroupId
+  if (!id || !groupOptions.value.some(g => g.value === id)) return null
+  return id
+})
+
+const handleGroupChange = (value: number | null) => {
+  if (value != null) contextStore.setSelectedGroup(value)
 }
 
 const userName = computed(() => {
@@ -343,6 +352,10 @@ const menuOptions = computed<MenuOption[]>(() => {
   }
 
   if (hasRole(user, 'TEACHER')) {
+    options.push(
+      { label: 'Мои курсы', key: '/cabinet/teacher/courses', icon: renderIcon(BookIcon) },
+      { label: 'Расписание', key: '/cabinet/schedule', icon: renderIcon(CalendarIcon) }
+    )
     // Если выбрана группа, показываем плоский список меню для учителя
     if (contextStore.selectedGroupId) {
       options.push(
@@ -360,24 +373,17 @@ const menuOptions = computed<MenuOption[]>(() => {
   }
 
   if (hasRole(user, 'STUDENT')) {
+    const studentGroupId = contextStore.selectedGroupId ?? contextStore.availableGroups[0]?.id
     options.push(
       { label: 'Мои курсы', key: '/cabinet/student/courses', icon: renderIcon(BookIcon) },
+      ...(studentGroupId ? [
+        { label: 'Уроки и материалы', key: `/cabinet/student/groups/${studentGroupId}/lessons`, icon: renderIcon(CalendarIcon) },
+        { label: 'Моя успеваемость', key: `/cabinet/student/groups/${studentGroupId}/grades`, icon: renderIcon(ChartIcon) },
+        { label: 'Игры', key: `/cabinet/student/groups/${studentGroupId}/games`, icon: renderIcon(GameIcon) },
+      ] : []),
+      { label: 'Расписание', key: '/cabinet/schedule', icon: renderIcon(CalendarIcon) },
       { label: 'Сообщения', key: '/cabinet/mailing', icon: renderIcon(MailIcon) }
     )
-
-    // Если выбрана группа, показываем контекстное меню ученика
-    if (contextStore.selectedGroupId) {
-      options.push({
-        label: 'Моё обучение',
-        key: 'student-group-context',
-        icon: renderIcon(ListIcon),
-        children: [
-          { label: 'Уроки и материалы', key: `/cabinet/student/groups/${contextStore.selectedGroupId}/lessons`, icon: renderIcon(CalendarIcon) },
-          { label: 'Моя успеваемость', key: `/cabinet/student/groups/${contextStore.selectedGroupId}/grades`, icon: renderIcon(ChartIcon) },
-          { label: 'Игры', key: `/cabinet/student/groups/${contextStore.selectedGroupId}/games`, icon: renderIcon(GameIcon) },
-        ]
-      })
-    }
   }
 
   if (hasRole(user, 'PARENT')) {
@@ -436,8 +442,16 @@ const activePageTitle = computed(() => {
   return 'Рабочий стол'
 })
 
+function renderMenuLabel(option: MenuOption) {
+  const key = option.key
+  if (typeof key === 'string' && key.startsWith('/')) {
+    return h(NuxtLink, { to: key, class: 'menu-link' }, { default: () => option.label as string })
+  }
+  return option.label as string
+}
+
 function handleMenuUpdate(key: string) {
-  if (key.startsWith('/')) {
+  if (typeof key === 'string' && key.startsWith('/')) {
     navigateTo(key)
   }
 }
@@ -448,15 +462,18 @@ function handleLanguageChange(value: string) {
 }
 
 function handleUserMenuSelect(key: string) {
-  if (key === 'profile') {
-    navigateTo('/cabinet/profile')
-  } else if (key === 'logout') {
-    handleLogout()
-  }
+  nextTick(() => {
+    if (key === 'profile') {
+      navigateTo('/cabinet/profile')
+    } else if (key === 'logout') {
+      handleLogout()
+    }
+  })
 }
 
 async function handleLogout() {
   await authStore.logout()
+  await nextTick()
   await navigateTo('/landing/login')
 }
 </script>
@@ -519,6 +536,13 @@ async function handleLogout() {
 
 .cabinet-menu {
   margin-top: 10px;
+}
+
+.menu-link {
+  display: block;
+  width: 100%;
+  text-decoration: none;
+  color: inherit;
 }
 
 :deep(.n-menu-item-content:hover) {

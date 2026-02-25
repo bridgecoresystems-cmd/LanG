@@ -5,6 +5,7 @@ export interface ContextGroup {
   id: number
   name: string
   course_name?: string
+  [key: string]: unknown // для хранения полных данных групп (students_count, progress и т.д.)
 }
 
 export const useContextStore = defineStore('context', () => {

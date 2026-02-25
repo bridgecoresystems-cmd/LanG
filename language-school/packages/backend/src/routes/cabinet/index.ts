@@ -128,12 +128,62 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
           courseName: htCourses.name,
           timeSlot: htGroups.timeSlot,
           weekDays: htGroups.weekDays,
+          startDate: htGroups.startDate,
+          endDate: htGroups.endDate,
+          isActive: htGroups.isActive,
+          maxStudents: htGroups.maxStudents,
         })
         .from(htGroups)
         .leftJoin(htCourses, eq(htGroups.courseId, htCourses.id))
         .where(eq(htGroups.teacherId, user!.id))
         .orderBy(desc(htGroups.createdAt));
-      return rows;
+
+      const now = new Date();
+      const enriched = await Promise.all(rows.map(async (r) => {
+        const groupId = r.id;
+        const studentCount = (await db.select().from(htGroupStudents).where(eq(htGroupStudents.groupId, groupId))).length;
+        const allLessons = await db.select({ id: htLessons.id, lessonDate: htLessons.lessonDate, title: htLessons.title })
+          .from(htLessons).where(eq(htLessons.groupId, groupId));
+        const totalLessons = allLessons.length;
+        const completedLessons = allLessons.filter((l) => l.lessonDate && new Date(l.lessonDate) < now).length;
+        const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+        const nextLessonRows = await db.select({ id: htLessons.id, title: htLessons.title, lessonDate: htLessons.lessonDate })
+          .from(htLessons)
+          .where(and(eq(htLessons.groupId, groupId), gt(htLessons.lessonDate, now)))
+          .orderBy(asc(htLessons.lessonDate))
+          .limit(1);
+        const nextLesson = nextLessonRows[0] ? {
+          id: nextLessonRows[0].id,
+          title: nextLessonRows[0].title,
+          date: nextLessonRows[0].lessonDate?.toISOString(),
+        } : null;
+
+        const startDate = r.startDate ? new Date(r.startDate) : null;
+        const endDate = r.endDate ? new Date(r.endDate) : null;
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        let isActive = r.isActive ?? true;
+        if (startDate && today < new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())) isActive = false;
+        if (endDate && today > new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())) isActive = false;
+
+        return {
+          id: r.id,
+          name: r.name,
+          course_name: r.courseName,
+          time_slot: r.timeSlot,
+          week_days: r.weekDays,
+          start_date: r.startDate?.toISOString()?.slice(0, 10) || null,
+          end_date: r.endDate?.toISOString()?.slice(0, 10) || null,
+          is_active: isActive,
+          students_count: studentCount,
+          max_students: r.maxStudents ?? 15,
+          total_lessons: totalLessons,
+          completed_lessons: completedLessons,
+          progress,
+          next_lesson: nextLesson,
+        };
+      }));
+      return enriched;
     } else if (u?.role === ROLES.STUDENT) {
       const rows = await db
         .select({
@@ -220,6 +270,90 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
       return enriched;
     }
     return [];
+  })
+  .get("/schedule", async (context: any) => {
+    const { user, query } = context;
+    const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, user!.id)).limit(1);
+    const days = Math.min(90, Math.max(1, parseInt(String(query.days || 7)) || 7));
+    const groupId = query.group_id ? parseInt(String(query.group_id)) : null;
+
+    let groupIds: number[] = [];
+    if (u?.role === ROLES.TEACHER) {
+      const rows = await db.select({ id: htGroups.id }).from(htGroups).where(eq(htGroups.teacherId, user!.id));
+      groupIds = rows.map((r) => r.id);
+    } else if (u?.role === ROLES.STUDENT) {
+      const rows = await db.select({ groupId: htGroupStudents.groupId }).from(htGroupStudents).where(eq(htGroupStudents.userId, user!.id));
+      groupIds = rows.map((r) => r.groupId);
+    } else {
+      return [];
+    }
+
+    if (groupIds.length === 0) return [];
+
+    if (groupId) {
+      if (!groupIds.includes(groupId)) return [];
+      groupIds = [groupId];
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + days);
+    endDate.setHours(23, 59, 59, 999);
+
+    const activeGroupIds: number[] = [];
+    for (const gid of groupIds) {
+      const [g] = await db.select({ startDate: htGroups.startDate, endDate: htGroups.endDate, isActive: htGroups.isActive }).from(htGroups).where(eq(htGroups.id, gid)).limit(1);
+      if (!g || !g.isActive) continue;
+      if (g.startDate && new Date(g.startDate) > today) continue;
+      if (g.endDate && new Date(g.endDate) < today) continue;
+      activeGroupIds.push(gid);
+    }
+
+    if (activeGroupIds.length === 0) return [];
+
+    const lessons = await db.select({
+      id: htLessons.id,
+      title: htLessons.title,
+      description: htLessons.description,
+      lessonDate: htLessons.lessonDate,
+      durationMinutes: htLessons.durationMinutes,
+      homework: htLessons.homework,
+      groupId: htLessons.groupId,
+      groupName: htGroups.name,
+      courseName: htCourses.name,
+      teacherFirstName: users.first_name,
+      teacherLastName: users.last_name,
+      teacherUsername: users.username,
+    })
+      .from(htLessons)
+      .innerJoin(htGroups, eq(htLessons.groupId, htGroups.id))
+      .leftJoin(htCourses, eq(htGroups.courseId, htCourses.id))
+      .leftJoin(users, eq(htGroups.teacherId, users.id))
+      .where(and(
+        inArray(htLessons.groupId, activeGroupIds),
+        gte(htLessons.lessonDate, today),
+        lte(htLessons.lessonDate, endDate)
+      ))
+      .orderBy(asc(htLessons.lessonDate));
+
+    return lessons.map((l) => ({
+      id: l.id,
+      title: l.title,
+      description: l.description,
+      lesson_date: l.lessonDate?.toISOString(),
+      duration_minutes: l.durationMinutes,
+      homework: l.homework,
+      group: l.groupId,
+      group_name: l.groupName,
+      course_name: l.courseName,
+      teacher_name: [l.teacherFirstName, l.teacherLastName].filter(Boolean).join(" ") || l.teacherUsername || null,
+    }));
+  }, {
+    query: t.Object({
+      days: t.Optional(t.String()),
+      group_id: t.Optional(t.String()),
+    }),
   })
   .get("/sales/calls", async (context: any) => {
     const { user, query } = context;
