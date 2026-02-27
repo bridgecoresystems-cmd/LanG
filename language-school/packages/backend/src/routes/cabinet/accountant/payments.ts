@@ -40,8 +40,21 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
     const dateTo = query.dateTo ? new Date(query.dateTo as string) : null;
     const method = query.method as string | undefined;
     
+    // Check if user can view all schools
+    const [currentUser] = await db.select({ 
+      schoolId: users.school_id, 
+      canViewAll: users.can_view_all_schools,
+      role: users.role 
+    }).from(users).where(eq(users.id, user.id)).limit(1);
+
     let whereClause = undefined;
     const conditions = [];
+
+    // Filter by school if not superuser/gen_director and doesn't have "view all" flag
+    const isSuper = currentUser?.role === ROLES.SUPERUSER || currentUser?.role === ROLES.GEN_DIRECTOR;
+    if (!isSuper && !currentUser?.canViewAll && currentUser?.schoolId) {
+      conditions.push(eq(payments.schoolId, currentUser.schoolId));
+    }
 
     if (search) {
       const searchNum = parseFloat(search);
@@ -205,9 +218,29 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
     };
   })
   .get("/students", async (context: any) => {
-    const { query } = context;
+    const { user, query } = context;
     const search = query.q ? String(query.q).toLowerCase() : "";
     
+    const [currentUser] = await db.select({ 
+      schoolId: users.school_id, 
+      canViewAll: users.can_view_all_schools,
+      role: users.role 
+    }).from(users).where(eq(users.id, user.id)).limit(1);
+
+    const conditions = [
+      eq(users.role, ROLES.STUDENT),
+      or(
+        like(sql`lower(${users.first_name})`, `%${search}%`),
+        like(sql`lower(${users.last_name})`, `%${search}%`),
+        like(users.phone, `%${search}%`)
+      )
+    ];
+
+    const isSuper = currentUser?.role === ROLES.SUPERUSER || currentUser?.role === ROLES.GEN_DIRECTOR;
+    if (!isSuper && !currentUser?.canViewAll && currentUser?.schoolId) {
+      conditions.push(eq(users.school_id, currentUser.schoolId));
+    }
+
     const rows = await db
       .select({
         id: users.id,
@@ -217,16 +250,7 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
         username: users.username,
       })
       .from(users)
-      .where(
-        and(
-          eq(users.role, ROLES.STUDENT),
-          or(
-            like(sql`lower(${users.first_name})`, `%${search}%`),
-            like(sql`lower(${users.last_name})`, `%${search}%`),
-            like(users.phone, `%${search}%`)
-          )
-        )
-      )
+      .where(and(...conditions))
       .limit(20);
       
     return rows.map(r => ({
@@ -237,16 +261,29 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
     }));
   })
   .get("/groups", async (context: any) => {
-    const { query } = context;
+    const { user, query } = context;
     const search = query.q ? String(query.q).toLowerCase() : "";
     
+    const [currentUser] = await db.select({ 
+      schoolId: users.school_id, 
+      canViewAll: users.can_view_all_schools,
+      role: users.role 
+    }).from(users).where(eq(users.id, user.id)).limit(1);
+
+    const conditions = [like(sql`lower(${htGroups.name})`, `%${search}%`)];
+
+    const isSuper = currentUser?.role === ROLES.SUPERUSER || currentUser?.role === ROLES.GEN_DIRECTOR;
+    if (!isSuper && !currentUser?.canViewAll && currentUser?.schoolId) {
+      conditions.push(eq(htGroups.schoolId, currentUser.schoolId));
+    }
+
     const rows = await db
       .select({
         id: htGroups.id,
         name: htGroups.name,
       })
       .from(htGroups)
-      .where(like(sql`lower(${htGroups.name})`, `%${search}%`))
+      .where(and(...conditions))
       .limit(20);
       
     return rows;

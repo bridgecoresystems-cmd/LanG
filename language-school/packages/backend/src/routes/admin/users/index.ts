@@ -28,6 +28,7 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
         avatar: users.avatar,
         rfid_uid: users.rfid_uid,
         is_active: users.is_active,
+        can_view_all_schools: users.can_view_all_schools,
         school_id: users.school_id,
         parent_id: users.parent_id,
         can_export_excel: users.can_export_excel,
@@ -127,6 +128,7 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
         avatar: users.avatar,
         rfid_uid: users.rfid_uid,
         is_active: users.is_active,
+        can_view_all_schools: users.can_view_all_schools,
         school_id: users.school_id,
         parent_id: users.parent_id,
         can_export_excel: users.can_export_excel,
@@ -215,6 +217,7 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
       school_id: school_id ?? null,
       parent_id: parent_id ?? null,
       can_export_excel,
+      can_view_all_schools: body.can_view_all_schools as boolean | undefined || false,
     });
 
     // Сохраняем дополнительные роли (исключаем SUPERUSER, основную роль и пустые строки)
@@ -275,6 +278,7 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
         additional_roles: t.Optional(t.Array(t.String())),
         additional_school_ids: t.Optional(t.Array(t.Number())),
         can_export_excel: t.Optional(t.Boolean()),
+        can_view_all_schools: t.Optional(t.Boolean()),
       }),
   })
   .patch(
@@ -298,6 +302,7 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
       if (body.avatar !== undefined) updates.avatar = (body.avatar as string)?.trim() || null;
       if (existing.role === ROLES.STUDENT && body.rfid_uid !== undefined) updates.rfid_uid = (body.rfid_uid as string)?.trim() || null;
       if (body.can_export_excel !== undefined) updates.can_export_excel = body.can_export_excel as boolean;
+      if (body.can_view_all_schools !== undefined) updates.can_view_all_schools = body.can_view_all_schools as boolean;
 
       if (body.password && (body.password as string).length >= 6) {
         updates.password_hash = await Bun.password.hash(body.password as string, { algorithm: "bcrypt" });
@@ -393,6 +398,7 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
         additional_roles: t.Optional(t.Array(t.String())),
         additional_school_ids: t.Optional(t.Array(t.Number())),
         can_export_excel: t.Optional(t.Boolean()),
+        can_view_all_schools: t.Optional(t.Boolean()),
       }),
     }
   )

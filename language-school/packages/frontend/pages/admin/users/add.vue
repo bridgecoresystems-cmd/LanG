@@ -164,6 +164,14 @@
                 label="Export to Excel"
                 class="q-mb-md"
               />
+
+              <!-- Видеть все школы (для бухгалтера) -->
+              <q-checkbox
+                v-if="form.role === 'ACCOUNTANT'"
+                v-model="form.can_view_all_schools"
+                label="Может видеть все школы"
+                class="q-mb-md block"
+              />
             </div>
           </div>
 
@@ -270,12 +278,13 @@ const form = ref({
   additional_roles: [] as string[],
   additional_school_ids: [] as number[],
   can_export_excel: false,
+  can_view_all_schools: false,
   rfid_uid: ''
 })
 
 const showSchoolField = computed(() => {
   const r = form.value.role
-  return ['STUDENT', 'TEACHER', 'HEAD_TEACHER', 'DIRECTOR', 'RECEPTIONIST'].includes(r)
+  return ['STUDENT', 'TEACHER', 'HEAD_TEACHER', 'DIRECTOR', 'RECEPTIONIST', 'ACCOUNTANT'].includes(r)
 })
 
 const schoolOptions = computed(() =>
@@ -350,7 +359,7 @@ const resetForm = () => {
     parent_id: null,
     auto_generate: form.value.role === 'STUDENT',
     additional_roles: [],
-    can_export_excel: false,
+    can_view_all_schools: form.value.can_view_all_schools,
     rfid_uid: ''
   }
 }
@@ -379,7 +388,8 @@ const handleSubmit = async () => {
       additional_roles: form.value.additional_roles
         .filter(r => r && typeof r === 'string' && r.trim() && r !== form.value.role && r !== 'SUPERUSER'),
       additional_school_ids: form.value.role === 'STUDENT' ? (form.value.additional_school_ids || []).filter(id => id !== form.value.school_id) : undefined,
-      can_export_excel: form.value.can_export_excel
+      can_export_excel: form.value.can_export_excel,
+      can_view_all_schools: form.value.role === 'ACCOUNTANT' ? form.value.can_view_all_schools : false
     }
     if (form.value.role === 'STUDENT' && form.value.rfid_uid?.trim()) {
       body.rfid_uid = form.value.rfid_uid.trim()

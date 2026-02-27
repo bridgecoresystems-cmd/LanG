@@ -35,6 +35,7 @@ export const users = pgTable("user", {
   video: text("video"),
   is_active: boolean("is_active").default(true).notNull(),
   can_export_excel: boolean("can_export_excel").default(false).notNull(), // Право на экспорт в Excel
+  can_view_all_schools: boolean("can_view_all_schools").default(false).notNull(), // Для бухгалтеров: видеть все школы
   created_at: timestamp("created_at").defaultNow().notNull(),
   // DIRECTOR, HEAD_TEACHER — привязаны к school_id
   school_id: integer("school_id").references(() => schools.id, { onDelete: "set null" }),
@@ -166,6 +167,7 @@ export const news = pgTable("news", {
   views: integer("views").default(0).notNull(),
   is_featured: boolean("is_featured").default(false).notNull(),
   created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // --- Changelog ---
@@ -441,6 +443,7 @@ export const salesCalls = pgTable("sales_call", {
   outcome: text("outcome").notNull(), // no_answer, interested, not_interested, follow_up
   notes: text("notes"),
   created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // --- Payments (Bookkeeper) ---

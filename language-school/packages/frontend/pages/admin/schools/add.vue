@@ -42,7 +42,7 @@ const form = ref({
 const handleSubmit = async () => {
   saving.value = true
   try {
-    await createSchool({
+    await create({
       name: form.value.name.trim(),
       address: form.value.address?.trim() || undefined,
       phone: form.value.phone?.trim() || undefined,
