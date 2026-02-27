@@ -166,7 +166,6 @@ export const news = pgTable("news", {
   views: integer("views").default(0).notNull(),
   is_featured: boolean("is_featured").default(false).notNull(),
   created_at: timestamp("created_at").defaultNow().notNull(),
-  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // --- Changelog ---
@@ -442,5 +441,23 @@ export const salesCalls = pgTable("sales_call", {
   outcome: text("outcome").notNull(), // no_answer, interested, not_interested, follow_up
   notes: text("notes"),
   created_at: timestamp("created_at").defaultNow().notNull(),
-  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// --- Payments (Bookkeeper) ---
+
+export const payments = pgTable("payment", {
+  id: serial("id").primaryKey(),
+  studentId: text("student_id").references(() => users.id, { onDelete: "set null" }),
+  groupId: integer("group_id").references(() => htGroups.id, { onDelete: "set null" }),
+  payerName: text("payer_name"), // For manual entry if not a student
+  payerPhone: text("payer_phone"), // For manual entry
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  discount: decimal("discount", { precision: 10, scale: 2 }).default("0"),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  method: text("method").notNull(), // cash, card, bank
+  purpose: text("purpose").notNull(), // "Course English", "Translation"
+  comment: text("comment"),
+  schoolId: integer("school_id").references(() => schools.id, { onDelete: "set null" }),
+  createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });

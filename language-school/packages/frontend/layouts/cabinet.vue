@@ -165,6 +165,7 @@ import {
   MailOutline as MailIcon,
   GameControllerOutline as GameIcon,
   ListOutline as ListIcon,
+  AddOutline as AddIcon,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '~/stores/authStore'
 import { useContextStore } from '~/stores/contextStore'
@@ -412,6 +413,19 @@ const menuOptions = computed<MenuOption[]>(() => {
     options.push(
       { label: 'Дневник звонков', key: '/cabinet/sales', icon: renderIcon(CallIcon) }
     )
+  }
+
+  // Бухгалтер (Accountant)
+  if (hasRole(user, 'ACCOUNTANT')) {
+    options.push({
+      label: 'Оплата',
+      key: 'payment-group',
+      icon: renderIcon(DocumentIcon),
+      children: [
+        { label: 'Принять оплату', key: '/cabinet/accountant/payments/add', icon: renderIcon(AddIcon) },
+        { label: 'Отчёт по оплатам', key: '/cabinet/accountant/payments', icon: renderIcon(ChartIcon) },
+      ],
+    })
   }
 
   // Профиль всегда в самом низу

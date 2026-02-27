@@ -200,6 +200,7 @@ const ROLE_LABELS: Record<string, string> = {
   SALES: 'Продажи',
   RECEPTIONIST: 'Рецепция',
   EDITOR: 'Редактор',
+  ACCOUNTANT: 'Бухгалтер',
 }
 
 const roleOptions = Object.entries(ROLE_LABELS).map(([value, label]) => ({ label, value }))
