@@ -24,35 +24,50 @@
       <NSpin size="large" />
     </div>
 
-    <NCard v-else-if="lesson" bordered class="lesson-detail">
-      <div class="detail-section">
-        <h3 class="detail-label">Название</h3>
-        <p class="detail-value">{{ lesson.title || '—' }}</p>
-      </div>
-
-      <div class="detail-section">
-        <h3 class="detail-label">О чём урок</h3>
-        <p class="detail-value pre-wrap">{{ lesson.description || '—' }}</p>
-      </div>
-
-      <div class="detail-section">
-        <h3 class="detail-label">Домашнее задание</h3>
-        <p class="detail-value pre-wrap">{{ lesson.homework || '—' }}</p>
-      </div>
-
-      <div class="detail-section">
-        <h3 class="detail-label">Конспект</h3>
-        <p class="detail-value pre-wrap">{{ lesson.lesson_plan || '—' }}</p>
-      </div>
-
-      <div class="detail-section">
-        <h3 class="detail-label">Заметки</h3>
-        <p class="detail-value pre-wrap">{{ lesson.lesson_notes || '—' }}</p>
-      </div>
-
-      <div class="detail-section">
-        <h3 class="detail-label">Материалы</h3>
-        <pre class="detail-value">{{ lesson.materials || '—' }}</pre>
+    <NCard v-else-if="lesson" bordered class="lesson-detail" :content-style="{ padding: 0 }">
+      <div class="lesson-table-scroll">
+        <table class="lesson-info-table">
+          <thead>
+            <tr>
+              <th class="lesson-info-table__field">Поле</th>
+              <th class="lesson-info-table__value">Значение</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="lesson-info-table__field">Название</td>
+              <td class="lesson-info-table__value">{{ lesson.title || '—' }}</td>
+            </tr>
+            <tr>
+              <td class="lesson-info-table__field">Дата</td>
+              <td class="lesson-info-table__value">{{ formatDate(lesson.lesson_date) }}</td>
+            </tr>
+            <tr>
+              <td class="lesson-info-table__field">Длительность</td>
+              <td class="lesson-info-table__value">{{ lesson.duration_minutes || 90 }} мин</td>
+            </tr>
+            <tr>
+              <td class="lesson-info-table__field">О чём урок</td>
+              <td class="lesson-info-table__value pre-wrap">{{ lesson.description || '—' }}</td>
+            </tr>
+            <tr>
+              <td class="lesson-info-table__field">Домашнее задание</td>
+              <td class="lesson-info-table__value pre-wrap">{{ lesson.homework || '—' }}</td>
+            </tr>
+            <tr>
+              <td class="lesson-info-table__field">Конспект</td>
+              <td class="lesson-info-table__value pre-wrap">{{ lesson.lesson_plan || '—' }}</td>
+            </tr>
+            <tr>
+              <td class="lesson-info-table__field">Заметки учителя</td>
+              <td class="lesson-info-table__value pre-wrap">{{ lesson.lesson_notes || '—' }}</td>
+            </tr>
+            <tr>
+              <td class="lesson-info-table__field">Материалы</td>
+              <td class="lesson-info-table__value pre-wrap">{{ lesson.materials || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </NCard>
 
@@ -138,30 +153,50 @@ onMounted(loadLesson)
 
 .lesson-detail {
   border-radius: 12px;
+  overflow: hidden;
 }
 
-.detail-section {
-  margin-bottom: 24px;
+.lesson-table-scroll {
+  overflow-x: auto;
 }
 
-.detail-section:last-child {
-  margin-bottom: 0;
+.lesson-info-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
 }
 
-.detail-label {
-  margin: 0 0 8px;
-  font-size: 0.9rem;
+.lesson-info-table th,
+.lesson-info-table td {
+  padding: 16px 20px;
+  text-align: left;
+  border-bottom: 1px solid var(--n-border-color);
+  vertical-align: top;
+}
+
+.lesson-info-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.lesson-info-table tbody tr:hover td {
+  background: var(--n-color-hover);
+}
+
+.lesson-info-table__field {
+  width: 200px;
+  min-width: 160px;
   font-weight: 600;
   color: var(--n-text-color-2);
+  background: var(--n-color-hover);
 }
 
-.detail-value {
-  margin: 0;
-  font-size: 1rem;
+.lesson-info-table__value {
+  color: var(--n-text-color-1);
   line-height: 1.6;
 }
 
 .pre-wrap {
   white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>

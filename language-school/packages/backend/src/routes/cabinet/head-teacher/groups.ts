@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { db } from "../../../db/index";
-import { htGroups, htCourses, users, htGroupStudents, htLessons, htAttendance, htGrades, htExamGrades, htGames, htExamSchemeItems } from "../../../db/schema";
+import { htGroups, htCourses, users, htGroupStudents, htLessons, htAttendance, htGrades, htExamGrades, htGames, htGameResults, htExamSchemeItems } from "../../../db/schema";
 import { eq, ne, desc, and, inArray } from "drizzle-orm";
 import { ROLES } from "../../../constants/roles";
 
@@ -389,6 +389,8 @@ export const headTeacherGroupRoutes = new Elysia()
       lessonId: htAttendance.lessonId,
       userId: htAttendance.userId,
       status: htAttendance.status,
+      entryTime: htAttendance.entryTime,
+      exitTime: htAttendance.exitTime,
       notes: htAttendance.notes,
       lessonDate: htLessons.lessonDate,
     }).from(htAttendance)
@@ -421,6 +423,64 @@ export const headTeacherGroupRoutes = new Elysia()
   })
   .get("/groups/:id/games", async (context: any) => {
     const { params: { id } } = context;
-    const rows = await db.select().from(htGames).where(eq(htGames.groupId, parseInt(id)));
-    return rows;
+    const gid = parseInt(id);
+    const games = await db
+      .select({
+        id: htGames.id,
+        groupId: htGames.groupId,
+        lessonId: htGames.lessonId,
+        title: htGames.title,
+        type: htGames.type,
+        data: htGames.data,
+        isActive: htGames.isActive,
+        createdAt: htGames.createdAt,
+        lessonTitle: htLessons.title,
+      })
+      .from(htGames)
+      .leftJoin(htLessons, eq(htGames.lessonId, htLessons.id))
+      .where(eq(htGames.groupId, gid))
+      .orderBy(desc(htGames.createdAt));
+    const totalStudentsRows = await db
+      .select({ id: htGroupStudents.id })
+      .from(htGroupStudents)
+      .where(eq(htGroupStudents.groupId, gid));
+    const studentCount = totalStudentsRows.length;
+    const gameIds = games.map((g) => g.id);
+    const results = gameIds.length > 0
+      ? await db
+          .select({
+            gameId: htGameResults.gameId,
+            userId: htGameResults.userId,
+            score: htGameResults.score,
+          })
+          .from(htGameResults)
+          .where(inArray(htGameResults.gameId, gameIds))
+      : [];
+    const playedByGame = new Map<number, Set<string>>();
+    const bestScoreByGameUser = new Map<string, number>();
+    for (const r of results) {
+      if (!playedByGame.has(r.gameId)) playedByGame.set(r.gameId, new Set());
+      playedByGame.get(r.gameId)!.add(r.userId);
+      const key = `${r.gameId}:${r.userId}`;
+      const cur = bestScoreByGameUser.get(key) ?? 0;
+      if (r.score > cur) bestScoreByGameUser.set(key, r.score);
+    }
+    return games.map((g) => {
+      const played = playedByGame.get(g.id)?.size ?? 0;
+      const pct = studentCount > 0 ? Math.round((played / studentCount) * 100) : 0;
+      return {
+        id: g.id,
+        group_id: g.groupId,
+        lesson_id: g.lessonId,
+        title: g.title,
+        type: g.type,
+        data: g.data,
+        is_active: g.isActive,
+        created_at: g.createdAt?.toISOString(),
+        lesson_title: g.lessonTitle ?? null,
+        total_students: studentCount,
+        played_count: played,
+        play_percentage: pct,
+      };
+    });
   });

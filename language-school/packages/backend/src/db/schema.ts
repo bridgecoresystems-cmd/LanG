@@ -340,12 +340,25 @@ export const htAttendance = pgTable("ht_attendance", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   status: text("status").notNull(), // present, absent, late, excused
+  entryTime: timestamp("entry_time"), // Время прихода (из RFID)
+  exitTime: timestamp("exit_time"),   // Время ухода (из RFID)
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("ht_attendance_lesson_user_unique").on(t.lessonId, t.userId)
 ]);
+
+// Лог всех сканирований RFID (входы, выходы, покупки)
+export const rfidLogs = pgTable("rfid_log", {
+  id: serial("id").primaryKey(),
+  rfidUid: text("rfid_uid").notNull(),
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+  deviceId: text("device_id").notNull(), // ID сканера (напр. "gate_1", "canteen_1")
+  action: text("action").notNull(), // "entry", "exit", "payment"
+  amount: decimal("amount", { precision: 10, scale: 2 }), // Для оплаты в кантине
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 // --- Оценки (Grades - для обычных уроков) ---
 export const htGrades = pgTable("ht_grade", {

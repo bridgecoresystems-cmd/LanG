@@ -57,10 +57,10 @@ defineEmits(['click'])
   flex-direction: column;
   cursor: pointer;
   perspective: 1000px;
-  height: 100%;
   width: 100%;
-  max-width: 200px;
-  margin: 0 auto;
+  max-width: 220px;
+  min-width: 0;
+  overflow: hidden;
   transition: all 0.3s ease;
 }
 
@@ -165,6 +165,7 @@ defineEmits(['click'])
   flex-direction: column;
   gap: 0.5rem;
   padding: 0 0.5rem;
+  min-width: 0;
 }
 
 .info-row {

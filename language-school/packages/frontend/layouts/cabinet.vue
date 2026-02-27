@@ -460,7 +460,15 @@ const activePageTitle = computed(() => {
 function renderMenuLabel(option: MenuOption) {
   const key = option.key
   if (typeof key === 'string' && key.startsWith('/')) {
-    return h(NuxtLink, { to: key, class: 'menu-link' }, { default: () => option.label as string })
+    return h('div', {
+      class: 'menu-link',
+      role: 'link',
+      onClick: (e: Event) => {
+        e.preventDefault()
+        e.stopPropagation()
+        navigateTo(key)
+      },
+    }, option.label as string)
   }
   return option.label as string
 }
@@ -557,7 +565,30 @@ async function handleLogout() {
   display: block;
   width: 100%;
   text-decoration: none;
-  color: inherit;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+}
+
+:deep(.n-menu-item-content .menu-link) {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+:deep(.n-menu-item-content:hover .menu-link),
+:deep(.n-menu-item-content--selected .menu-link) {
+  color: #18a058;
+}
+
+:deep(.n-menu-item-content) {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+:deep(.n-menu-item-content-header) {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+:deep(.n-menu-item-content .n-icon) {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+:deep(.n-menu-item-content .n-menu-item-content__arrow) {
+  color: rgba(255, 255, 255, 0.6) !important;
 }
 
 :deep(.n-menu-item-content:hover) {
@@ -580,18 +611,6 @@ async function handleLogout() {
 :deep(.n-menu-item-content--selected .n-menu-item-content__arrow),
 :deep(.n-menu-item-content--child-active .n-menu-item-content__arrow) {
   color: #18a058 !important;
-}
-:deep(.n-menu-item-content) {
-  color: rgba(255, 255, 255, 0.85) !important;
-}
-:deep(.n-menu-item-content-header) {
-  color: rgba(255, 255, 255, 0.85) !important;
-}
-:deep(.n-menu-item-content .n-icon) {
-  color: rgba(255, 255, 255, 0.8) !important;
-}
-:deep(.n-menu-item-content .n-menu-item-content__arrow) {
-  color: rgba(255, 255, 255, 0.6) !important;
 }
 
 .sidebar-footer {
@@ -665,5 +684,7 @@ async function handleLogout() {
 .cabinet-content-inner {
   max-width: 1280px;
   margin: 0 auto;
+  width: 100%;
+  min-width: 0;
 }
 </style>

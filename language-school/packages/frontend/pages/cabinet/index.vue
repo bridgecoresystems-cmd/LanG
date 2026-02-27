@@ -27,17 +27,17 @@
         </h2>
       </div>
 
-      <div v-if="contextStore.isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-if="contextStore.isLoading" class="dashboard-grid">
         <USkeleton v-for="i in 3" :key="i" class="h-48 rounded-2xl" />
       </div>
 
-      <div v-else-if="contextStore.availableGroups.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        <CabinetGroupCard
-          v-for="group in contextStore.availableGroups"
-          :key="group.id"
-          :group="group"
-          @click="selectGroup(group.id)"
-        />
+      <div v-else-if="contextStore.availableGroups.length > 0" class="dashboard-grid">
+        <div v-for="group in contextStore.availableGroups" :key="group.id" class="dashboard-grid__item">
+          <CabinetGroupCard
+            :group="group"
+            @click="selectGroup(group.id)"
+          />
+        </div>
       </div>
 
       <div v-else class="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700">
@@ -135,6 +135,38 @@ const editorShortcuts = [
 <style scoped>
 .space-y-8 {
   animation: slideUp 0.4s ease-out;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 640px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.dashboard-grid__item {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
 }
 
 @keyframes slideUp {

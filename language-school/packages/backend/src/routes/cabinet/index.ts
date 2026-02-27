@@ -14,6 +14,8 @@ import { teacherLessonRoutes } from "./teacher/lessons";
 import { getStudentMyGroups, getStudentGroupIds } from "./student";
 import { studentLessonRoutes } from "./student/lessons";
 import { getScheduleForGroups } from "./schedule";
+import { rfidRoutes } from "../rfid";
+import { mailingMessages, mailingRecipients } from "../../db/schema";
 
 // Хелпер для проверки роли (основная или дополнительная)
 async function hasRole(userId: string, role: string): Promise<boolean> {
@@ -66,6 +68,48 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
       ...row,
       additional_roles: additionalRoles.map(r => r.role),
     };
+  })
+  .get("/mailing", async (context: any) => {
+    const { user } = context;
+    const rows = await db
+      .select({
+        id: mailingMessages.id,
+        title: mailingMessages.title,
+        content: mailingMessages.content,
+        sentAt: mailingMessages.sentAt,
+        isRead: mailingRecipients.isRead,
+        readAt: mailingRecipients.readAt,
+        receivedAt: mailingRecipients.receivedAt,
+      })
+      .from(mailingRecipients)
+      .innerJoin(mailingMessages, eq(mailingRecipients.messageId, mailingMessages.id))
+      .where(eq(mailingRecipients.recipientId, user!.id))
+      .orderBy(desc(mailingMessages.sentAt));
+    return rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      content: r.content,
+      is_read: r.isRead,
+      sent_at: r.sentAt?.toISOString(),
+      read_at: r.readAt?.toISOString(),
+      received_at: r.receivedAt?.toISOString(),
+    }));
+  })
+  .post("/mailing/:id/read", async (context: any) => {
+    const { user, params: { id } } = context;
+    await db
+      .update(mailingRecipients)
+      .set({ isRead: true, readAt: new Date() })
+      .where(and(eq(mailingRecipients.messageId, parseInt(id)), eq(mailingRecipients.recipientId, user!.id)));
+    return { success: true };
+  })
+  .post("/mailing/read-all", async (context: any) => {
+    const { user } = context;
+    await db
+      .update(mailingRecipients)
+      .set({ isRead: true, readAt: new Date() })
+      .where(eq(mailingRecipients.recipientId, user!.id));
+    return { success: true };
   })
   .patch("/profile", async (context: any) => {
     const { user, body, set } = context;
@@ -189,6 +233,7 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
       })
       .use(studentLessonRoutes)
   )
+  .use(rfidRoutes)
   .get("/sales/calls", async (context: any) => {
     const { user, query } = context;
     const isSales = await hasRole(user!.id, ROLES.SALES);

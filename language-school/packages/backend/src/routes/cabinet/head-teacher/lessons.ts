@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { db } from "../../../db/index";
-import { users, htLessons, htGroups, htAttendance, htGrades, htExamGrades, htGames } from "../../../db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { users, htLessons, htGroups, htAttendance, htGrades, htExamGrades, htGames, htGameResults, htGroupStudents } from "../../../db/schema";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { ROLES } from "../../../constants/roles";
 
 export const headTeacherLessonRoutes = new Elysia()
@@ -176,15 +176,23 @@ export const headTeacherLessonRoutes = new Elysia()
   })
   .post("/attendance", async (context: any) => {
     const { body } = context;
-    const { lesson_id, user_id, status, notes } = body;
+    const { lesson_id, user_id, status, notes, entry_time, exit_time } = body;
     const [row] = await db.insert(htAttendance).values({
       lessonId: lesson_id,
       userId: user_id,
       status,
       notes,
+      entryTime: entry_time ? new Date(entry_time) : null,
+      exitTime: exit_time ? new Date(exit_time) : null,
     }).onConflictDoUpdate({
       target: [htAttendance.lessonId, htAttendance.userId],
-      set: { status, notes, updatedAt: new Date() }
+      set: { 
+        status, 
+        notes, 
+        entryTime: entry_time ? new Date(entry_time) : htAttendance.entryTime,
+        exitTime: exit_time ? new Date(exit_time) : htAttendance.exitTime,
+        updatedAt: new Date() 
+      }
     }).returning();
     return row;
   }, {
@@ -193,6 +201,8 @@ export const headTeacherLessonRoutes = new Elysia()
       user_id: t.String(),
       status: t.String(),
       notes: t.Optional(t.String()),
+      entry_time: t.Optional(t.String()),
+      exit_time: t.Optional(t.String()),
     })
   })
   .post("/grades", async (context: any) => {
@@ -253,6 +263,126 @@ export const headTeacherLessonRoutes = new Elysia()
       speaking: t.Optional(t.Number()),
     })
   })
+  .get("/games/:id", async (context: any) => {
+    const { params: { id }, set } = context;
+    const gid = parseInt(id);
+    const [game] = await db
+      .select({
+        id: htGames.id,
+        groupId: htGames.groupId,
+        lessonId: htGames.lessonId,
+        title: htGames.title,
+        type: htGames.type,
+        data: htGames.data,
+        isActive: htGames.isActive,
+        createdAt: htGames.createdAt,
+        lessonTitle: htLessons.title,
+      })
+      .from(htGames)
+      .leftJoin(htLessons, eq(htGames.lessonId, htLessons.id))
+      .where(eq(htGames.id, gid))
+      .limit(1);
+    if (!game) {
+      set.status = 404;
+      return { error: "Not found" };
+    }
+    const totalStudents = await db
+      .select({ userId: htGroupStudents.userId })
+      .from(htGroupStudents)
+      .where(eq(htGroupStudents.groupId, game.groupId!));
+    const studentIds = totalStudents.map((s) => s.userId);
+    const results = await db
+      .select({
+        userId: htGameResults.userId,
+        score: htGameResults.score,
+      })
+      .from(htGameResults)
+      .where(eq(htGameResults.gameId, gid));
+    const byUser = new Map<string, { attempts: number; bestScore: number }>();
+    for (const r of results) {
+      const cur = byUser.get(r.userId) ?? { attempts: 0, bestScore: 0 };
+      cur.attempts += 1;
+      if (r.score > cur.bestScore) cur.bestScore = r.score;
+      byUser.set(r.userId, cur);
+    }
+    const userRows = studentIds.length > 0
+      ? await db.select({
+          id: users.id,
+          firstName: users.first_name,
+          lastName: users.last_name,
+          username: users.username,
+        }).from(users).where(inArray(users.id, studentIds))
+      : [];
+    const userMap = new Map(userRows.map((u: any) => [u.id, u]));
+    const studentStats = studentIds.map((uid) => {
+      const u = userMap.get(uid);
+      const stats = byUser.get(uid) ?? { attempts: 0, bestScore: 0 };
+      return {
+        user_id: uid,
+        full_name: u ? [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username : "—",
+        username: u?.username ?? "—",
+        attempts_count: stats.attempts,
+        best_score: stats.bestScore,
+      };
+    });
+    const playedCount = byUser.size;
+    const totalCount = studentIds.length;
+    const playPercentage = totalCount > 0 ? Math.round((playedCount / totalCount) * 100) : 0;
+    let dataParsed: any[] = [];
+    try {
+      dataParsed = game.data ? JSON.parse(game.data) : [];
+    } catch (_) {}
+    return {
+      id: game.id,
+      group_id: game.groupId,
+      lesson_id: game.lessonId,
+      title: game.title,
+      type: game.type,
+      data: dataParsed,
+      is_active: game.isActive,
+      created_at: game.createdAt?.toISOString(),
+      lesson_title: game.lessonTitle ?? null,
+      total_students: totalCount,
+      played_count: playedCount,
+      play_percentage: playPercentage,
+      student_stats: studentStats,
+    };
+  })
+  .patch("/games/:id", async (context: any) => {
+    const { params: { id }, body } = context;
+    const [updated] = await db
+      .update(htGames)
+      .set({ isActive: body.is_active })
+      .where(eq(htGames.id, parseInt(id)))
+      .returning();
+    return updated ?? { error: "Not found" };
+  }, {
+    body: t.Object({ is_active: t.Boolean() }),
+  })
+  .put("/games/:id", async (context: any) => {
+    const { params: { id }, body } = context;
+    const gid = parseInt(id);
+    const [row] = await db.select().from(htGames).where(eq(htGames.id, gid)).limit(1);
+    if (!row) return { error: "Not found" };
+    const [updated] = await db
+      .update(htGames)
+      .set({
+        title: body.title,
+        lessonId: body.lesson_id ?? null,
+        type: body.type,
+        data: body.data ? JSON.stringify(body.data) : null,
+      })
+      .where(eq(htGames.id, gid))
+      .returning();
+    return updated ?? { error: "Not found" };
+  }, {
+    body: t.Object({
+      title: t.String(),
+      lesson_id: t.Optional(t.Nullable(t.Number())),
+      type: t.String(),
+      data: t.Optional(t.Any()),
+    }),
+  })
   .delete("/games/:id", async ({ params: { id } }) => {
     await db.delete(htGames).where(eq(htGames.id, parseInt(id)));
     return { success: true };
@@ -261,7 +391,7 @@ export const headTeacherLessonRoutes = new Elysia()
     const { body } = context;
     const [row] = await db.insert(htGames).values({
       groupId: body.group_id,
-      lessonId: body.lesson_id,
+      lessonId: body.lesson_id ?? null,
       title: body.title,
       type: body.type,
       data: body.data ? JSON.stringify(body.data) : null,
@@ -270,7 +400,7 @@ export const headTeacherLessonRoutes = new Elysia()
   }, {
     body: t.Object({
       group_id: t.Number(),
-      lesson_id: t.Optional(t.Number()),
+      lesson_id: t.Optional(t.Nullable(t.Number())),
       title: t.String(),
       type: t.String(),
       data: t.Optional(t.Any()),

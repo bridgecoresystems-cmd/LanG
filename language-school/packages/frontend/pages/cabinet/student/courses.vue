@@ -23,11 +23,11 @@
       </NTab>
     </NTabs>
 
-    <div v-if="pending" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+    <div v-if="pending" class="courses-grid mt-6">
       <NSkeleton v-for="i in 3" :key="i" :height="280" :sharp="false" />
     </div>
 
-    <div v-else-if="filteredCourses.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+    <div v-else-if="filteredCourses.length > 0" class="courses-grid mt-6">
       <NCard
         v-for="course in filteredCourses"
         :key="course.id"
@@ -386,6 +386,30 @@ onMounted(() => {
 
 .course-completed {
   opacity: 0.85;
+}
+
+.courses-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 768px) {
+  .courses-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .courses-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+.courses-grid .course-card {
+  min-width: 0;
 }
 
 .empty-state {

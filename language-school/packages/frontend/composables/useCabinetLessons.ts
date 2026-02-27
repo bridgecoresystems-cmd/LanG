@@ -28,6 +28,13 @@ export const useCabinetLessons = () => {
   const authStore = useAuthStore()
   const role = authStore.user?.role
 
+  const getAttendance = async (groupId: number) => {
+    if (role === 'STUDENT') {
+      return cabinetFetch<any[]>(`/api/v1/cabinet/student/groups/${groupId}/attendance`)
+    }
+    return []
+  }
+
   const getList = async (params: { group_id: number }) => {
     if (role === 'TEACHER') {
       return cabinetFetch<Lesson[]>(`/api/v1/cabinet/teacher/groups/${params.group_id}/lessons`)
@@ -67,5 +74,5 @@ export const useCabinetLessons = () => {
     return data
   }
 
-  return { getList, getById, update }
+  return { getList, getById, update, getAttendance }
 }

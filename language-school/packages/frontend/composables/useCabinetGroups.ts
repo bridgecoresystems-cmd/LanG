@@ -164,8 +164,26 @@ export const useCabinetGroups = () => {
     return data ?? []
   }
 
+  const getGameById = async (id: number) => {
+    const { data, error } = await ht.games({ id: String(id) }).get()
+    if (error) throw error
+    return data
+  }
+
   const saveGame = async (body: { group_id: number; lesson_id?: number | null; title: string; type: string; data?: any }) => {
-    const { data, error } = await api.api.v1.cabinet['head-teacher'].games.post(body)
+    const { data, error } = await ht.games.post(body)
+    if (error) throw error
+    return data
+  }
+
+  const patchGame = async (id: number, body: { is_active: boolean }) => {
+    const { data, error } = await ht.games({ id: String(id) }).patch(body)
+    if (error) throw error
+    return data
+  }
+
+  const updateGame = async (id: number, body: { title: string; lesson_id?: number | null; type: string; data?: any }) => {
+    const { data, error } = await ht.games({ id: String(id) }).put(body)
     if (error) throw error
     return data
   }
@@ -182,7 +200,7 @@ export const useCabinetGroups = () => {
     getGrades, saveGrade, 
     getExamGrades, saveExamGrade, getExamSchemes, getExamTypes, saveExamType, saveExamScheme, deleteExamType, deleteExamScheme,
     generateSchedule, getCourseStats,
-    getGames, saveGame, deleteGame 
+    getGames, getGameById, saveGame, patchGame, updateGame, deleteGame 
   }
 }
 
