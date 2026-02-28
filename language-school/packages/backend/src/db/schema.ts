@@ -243,6 +243,7 @@ export const htCourses = pgTable("ht_course", {
   level: text("level").notNull(),
   description: text("description"),
   durationMonths: integer("duration_months").default(3).notNull(),
+  tariffId: integer("tariff_id").references(() => tariffs.id, { onDelete: "set null" }),
   schoolId: integer("school_id").references(() => schools.id, { onDelete: "set null" }),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -309,6 +310,8 @@ export const htGroupStudents = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    tariffId: integer("tariff_id").references(() => tariffs.id, { onDelete: "set null" }),
+    discount: decimal("discount", { precision: 10, scale: 2 }).default("0").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [uniqueIndex("ht_group_student_unique").on(t.groupId, t.userId)]
@@ -462,5 +465,20 @@ export const payments = pgTable("payment", {
   comment: text("comment"),
   schoolId: integer("school_id").references(() => schools.id, { onDelete: "set null" }),
   createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  isPartial: boolean("is_partial").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// --- Tariffs (Bookkeeper) ---
+
+export const tariffs = pgTable("tariff", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  category: text("category").notNull(), // course_adult, course_kid, translation, certificate, other
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

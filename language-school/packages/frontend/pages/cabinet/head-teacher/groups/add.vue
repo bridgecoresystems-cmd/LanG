@@ -139,7 +139,10 @@ async function loadData() {
   courses.value = cList
   teachers.value = tList
   examSchemes.value = schemesList
-  courseOptions.value = courses.value.map((c) => ({ label: c.name, value: c.id }))
+  courseOptions.value = courses.value.map((c) => ({ 
+    label: c.tariff_name ? `${c.name} (${c.tariff_price} TMT)` : c.name, 
+    value: c.id 
+  }))
   teacherOptions.value = teachers.value.map((t) => ({ label: t.full_name, value: t.id }))
   examSchemeOptions.value = examSchemes.value.map((s) => ({ label: s.name, value: s.id }))
 }

@@ -2,21 +2,12 @@
   <div class="cabinet-page">
     <header class="page-header">
       <div class="page-header__text">
-        <NH1 class="page-header__title">Редактировать оплату</NH1>
-        <p class="page-header__subtitle">Изменение данных транзакции #{{ paymentId }}</p>
-      </div>
-      <div class="page-header__actions">
-        <NButton quaternary @click="navigateTo('/cabinet/accountant/payments')">
-          Назад к списку
-        </NButton>
+        <NH1 class="page-header__title">Принять оплату</NH1>
+        <p class="page-header__subtitle">Внесите данные о платеже</p>
       </div>
     </header>
 
-    <q-inner-loading :showing="loading && !formData.purpose">
-      <q-spinner size="50px" color="primary" />
-    </q-inner-loading>
-
-    <NCard v-if="!loading || formData.purpose" bordered class="payment-form-card">
+    <NCard bordered class="payment-form-card">
       <NForm
         ref="formRef"
         :model="formData"
@@ -80,8 +71,77 @@
                 @focus="handleFocusGroup"
                 clearable
               />
+              <template #feedback>
+                Если группа ещё не сформирована, оставьте пустым.
+              </template>
             </NFormItem>
           </NGi>
+
+          <!-- Debt and Tariff Info -->
+          <template v-if="formData.student_id && formData.group_id">
+            <NGi :span="2">
+              <NCard size="small" embedded :bordered="false" style="background-color: #f0f7ff; margin-bottom: 16px;">
+                <NSpace vertical>
+                  <div class="row justify-between">
+                    <NText depth="3">Текущий тариф:</NText>
+                    <NText strong>{{ currentDebtInfo.tariffPrice }} TMT</NText>
+                  </div>
+                  <div class="row justify-between">
+                    <NText depth="3">Уже оплачено:</NText>
+                    <NText strong type="success">{{ currentDebtInfo.totalPaid }} TMT</NText>
+                  </div>
+                  <div class="row justify-between">
+                    <NText depth="3">Остаток долга:</NText>
+                    <NText strong type="error">{{ remainingDebt }} TMT</NText>
+                  </div>
+                </NSpace>
+              </NCard>
+            </NGi>
+
+            <NGi>
+              <NFormItem label="Установить/Изменить тариф" path="tariff_id">
+                <NSelect
+                  v-model:value="formData.tariff_id"
+                  :options="tariffOptions"
+                  placeholder="Выберите тариф"
+                  clearable
+                />
+              </NFormItem>
+            </NGi>
+            <NGi>
+              <NFormItem label="Тип оплаты">
+                <NCheckbox v-model:checked="formData.is_partial">
+                  Оплата частями
+                </NCheckbox>
+              </NFormItem>
+            </NGi>
+          </template>
+
+          <!-- Head Accountant Only: School and Accountant Selection -->
+          <template v-if="isHeadAccountant">
+            <NGi>
+              <NFormItem label="Школа" path="school_id">
+                <NSelect
+                  v-model:value="formData.school_id"
+                  :options="schoolOptions"
+                  :loading="schoolsLoading"
+                  placeholder="Выберите школу"
+                  clearable
+                />
+              </NFormItem>
+            </NGi>
+            <NGi>
+              <NFormItem label="Бухгалтер (кто принял)" path="created_by_id">
+                <NSelect
+                  v-model:value="formData.created_by_id"
+                  :options="accountantOptions"
+                  :loading="accountantsLoading"
+                  placeholder="Выберите бухгалтера"
+                  clearable
+                />
+              </NFormItem>
+            </NGi>
+          </template>
 
           <!-- Financials -->
           <NGi>
@@ -146,15 +206,10 @@
 
           <NGi :span="2">
             <div class="actions">
-              <NSpace>
-                <NButton quaternary @click="navigateTo('/cabinet/accountant/payments')">
-                  Отмена
-                </NButton>
-                <NButton type="primary" size="large" :loading="saving" @click="handleSubmit">
-                  <template #icon><NIcon><SaveIcon /></NIcon></template>
-                  Сохранить изменения
-                </NButton>
-              </NSpace>
+              <NButton type="primary" size="large" :loading="saving" @click="handleSubmit">
+                <template #icon><NIcon><SaveIcon /></NIcon></template>
+                Принять оплату
+              </NButton>
             </div>
           </NGi>
         </NGrid>
@@ -164,36 +219,109 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import {
   NH1, NH2, NText, NCard, NForm, NFormItem, NInput, NInputNumber,
-  NSelect, NSwitch, NButton, NIcon, NGrid, NGi, NAutoComplete, useMessage, NSpace
+  NSelect, NSwitch, NButton, NIcon, NGrid, NGi, NAutoComplete, useMessage, NSpace, NCheckbox
 } from 'naive-ui'
 import { SaveOutline as SaveIcon } from '@vicons/ionicons5'
 import { useEden } from '~/composables/useEden'
+import { useAuthStore } from '~/stores/authStore'
 
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
 const api = useEden()
 const message = useMessage()
+const authStore = useAuthStore()
 const route = useRoute()
-const paymentId = route.params.id as string
+
+const isHeadAccountant = computed(() => authStore.user?.role === 'HEAD_ACCOUNTANT' || authStore.user?.role === 'GEN_DIRECTOR')
 
 const formRef = ref<any>(null)
-const loading = ref(true)
 const saving = ref(false)
 const isStudentPayer = ref(true)
 
 const formData = ref({
-  student_id: null as string | null,
+  student_id: (route.query.studentId as string) || null,
   payer_name: '',
   payer_phone: '',
-  group_id: null as number | null,
+  group_id: route.query.groupId ? parseInt(route.query.groupId as string) : null,
   amount: 0,
   discount: 0,
   method: 'cash',
   purpose: '',
   comment: '',
+  school_id: null as number | null,
+  created_by_id: null as string | null,
+  is_partial: false,
+  tariff_id: null as number | null,
+})
+
+const currentDebtInfo = ref({
+  tariffPrice: 0,
+  discount: 0,
+  totalPaid: 0,
+  remaining: 0
+})
+
+const remainingDebt = computed(() => {
+  const expected = Math.max(0, currentDebtInfo.value.tariffPrice - currentDebtInfo.value.discount)
+  return Math.max(0, expected - currentDebtInfo.value.totalPaid)
+})
+
+watch([() => formData.value.student_id, () => formData.value.group_id], async ([sId, gId]) => {
+  if (sId && gId) {
+    try {
+      const { data } = await api.api.v1.cabinet.accountant['student-group-info'].get({
+        query: { studentId: sId, groupId: gId.toString() }
+      })
+      if (data && !('error' in data)) {
+        currentDebtInfo.value = {
+          tariffPrice: (data as any).tariffPrice || 0,
+          discount: (data as any).discount || 0,
+          totalPaid: (data as any).totalPaid || 0,
+          remaining: 0
+        }
+        if ((data as any).tariffId) {
+          formData.value.tariff_id = (data as any).tariffId
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  } else {
+    currentDebtInfo.value = { tariffPrice: 0, discount: 0, totalPaid: 0, remaining: 0 }
+  }
+})
+
+// Tariffs
+const tariffOptions = ref<{ label: string, value: number, price: number }[]>([])
+const loadTariffs = async () => {
+  try {
+    const { data } = await api.api.v1.cabinet.tariffs.get()
+    if (data) {
+      tariffOptions.value = data.map((t: any) => ({
+        label: `${t.name} (${t.price} TMT)`,
+        value: t.id,
+        price: parseFloat(t.price)
+      }))
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+watch(() => formData.value.tariff_id, (tId) => {
+  if (tId) {
+    const tariff = tariffOptions.value.find(t => t.value === tId)
+    if (tariff) {
+      currentDebtInfo.value.tariffPrice = tariff.price
+      // Auto-fill amount if not partial
+      if (!formData.value.is_partial) {
+        formData.value.amount = Math.max(0, tariff.price - currentDebtInfo.value.discount - currentDebtInfo.value.totalPaid)
+      }
+    }
+  }
 })
 
 const rules = computed(() => ({
@@ -202,6 +330,7 @@ const rules = computed(() => ({
   amount: { required: true, type: 'number', min: 0.01, message: 'Введите сумму', trigger: 'blur' },
   method: { required: true, message: 'Выберите способ оплаты', trigger: ['blur', 'change'] },
   purpose: { required: true, message: 'Укажите назначение платежа', trigger: 'blur' },
+  school_id: isHeadAccountant.value ? { required: true, type: 'number', message: 'Выберите школу', trigger: ['blur', 'change'] } : {},
 }))
 
 const methodOptions = [
@@ -227,7 +356,7 @@ const studentOptions = ref<{ label: string, value: string }[]>([])
 const handleStudentSearch = async (query: string) => {
   studentsLoading.value = true
   try {
-    const { data } = await api.api.v1.cabinet.accountant.students.get({ query: { q: query } })
+    const { data } = await api.api.v1.cabinet.accountant.students.get({ query: { q: query || '' } })
     if (data) {
       studentOptions.value = data.map((s: any) => ({
         label: `${s.full_name} (${s.phone || 'нет тел.'})`,
@@ -274,44 +403,35 @@ const handleFocusGroup = () => {
   }
 }
 
-const loadPayment = async () => {
-  loading.value = true
+// Schools and Accountants (for Head Accountant)
+const schoolsLoading = ref(false)
+const schoolOptions = ref<{ label: string, value: number }[]>([])
+const accountantsLoading = ref(false)
+const accountantOptions = ref<{ label: string, value: string }[]>([])
+
+const loadSchoolsAndAccountants = async () => {
+  if (!isHeadAccountant.value) return
+  
+  schoolsLoading.value = true
+  accountantsLoading.value = true
+  
   try {
-    const { data, error } = await api.api.v1.cabinet.accountant.payments[paymentId as any].receipt.get()
-    if (error) throw error
-    if (data) {
-      isStudentPayer.value = !!data.studentFirstName
-      formData.value = {
-        student_id: data.studentId || null,
-        payer_name: data.payerName || '',
-        payer_phone: data.payerPhone || '',
-        group_id: data.groupId || null,
-        amount: data.amount || 0,
-        discount: data.discount || 0,
-        method: data.method || 'cash',
-        purpose: data.purpose || '',
-        comment: data.comment || '',
-      }
-      
-      // Load initial options for select fields
-      if (formData.value.student_id) {
-        studentOptions.value = [{
-          label: `${data.studentFirstName || ''} ${data.studentLastName || ''} (${data.studentPhone || 'нет тел.'})`.trim() || 'Студент',
-          value: formData.value.student_id
-        }]
-      }
-      if (formData.value.group_id) {
-        groupOptions.value = [{
-          label: data.groupName || 'Группа',
-          value: formData.value.group_id
-        }]
-      }
+    const [schoolsRes, accountantsRes] = await Promise.all([
+      api.api.v1.cabinet.accountant.schools.get(),
+      api.api.v1.cabinet.accountant.accountants.get()
+    ])
+    
+    if (schoolsRes.data) {
+      schoolOptions.value = schoolsRes.data.map((s: any) => ({ label: s.label, value: s.id }))
     }
-  } catch (e: any) {
+    if (accountantsRes.data) {
+      accountantOptions.value = accountantsRes.data.map((a: any) => ({ label: a.label, value: a.id }))
+    }
+  } catch (e) {
     console.error(e)
-    message.error('Ошибка при загрузке данных: ' + (e.message || 'Неизвестная ошибка'))
   } finally {
-    loading.value = false
+    schoolsLoading.value = false
+    accountantsLoading.value = false
   }
 }
 
@@ -330,14 +450,23 @@ const handleSubmit = async () => {
       method: formData.value.method,
       purpose: formData.value.purpose,
       comment: formData.value.comment || undefined,
+      school_id: formData.value.school_id || undefined,
+      created_by_id: formData.value.created_by_id || undefined,
+      is_partial: formData.value.is_partial,
+      tariff_id: formData.value.tariff_id || undefined,
     }
 
-    const { error } = await api.api.v1.cabinet.accountant.payments[paymentId as any].patch(payload)
+    const { data, error } = await api.api.v1.cabinet.accountant.payments.post(payload)
     
     if (error) throw error
     
-    message.success('Данные успешно обновлены!')
-    navigateTo('/cabinet/accountant/payments')
+    message.success('Оплата успешно принята!')
+    // Redirect to receipt or list
+    if (data?.id) {
+        navigateTo(`/cabinet/head-accountant/payments/${data.id}/receipt`)
+    } else {
+        navigateTo('/cabinet/head-accountant/payments')
+    }
   } catch (e: any) {
     console.error(e)
     message.error('Ошибка при сохранении: ' + (e.message || 'Неизвестная ошибка'))
@@ -346,7 +475,20 @@ const handleSubmit = async () => {
   }
 }
 
-onMounted(loadPayment)
+// Initial load
+onMounted(async () => {
+  if (formData.value.student_id) {
+    await handleStudentSearch('') // This might not find the specific student if they are not in top 20
+    // Better: fetch specific student info if needed, but for now handleStudentSearch('') is a start
+  }
+  if (formData.value.group_id) {
+    await handleGroupSearch('')
+  }
+  handleGroupSearch('')
+  handleStudentSearch('')
+  loadSchoolsAndAccountants()
+  loadTariffs()
+})
 </script>
 
 <style scoped>
@@ -355,9 +497,6 @@ onMounted(loadPayment)
 }
 
 .page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
   margin-bottom: 24px;
 }
 

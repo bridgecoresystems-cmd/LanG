@@ -31,6 +31,8 @@ async function hasRole(userId: string, role: string): Promise<boolean> {
 }
 
 import { accountantRoutes } from "./accountant/payments";
+import { tariffRoutes } from "./accountant/tariffs";
+import { debtRoutes } from "./accountant/debts";
 
 export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
   .onBeforeHandle((context: any) => {
@@ -41,6 +43,8 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
     }
   })
   .use(accountantRoutes)
+  .use(tariffRoutes)
+  .use(debtRoutes)
   .get("/profile", async (context: any) => {
     const { user } = context;
     const [row] = await db

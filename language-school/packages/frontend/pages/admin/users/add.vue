@@ -167,7 +167,7 @@
 
               <!-- Видеть все школы (для бухгалтера) -->
               <q-checkbox
-                v-if="form.role === 'ACCOUNTANT' || form.role === 'HEAD_ACCOUNTANT'"
+                v-if="form.role === 'ACCOUNTANT'"
                 v-model="form.can_view_all_schools"
                 label="Может видеть все школы"
                 class="q-mb-md block"

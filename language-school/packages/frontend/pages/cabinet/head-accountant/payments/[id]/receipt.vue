@@ -1,7 +1,7 @@
 <template>
   <div class="receipt-page">
     <div class="no-print actions-bar">
-      <NButton @click="navigateTo('/cabinet/accountant/payments')">Назад</NButton>
+      <NButton @click="navigateTo('/cabinet/head-accountant/payments')">Назад</NButton>
       <NButton type="primary" @click="print">Печать / Скачать PDF</NButton>
     </div>
 

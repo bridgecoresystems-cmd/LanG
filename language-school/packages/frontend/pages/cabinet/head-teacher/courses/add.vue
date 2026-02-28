@@ -60,11 +60,21 @@
             </NFormItem>
           </NGi>
           <NGi>
-            <NFormItem label=" ">
-              <NCheckbox v-model:checked="formData.is_active">Активен</NCheckbox>
+            <NFormItem label="Тариф (Стоимость)">
+              <NSelect
+                v-model:value="formData.tariff_id"
+                :options="tariffOptions"
+                :loading="tariffsLoading"
+                placeholder="Выберите тариф"
+                clearable
+                size="large"
+              />
             </NFormItem>
           </NGi>
         </NGrid>
+        <NFormItem>
+          <NCheckbox v-model:checked="formData.is_active">Активен</NCheckbox>
+        </NFormItem>
         <NAlert v-if="submitError" type="error" closable @close="submitError = null">{{ submitError }}</NAlert>
         <NDivider />
         <NSpace justify="end">
@@ -101,6 +111,8 @@ import {
 } from 'naive-ui'
 import { ChevronBackOutline as ArrowBackIcon, SaveOutline as SaveIcon } from '@vicons/ionicons5'
 import { useMessage } from 'naive-ui'
+import { useAuthStore } from '~/stores/authStore'
+import { useEden } from '~/composables/useEden'
 
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
@@ -126,8 +138,31 @@ const formData = ref({
   level: null as string | null,
   description: '',
   duration_months: 3,
+  tariff_id: null as number | null,
   is_active: true,
 })
+
+const tariffsLoading = ref(false)
+const tariffOptions = ref<{ label: string, value: number }[]>([])
+
+const api = useEden()
+
+async function loadTariffs() {
+  tariffsLoading.value = true
+  try {
+    const { data } = await api.api.v1.cabinet.tariffs.get()
+    if (data) {
+      tariffOptions.value = data.map((t: any) => ({
+        label: `${t.name} (${t.price} TMT)`,
+        value: t.id
+      }))
+    }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    tariffsLoading.value = false
+  }
+}
 
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
@@ -150,6 +185,7 @@ async function handleSubmit() {
       level: formData.value.level!,
       description: formData.value.description.trim() || undefined,
       duration_months: formData.value.duration_months || 3,
+      tariff_id: formData.value.tariff_id || undefined,
       is_active: formData.value.is_active,
     })
     message.success('Курс создан')
@@ -169,6 +205,7 @@ function canAccess() {
 
 onMounted(() => {
   if (!canAccess()) navigateTo('/cabinet')
+  loadTariffs()
 })
 </script>
 

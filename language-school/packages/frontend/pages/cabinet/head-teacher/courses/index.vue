@@ -123,6 +123,19 @@ const columns: DataTableColumns<HtCourse> = [
   { title: 'Язык', key: 'language', width: 120 },
   { title: 'Уровень', key: 'level', width: 100 },
   {
+    title: 'Тариф',
+    key: 'tariff_name',
+    width: 150,
+    render(row) {
+      return row.tariff_name 
+        ? h('div', [
+            h('div', { style: 'font-weight: 600' }, row.tariff_name),
+            h('div', { style: 'font-size: 12px; color: #888' }, `${row.tariff_price} TMT`)
+          ])
+        : h('span', { style: 'color: #ccc' }, 'Не установлен')
+    }
+  },
+  {
     title: 'Статистика',
     key: 'stats',
     width: 100,

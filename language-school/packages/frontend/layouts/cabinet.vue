@@ -416,7 +416,7 @@ const menuOptions = computed<MenuOption[]>(() => {
   }
 
   // Бухгалтер (Accountant)
-  if (hasRole(user, 'ACCOUNTANT') || hasRole(user, 'HEAD_ACCOUNTANT')) {
+  if (hasRole(user, 'ACCOUNTANT')) {
     options.push({
       label: 'Оплата',
       key: 'payment-group',
@@ -424,6 +424,23 @@ const menuOptions = computed<MenuOption[]>(() => {
       children: [
         { label: 'Принять оплату', key: '/cabinet/accountant/payments/add', icon: renderIcon(AddIcon) },
         { label: 'Отчёт по оплатам', key: '/cabinet/accountant/payments', icon: renderIcon(ChartIcon) },
+        { label: 'Контроль оплаты', key: '/cabinet/accountant/debts', icon: renderIcon(ChartIcon) },
+        { label: 'Тарифы', key: '/cabinet/accountant/tariffs', icon: renderIcon(DocumentIcon) },
+      ],
+    })
+  }
+
+  // Главный бухгалтер (Head Accountant)
+  if (hasRole(user, 'HEAD_ACCOUNTANT')) {
+    options.push({
+      label: 'Бухгалтерия',
+      key: 'head-payment-group',
+      icon: renderIcon(DocumentIcon),
+      children: [
+        { label: 'Все транзакции', key: '/cabinet/head-accountant/payments', icon: renderIcon(ChartIcon) },
+        { label: 'Принять оплату', key: '/cabinet/head-accountant/payments/add', icon: renderIcon(AddIcon) },
+        { label: 'Контроль оплаты', key: '/cabinet/head-accountant/debts', icon: renderIcon(ChartIcon) },
+        { label: 'Тарифы', key: '/cabinet/head-accountant/tariffs', icon: renderIcon(DocumentIcon) },
       ],
     })
   }

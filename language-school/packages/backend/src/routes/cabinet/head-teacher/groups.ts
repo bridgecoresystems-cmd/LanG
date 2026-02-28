@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { db } from "../../../db/index";
-import { htGroups, htCourses, users, htGroupStudents, htLessons, htAttendance, htGrades, htExamGrades, htGames, htGameResults, htExamSchemeItems } from "../../../db/schema";
-import { eq, ne, desc, and, inArray } from "drizzle-orm";
+import { htGroups, htCourses, users, htGroupStudents, htLessons, htAttendance, htGrades, htExamGrades, htGames, htGameResults, htExamSchemeItems, payments, tariffs } from "../../../db/schema";
+import { eq, ne, desc, and, inArray, sql } from "drizzle-orm";
 import { ROLES } from "../../../constants/roles";
 
 export const headTeacherGroupRoutes = new Elysia()
@@ -22,6 +22,7 @@ export const headTeacherGroupRoutes = new Elysia()
           endDate: htGroups.endDate,
           isActive: htGroups.isActive,
           courseName: htCourses.name,
+          courseTariffId: htCourses.tariffId,
           teacherFirstName: users.first_name,
           teacherLastName: users.last_name,
           teacherUsername: users.username,
@@ -42,6 +43,7 @@ export const headTeacherGroupRoutes = new Elysia()
           endDate: htGroups.endDate,
           isActive: htGroups.isActive,
           courseName: htCourses.name,
+          courseTariffId: htCourses.tariffId,
           teacherFirstName: users.first_name,
           teacherLastName: users.last_name,
           teacherUsername: users.username,
@@ -55,6 +57,7 @@ export const headTeacherGroupRoutes = new Elysia()
       name: r.name,
       course_id: r.courseId,
       course_name: r.courseName,
+      course_tariff_id: r.courseTariffId,
       teacher_id: r.teacherId,
       teacher_name: [r.teacherFirstName, r.teacherLastName].filter(Boolean).join(" ") || r.teacherUsername,
       max_students: r.maxStudents,
@@ -342,6 +345,9 @@ export const headTeacherGroupRoutes = new Elysia()
       set.status = 404;
       return { error: "Not found" };
     }
+    const [course] = await db.select({ tariffId: htCourses.tariffId }).from(htCourses).where(eq(htCourses.id, group.courseId)).limit(1);
+    const tariffId = course?.tariffId;
+
     const studentIds = (body.student_ids as string[]) || [];
     if (studentIds.length === 0) {
       set.status = 400;
@@ -363,8 +369,16 @@ export const headTeacherGroupRoutes = new Elysia()
         }
       }
       try {
-        await db.insert(htGroupStudents).values({ groupId: parseInt(id), userId: sid });
-      } catch { }
+        console.log(`Adding student ${sid} to group ${id} with tariff ${tariffId}`);
+        await db.insert(htGroupStudents).values({ 
+          groupId: parseInt(id), 
+          userId: sid,
+          tariffId: tariffId || null,
+          discount: "0"
+        });
+      } catch (e) { 
+        console.error(`Error adding student ${sid} to group:`, e);
+      }
     }
     return { message: "Added", count: uniqueNew.length };
   }, { body: t.Object({ student_ids: t.Array(t.String()) }) })
@@ -400,16 +414,67 @@ export const headTeacherGroupRoutes = new Elysia()
   })
   .get("/groups/:id/students", async (context: any) => {
     const { params: { id } } = context;
+    const gid = parseInt(id);
+
+    // Fetch students in the group
     const rows = await db.select({
       id: users.id,
       firstName: users.first_name,
       lastName: users.last_name,
       username: users.username,
       avatar: users.avatar,
+      phone: users.phone,
+      parentFirstName: sql<string>`(SELECT first_name FROM "user" p WHERE p.id = ${users.parent_id} LIMIT 1)`,
+      parentLastName: sql<string>`(SELECT last_name FROM "user" p WHERE p.id = ${users.parent_id} LIMIT 1)`,
+      parentPhone: sql<string>`(SELECT phone FROM "user" p WHERE p.id = ${users.parent_id} LIMIT 1)`,
+      tariffPrice: tariffs.price,
+      discount: htGroupStudents.discount,
     }).from(htGroupStudents)
       .innerJoin(users, eq(htGroupStudents.userId, users.id))
-      .where(eq(htGroupStudents.groupId, parseInt(id)));
-    return rows;
+      .leftJoin(tariffs, eq(htGroupStudents.tariffId, tariffs.id))
+      .where(eq(htGroupStudents.groupId, gid));
+
+    // Fetch payments for this group separately to avoid join issues
+    const groupPayments = await db
+      .select({
+        studentId: payments.studentId,
+        total: payments.total
+      })
+      .from(payments)
+      .where(eq(payments.groupId, gid));
+
+    // Aggregate payments by student
+    const paymentsMap = new Map<string, number>();
+    for (const p of groupPayments) {
+      if (p.studentId) {
+        const current = paymentsMap.get(p.studentId) || 0;
+        paymentsMap.set(p.studentId, current + parseFloat(p.total));
+      }
+    }
+
+    return rows.map(r => {
+      const price = parseFloat(r.tariffPrice || "0");
+      const discount = parseFloat(r.discount || "0");
+      const expected = Math.max(0, price - discount);
+      const paid = paymentsMap.get(r.id) || 0;
+      const debt = Math.max(0, expected - paid);
+
+      return {
+        id: r.id,
+        first_name: r.firstName,
+        last_name: r.lastName,
+        full_name: `${r.firstName} ${r.lastName || ''}`.trim() || r.username,
+        username: r.username,
+        avatar: r.avatar,
+        phone: r.phone,
+        parent_full_name: `${r.parentFirstName || ''} ${r.parentLastName || ''}`.trim() || null,
+        parent_phone: r.parentPhone,
+        paid_amount: paid,
+        debt_amount: debt,
+        expected_amount: expected,
+        status: debt <= 0 ? 'paid' : (paid > 0 ? 'partial' : 'unpaid')
+      };
+    });
   })
   .get("/groups/:id/grades", async (context: any) => {
     const { params: { id } } = context;

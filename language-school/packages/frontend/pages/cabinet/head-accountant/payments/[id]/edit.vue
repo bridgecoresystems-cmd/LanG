@@ -6,7 +6,7 @@
         <p class="page-header__subtitle">Изменение данных транзакции #{{ paymentId }}</p>
       </div>
       <div class="page-header__actions">
-        <NButton quaternary @click="navigateTo('/cabinet/accountant/payments')">
+        <NButton quaternary @click="navigateTo('/cabinet/head-accountant/payments')">
           Назад к списку
         </NButton>
       </div>
@@ -83,6 +83,32 @@
             </NFormItem>
           </NGi>
 
+          <!-- Head Accountant Only: School and Accountant Selection -->
+          <template v-if="isHeadAccountant">
+            <NGi>
+              <NFormItem label="Школа" path="school_id">
+                <NSelect
+                  v-model:value="formData.school_id"
+                  :options="schoolOptions"
+                  :loading="schoolsLoading"
+                  placeholder="Выберите школу"
+                  clearable
+                />
+              </NFormItem>
+            </NGi>
+            <NGi>
+              <NFormItem label="Бухгалтер (кто принял)" path="created_by_id">
+                <NSelect
+                  v-model:value="formData.created_by_id"
+                  :options="accountantOptions"
+                  :loading="accountantsLoading"
+                  placeholder="Выберите бухгалтера"
+                  clearable
+                />
+              </NFormItem>
+            </NGi>
+          </template>
+
           <!-- Financials -->
           <NGi>
             <NFormItem label="Сумма (TMT)" path="amount">
@@ -147,7 +173,7 @@
           <NGi :span="2">
             <div class="actions">
               <NSpace>
-                <NButton quaternary @click="navigateTo('/cabinet/accountant/payments')">
+                <NButton quaternary @click="navigateTo('/cabinet/head-accountant/payments')">
                   Отмена
                 </NButton>
                 <NButton type="primary" size="large" :loading="saving" @click="handleSubmit">
@@ -171,13 +197,17 @@ import {
 } from 'naive-ui'
 import { SaveOutline as SaveIcon } from '@vicons/ionicons5'
 import { useEden } from '~/composables/useEden'
+import { useAuthStore } from '~/stores/authStore'
 
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
 const api = useEden()
 const message = useMessage()
 const route = useRoute()
+const authStore = useAuthStore()
 const paymentId = route.params.id as string
+
+const isHeadAccountant = computed(() => authStore.user?.role === 'HEAD_ACCOUNTANT' || authStore.user?.role === 'GEN_DIRECTOR')
 
 const formRef = ref<any>(null)
 const loading = ref(true)
@@ -194,6 +224,8 @@ const formData = ref({
   method: 'cash',
   purpose: '',
   comment: '',
+  school_id: null as number | null,
+  created_by_id: null as string | null,
 })
 
 const rules = computed(() => ({
@@ -202,6 +234,7 @@ const rules = computed(() => ({
   amount: { required: true, type: 'number', min: 0.01, message: 'Введите сумму', trigger: 'blur' },
   method: { required: true, message: 'Выберите способ оплаты', trigger: ['blur', 'change'] },
   purpose: { required: true, message: 'Укажите назначение платежа', trigger: 'blur' },
+  school_id: isHeadAccountant.value ? { required: true, type: 'number', message: 'Выберите школу', trigger: ['blur', 'change'] } : {},
 }))
 
 const methodOptions = [
@@ -274,6 +307,38 @@ const handleFocusGroup = () => {
   }
 }
 
+// Schools and Accountants (for Head Accountant)
+const schoolsLoading = ref(false)
+const schoolOptions = ref<{ label: string, value: number }[]>([])
+const accountantsLoading = ref(false)
+const accountantOptions = ref<{ label: string, value: string }[]>([])
+
+const loadSchoolsAndAccountants = async () => {
+  if (!isHeadAccountant.value) return
+  
+  schoolsLoading.value = true
+  accountantsLoading.value = true
+  
+  try {
+    const [schoolsRes, accountantsRes] = await Promise.all([
+      api.api.v1.cabinet.accountant.schools.get(),
+      api.api.v1.cabinet.accountant.accountants.get()
+    ])
+    
+    if (schoolsRes.data) {
+      schoolOptions.value = schoolsRes.data.map((s: any) => ({ label: s.label, value: s.id }))
+    }
+    if (accountantsRes.data) {
+      accountantOptions.value = accountantsRes.data.map((a: any) => ({ label: a.label, value: a.id }))
+    }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    schoolsLoading.value = false
+    accountantsLoading.value = false
+  }
+}
+
 const loadPayment = async () => {
   loading.value = true
   try {
@@ -291,6 +356,8 @@ const loadPayment = async () => {
         method: data.method || 'cash',
         purpose: data.purpose || '',
         comment: data.comment || '',
+        school_id: data.schoolId || null,
+        created_by_id: data.createdById || null,
       }
       
       // Load initial options for select fields
@@ -305,6 +372,18 @@ const loadPayment = async () => {
           label: data.groupName || 'Группа',
           value: formData.value.group_id
         }]
+      }
+      
+      // Load schools and accountants if head accountant
+      if (isHeadAccountant.value) {
+        await loadSchoolsAndAccountants()
+        // Ensure current school and creator are in options
+        if (formData.value.school_id && !schoolOptions.value.some(s => s.value === formData.value.school_id)) {
+          schoolOptions.value.push({ label: (data as any).schoolName || `Школа #${formData.value.school_id}`, value: formData.value.school_id })
+        }
+        if (formData.value.created_by_id && !accountantOptions.value.some(a => a.value === formData.value.created_by_id)) {
+          accountantOptions.value.push({ label: (data as any).createdByName || `Бухгалтер #${formData.value.created_by_id}`, value: formData.value.created_by_id })
+        }
       }
     }
   } catch (e: any) {
@@ -330,6 +409,8 @@ const handleSubmit = async () => {
       method: formData.value.method,
       purpose: formData.value.purpose,
       comment: formData.value.comment || undefined,
+      school_id: formData.value.school_id || undefined,
+      created_by_id: formData.value.created_by_id || undefined,
     }
 
     const { error } = await api.api.v1.cabinet.accountant.payments[paymentId as any].patch(payload)
@@ -337,7 +418,7 @@ const handleSubmit = async () => {
     if (error) throw error
     
     message.success('Данные успешно обновлены!')
-    navigateTo('/cabinet/accountant/payments')
+    navigateTo('/cabinet/head-accountant/payments')
   } catch (e: any) {
     console.error(e)
     message.error('Ошибка при сохранении: ' + (e.message || 'Неизвестная ошибка'))

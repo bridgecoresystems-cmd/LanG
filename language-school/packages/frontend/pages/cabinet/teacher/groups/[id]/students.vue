@@ -83,7 +83,29 @@
               <td>
                 <div class="cell-subtitle">{{ s.parent_full_name || '—' }}</div>
               </td>
-              <td><span class="placeholder">—</span></td>
+              <td>
+                <div class="payment-cell">
+                  <NText
+                    v-if="s.paid_amount > 0"
+                    :type="s.status === 'paid' ? 'success' : 'warning'"
+                    strong
+                    class="mb-1"
+                  >
+                    {{ s.paid_amount }} TMT
+                  </NText>
+                  <NText
+                    v-else
+                    type="error"
+                    strong
+                    class="mb-1"
+                  >
+                    0 TMT
+                  </NText>
+                  <div v-if="s.debt_amount > 0" class="debt-hint">
+                    Долг: {{ s.debt_amount }} TMT
+                  </div>
+                </div>
+              </td>
               <td><span class="placeholder">—</span></td>
               <td><span class="placeholder">—</span></td>
               <td>
@@ -106,7 +128,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import {
-  NH1, NButton, NIcon, NCard, NProgress, NSpin, NEmpty
+  NH1, NButton, NIcon, NCard, NProgress, NSpin, NEmpty, NTag, NText
 } from 'naive-ui'
 import {
   ChevronBackOutline as BackIcon,
@@ -170,7 +192,7 @@ const formatDateShort = (dateStr: string | null) => {
 const loadStudents = async () => {
   pending.value = true
   try {
-    const data = await $fetch<any[]>(`/api/v1/cabinet/teacher/groups/${groupId.value}/students`, {
+    const data = await $fetch<any[]>(`/api/v1/cabinet/head-teacher/groups/${groupId.value}/students`, {
       credentials: 'include'
     })
     students.value = Array.isArray(data) ? data : []
@@ -306,6 +328,22 @@ onMounted(async () => {
 .placeholder {
   color: var(--n-text-color-3);
   font-size: 0.9rem;
+}
+
+.payment-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.debt-hint {
+  font-size: 0.75rem;
+  color: var(--n-error-color);
+  font-weight: 500;
+}
+
+.mb-1 {
+  margin-bottom: 4px;
 }
 
 .loading-state {

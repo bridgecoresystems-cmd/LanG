@@ -38,6 +38,7 @@
                 :loading="studentsLoading"
                 remote
                 @search="handleStudentSearch"
+                @focus="handleFocusStudent"
                 clearable
               />
             </NFormItem>
@@ -67,6 +68,7 @@
                 :loading="groupsLoading"
                 remote
                 @search="handleGroupSearch"
+                @focus="handleFocusGroup"
                 clearable
               />
               <template #feedback>
@@ -74,6 +76,46 @@
               </template>
             </NFormItem>
           </NGi>
+
+          <!-- Debt and Tariff Info -->
+          <template v-if="formData.student_id && formData.group_id">
+            <NGi :span="2">
+              <NCard size="small" embedded :bordered="false" style="background-color: #f0f7ff; margin-bottom: 16px;">
+                <NSpace vertical>
+                  <div class="row justify-between">
+                    <NText depth="3">Текущий тариф:</NText>
+                    <NText strong>{{ currentDebtInfo.tariffPrice }} TMT</NText>
+                  </div>
+                  <div class="row justify-between">
+                    <NText depth="3">Уже оплачено:</NText>
+                    <NText strong type="success">{{ currentDebtInfo.totalPaid }} TMT</NText>
+                  </div>
+                  <div class="row justify-between">
+                    <NText depth="3">Остаток долга:</NText>
+                    <NText strong type="error">{{ remainingDebt }} TMT</NText>
+                  </div>
+                </NSpace>
+              </NCard>
+            </NGi>
+
+            <NGi>
+              <NFormItem label="Установить/Изменить тариф" path="tariff_id">
+                <NSelect
+                  v-model:value="formData.tariff_id"
+                  :options="tariffOptions"
+                  placeholder="Выберите тариф"
+                  clearable
+                />
+              </NFormItem>
+            </NGi>
+            <NGi>
+              <NFormItem label="Тип оплаты">
+                <NCheckbox v-model:checked="formData.is_partial">
+                  Оплата частями
+                </NCheckbox>
+              </NFormItem>
+            </NGi>
+          </template>
 
           <!-- Financials -->
           <NGi>
@@ -154,7 +196,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import {
   NH1, NH2, NText, NCard, NForm, NFormItem, NInput, NInputNumber,
-  NSelect, NSwitch, NButton, NIcon, NGrid, NGi, NAutoComplete, useMessage
+  NSelect, NSwitch, NButton, NIcon, NGrid, NGi, NAutoComplete, useMessage, NSpace, NCheckbox
 } from 'naive-ui'
 import { SaveOutline as SaveIcon } from '@vicons/ionicons5'
 import { useEden } from '~/composables/useEden'
@@ -178,6 +220,74 @@ const formData = ref({
   method: 'cash',
   purpose: '',
   comment: '',
+  is_partial: false,
+  tariff_id: null as number | null,
+})
+
+const currentDebtInfo = ref({
+  tariffPrice: 0,
+  discount: 0,
+  totalPaid: 0,
+  remaining: 0
+})
+
+const remainingDebt = computed(() => {
+  const expected = Math.max(0, currentDebtInfo.value.tariffPrice - currentDebtInfo.value.discount)
+  return Math.max(0, expected - currentDebtInfo.value.totalPaid)
+})
+
+watch([() => formData.value.student_id, () => formData.value.group_id], async ([sId, gId]) => {
+  if (sId && gId) {
+    try {
+      const { data } = await api.api.v1.cabinet.accountant['student-group-info'].get({
+        query: { studentId: sId, groupId: gId.toString() }
+      })
+      if (data && !('error' in data)) {
+        currentDebtInfo.value = {
+          tariffPrice: (data as any).tariffPrice || 0,
+          discount: (data as any).discount || 0,
+          totalPaid: (data as any).totalPaid || 0,
+          remaining: 0
+        }
+        if ((data as any).tariffId) {
+          formData.value.tariff_id = (data as any).tariffId
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  } else {
+    currentDebtInfo.value = { tariffPrice: 0, discount: 0, totalPaid: 0, remaining: 0 }
+  }
+})
+
+// Tariffs
+const tariffOptions = ref<{ label: string, value: number, price: number }[]>([])
+const loadTariffs = async () => {
+  try {
+    const { data } = await api.api.v1.cabinet.tariffs.get()
+    if (data) {
+      tariffOptions.value = data.map((t: any) => ({
+        label: `${t.name} (${t.price} TMT)`,
+        value: t.id,
+        price: parseFloat(t.price)
+      }))
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+watch(() => formData.value.tariff_id, (tId) => {
+  if (tId) {
+    const tariff = tariffOptions.value.find(t => t.value === tId)
+    if (tariff) {
+      currentDebtInfo.value.tariffPrice = tariff.price
+      if (!formData.value.is_partial) {
+        formData.value.amount = Math.max(0, tariff.price - currentDebtInfo.value.discount - currentDebtInfo.value.totalPaid)
+      }
+    }
+  }
 })
 
 const rules = computed(() => ({
@@ -209,10 +319,9 @@ const studentsLoading = ref(false)
 const studentOptions = ref<{ label: string, value: string }[]>([])
 
 const handleStudentSearch = async (query: string) => {
-  if (!query) return
   studentsLoading.value = true
   try {
-    const { data } = await api.api.v1.cabinet.accountant.students.get({ query: { q: query } })
+    const { data } = await api.api.v1.cabinet.accountant.students.get({ query: { q: query || '' } })
     if (data) {
       studentOptions.value = data.map((s: any) => ({
         label: `${s.full_name} (${s.phone || 'нет тел.'})`,
@@ -226,15 +335,20 @@ const handleStudentSearch = async (query: string) => {
   }
 }
 
+const handleFocusStudent = () => {
+  if (studentOptions.value.length === 0) {
+    handleStudentSearch('')
+  }
+}
+
 // Groups Search
 const groupsLoading = ref(false)
 const groupOptions = ref<{ label: string, value: number }[]>([])
 
 const handleGroupSearch = async (query: string) => {
-  if (!query) return
   groupsLoading.value = true
   try {
-    const { data } = await api.api.v1.cabinet.accountant.groups.get({ query: { q: query } })
+    const { data } = await api.api.v1.cabinet.accountant.groups.get({ query: { q: query || '' } })
     if (data) {
       groupOptions.value = data.map((g: any) => ({
         label: g.name,
@@ -245,6 +359,12 @@ const handleGroupSearch = async (query: string) => {
     console.error(e)
   } finally {
     groupsLoading.value = false
+  }
+}
+
+const handleFocusGroup = () => {
+  if (groupOptions.value.length === 0) {
+    handleGroupSearch('')
   }
 }
 
@@ -263,6 +383,8 @@ const handleSubmit = async () => {
       method: formData.value.method,
       purpose: formData.value.purpose,
       comment: formData.value.comment || undefined,
+      is_partial: formData.value.is_partial,
+      tariff_id: formData.value.tariff_id || undefined,
     }
 
     const { data, error } = await api.api.v1.cabinet.accountant.payments.post(payload)
@@ -286,8 +408,9 @@ const handleSubmit = async () => {
 
 // Initial load
 onMounted(() => {
-  handleGroupSearch('') // Load initial groups
-  handleStudentSearch('') // Load initial students
+  handleGroupSearch('')
+  handleStudentSearch('')
+  loadTariffs()
 })
 </script>
 

@@ -64,11 +64,21 @@
             </NFormItem>
           </NGi>
           <NGi>
-            <NFormItem label=" ">
-              <NCheckbox v-model:checked="formData.is_active">Активен</NCheckbox>
+            <NFormItem label="Тариф (Стоимость)">
+              <NSelect
+                v-model:value="formData.tariff_id"
+                :options="tariffOptions"
+                :loading="tariffsLoading"
+                placeholder="Выберите тариф"
+                clearable
+                size="large"
+              />
             </NFormItem>
           </NGi>
         </NGrid>
+        <NFormItem>
+          <NCheckbox v-model:checked="formData.is_active">Активен</NCheckbox>
+        </NFormItem>
         <NAlert v-if="submitError" type="error" closable @close="submitError = null">{{ submitError }}</NAlert>
         <NDivider />
         <NSpace justify="end">
@@ -106,6 +116,7 @@ import {
 } from 'naive-ui'
 import { ChevronBackOutline as ArrowBackIcon, SaveOutline as SaveIcon } from '@vicons/ionicons5'
 import { useMessage } from 'naive-ui'
+import { useEden } from '~/composables/useEden'
 
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
@@ -113,6 +124,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const message = useMessage()
 const { getById, update } = useCabinetCourses()
+const api = useEden()
 
 const availableLanguages = ref(['English', 'Russian', 'Turkmen', 'Turkish', 'German', 'French', 'Spanish', 'Chinese'])
 const languageOptions = computed(() => availableLanguages.value.map((l) => ({ label: l, value: l })))
@@ -131,8 +143,29 @@ const formData = ref({
   level: null as string | null,
   description: '',
   duration_months: 3,
+  tariff_id: null as number | null,
   is_active: true,
 })
+
+const tariffsLoading = ref(false)
+const tariffOptions = ref<{ label: string, value: number }[]>([])
+
+async function loadTariffs() {
+  tariffsLoading.value = true
+  try {
+    const { data } = await api.api.v1.cabinet.tariffs.get()
+    if (data) {
+      tariffOptions.value = data.map((t: any) => ({
+        label: `${t.name} (${t.price} TMT)`,
+        value: t.id
+      }))
+    }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    tariffsLoading.value = false
+  }
+}
 
 const loading = ref(true)
 const submitting = ref(false)
@@ -150,6 +183,7 @@ async function loadCourse() {
       level: course.level || null,
       description: course.description || '',
       duration_months: course.duration_months ?? 3,
+      tariff_id: course.tariff_id || null,
       is_active: course.is_active !== false,
     }
     if (course.language && !availableLanguages.value.includes(course.language)) {
@@ -177,6 +211,7 @@ async function handleSubmit() {
       level: formData.value.level,
       description: formData.value.description.trim() || undefined,
       duration_months: formData.value.duration_months || 3,
+      tariff_id: formData.value.tariff_id || null,
       is_active: formData.value.is_active,
     })
     message.success('Сохранено')
@@ -199,6 +234,7 @@ onMounted(() => {
     navigateTo('/cabinet')
     return
   }
+  loadTariffs()
   loadCourse()
 })
 </script>

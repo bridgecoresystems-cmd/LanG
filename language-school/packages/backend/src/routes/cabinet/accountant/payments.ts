@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { db } from "../../../db/index";
-import { payments, users, htGroups, schools, userRoles } from "../../../db/schema";
-import { eq, desc, and, like, or, sql } from "drizzle-orm";
+import { payments, users, htGroups, schools, userRoles, htGroupStudents, tariffs } from "../../../db/schema";
+import { eq, desc, and, like, or, sql, sum } from "drizzle-orm";
 import { ROLES } from "../../../constants/roles";
 
 // Helper to check roles
@@ -82,12 +82,18 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
     }
 
     if (dateFrom) {
-      conditions.push(sql`${payments.createdAt} >= ${dateFrom}`);
+      const startOfDay = new Date(dateFrom as string);
+      if (!isNaN(startOfDay.getTime())) {
+        startOfDay.setHours(0, 0, 0, 0);
+        conditions.push(sql`${payments.createdAt} >= ${startOfDay.toISOString()}`);
+      }
     }
     if (dateTo) {
-      const endOfDay = new Date(dateTo);
-      endOfDay.setHours(23, 59, 59, 999);
-      conditions.push(sql`${payments.createdAt} <= ${endOfDay}`);
+      const endOfDay = new Date(dateTo as string);
+      if (!isNaN(endOfDay.getTime())) {
+        endOfDay.setHours(23, 59, 59, 999);
+        conditions.push(sql`${payments.createdAt} <= ${endOfDay.toISOString()}`);
+      }
     }
 
     if (conditions.length > 0) {
@@ -127,6 +133,7 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
       .from(payments)
       .leftJoin(users, eq(payments.studentId, users.id))
       .leftJoin(htGroups, eq(payments.groupId, htGroups.id))
+      .leftJoin(schools, eq(payments.schoolId, schools.id))
       .where(whereClause);
       
     return {
@@ -158,9 +165,10 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
   })
   .post("/payments", async (context: any) => {
     const { user, body, set } = context;
-    const { student_id, group_id, payer_name, payer_phone, amount, discount, method, purpose, comment } = body;
+    const { student_id, group_id, payer_name, payer_phone, amount, discount, method, purpose, comment, school_id, created_by_id, is_partial, tariff_id } = body;
     
-    const [dbUser] = await db.select({ schoolId: users.school_id }).from(users).where(eq(users.id, user.id)).limit(1);
+    const [dbUser] = await db.select({ schoolId: users.school_id, role: users.role }).from(users).where(eq(users.id, user.id)).limit(1);
+    const isHeadAccountant = dbUser?.role === ROLES.HEAD_ACCOUNTANT || dbUser?.role === ROLES.GEN_DIRECTOR || dbUser?.role === ROLES.SUPERUSER;
     
     const total = parseFloat(amount.toString()) - parseFloat((discount || 0).toString());
     
@@ -175,9 +183,26 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
       method,
       purpose,
       comment: comment || null,
-      createdById: user.id,
-      schoolId: dbUser?.schoolId || null,
+      createdById: (isHeadAccountant && created_by_id) ? created_by_id : user.id,
+      schoolId: (isHeadAccountant && school_id) ? school_id : (dbUser?.schoolId || null),
+      isPartial: is_partial || false,
     }).returning();
+
+    // If it's a student in a group, update their enrollment with tariff and discount if provided
+    if (student_id && group_id) {
+      const updateData: any = {};
+      if (tariff_id) updateData.tariffId = tariff_id;
+      if (discount !== undefined) {
+        // We accumulate the discount in the enrollment record
+        updateData.discount = sql`${htGroupStudents.discount} + ${(discount || 0).toString()}`;
+      }
+      
+      if (Object.keys(updateData).length > 0) {
+        await db.update(htGroupStudents)
+          .set(updateData)
+          .where(and(eq(htGroupStudents.userId, student_id), eq(htGroupStudents.groupId, group_id)));
+      }
+    }
     
     return payment;
   }, {
@@ -191,11 +216,15 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
       method: t.String(),
       purpose: t.String(),
       comment: t.Optional(t.String()),
+      school_id: t.Optional(t.Number()),
+      created_by_id: t.Optional(t.String()),
+      is_partial: t.Optional(t.Boolean()),
+      tariff_id: t.Optional(t.Number()),
     })
   })
   .patch("/payments/:id", async (context: any) => {
     const { user, params: { id }, body, set } = context;
-    const { student_id, group_id, payer_name, payer_phone, amount, discount, method, purpose, comment } = body;
+    const { student_id, group_id, payer_name, payer_phone, amount, discount, method, purpose, comment, school_id, created_by_id } = body;
     
     const isHeadAccountant = await hasRole(user.id, ROLES.HEAD_ACCOUNTANT);
     const isGenDirector = await hasRole(user.id, ROLES.GEN_DIRECTOR);
@@ -224,6 +253,8 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
       method,
       purpose,
       comment: comment || null,
+      schoolId: school_id !== undefined ? school_id : existing.schoolId,
+      createdById: created_by_id !== undefined ? created_by_id : existing.createdById,
     }).where(eq(payments.id, parseInt(id))).returning();
 
     return updated;
@@ -238,6 +269,8 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
       method: t.String(),
       purpose: t.String(),
       comment: t.Optional(t.String()),
+      school_id: t.Optional(t.Number()),
+      created_by_id: t.Optional(t.String()),
     })
   })
   .get("/payments/:id/receipt", async (context: any) => {
@@ -251,17 +284,27 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
         method: payments.method,
         purpose: payments.purpose,
         createdAt: payments.createdAt,
+        studentId: payments.studentId,
         studentFirstName: users.first_name,
         studentLastName: users.last_name,
         studentPhone: users.phone,
         studentEmail: users.email,
         payerName: payments.payerName,
         payerPhone: payments.payerPhone,
+        groupId: payments.groupId,
         groupName: htGroups.name,
+        schoolId: payments.schoolId,
+        isPartial: payments.isPartial,
+        schoolName: schools.name,
+        createdById: payments.createdById,
+        creatorFirstName: sql<string>`creator.first_name`,
+        creatorLastName: sql<string>`creator.last_name`,
       })
       .from(payments)
       .leftJoin(users, eq(payments.studentId, users.id))
       .leftJoin(htGroups, eq(payments.groupId, htGroups.id))
+      .leftJoin(schools, eq(payments.schoolId, schools.id))
+      .leftJoin(sql`${users} as creator`, eq(payments.createdById, sql`creator.id`))
       .where(eq(payments.id, parseInt(id)))
       .limit(1);
       
@@ -272,11 +315,16 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
       amount: parseFloat(payment.amount),
       discount: parseFloat(payment.discount || '0'),
       total: parseFloat(payment.total),
+      schoolId: payment.schoolId,
+      schoolName: payment.schoolName,
+      createdById: payment.createdById,
+      createdByName: [payment.creatorFirstName, payment.creatorLastName].filter(Boolean).join(" "),
     };
   })
   .get("/students", async (context: any) => {
     const { user, query } = context;
     const search = query.q ? String(query.q).toLowerCase() : "";
+    const schoolId = query.schoolId ? parseInt(query.schoolId as string) : null;
     
     const [currentUser] = await db.select({ 
       schoolId: users.school_id, 
@@ -297,7 +345,15 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
                     currentUser?.role === ROLES.GEN_DIRECTOR || 
                     currentUser?.role === ROLES.HEAD_ACCOUNTANT;
     
-    if (!isSuper && !currentUser?.canViewAll && currentUser?.schoolId) {
+    if (schoolId) {
+      // If schoolId filter is provided, use it (only for super/head who can see all)
+      if (isSuper || currentUser?.canViewAll) {
+        conditions.push(eq(users.school_id, schoolId));
+      } else {
+        // Regular accountant can only see their school even if they try to filter
+        conditions.push(eq(users.school_id, currentUser?.schoolId || 0));
+      }
+    } else if (!isSuper && !currentUser?.canViewAll && currentUser?.schoolId) {
       conditions.push(eq(users.school_id, currentUser.schoolId));
     }
 
@@ -319,10 +375,16 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
       phone: r.phone,
       username: r.username
     }));
+  }, {
+    query: t.Object({
+      q: t.Optional(t.String()),
+      schoolId: t.Optional(t.String()),
+    })
   })
   .get("/groups", async (context: any) => {
     const { user, query } = context;
     const search = query.q ? String(query.q).toLowerCase() : "";
+    const schoolId = query.schoolId ? parseInt(query.schoolId as string) : null;
     
     const [currentUser] = await db.select({ 
       schoolId: users.school_id, 
@@ -336,7 +398,13 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
                     currentUser?.role === ROLES.GEN_DIRECTOR || 
                     currentUser?.role === ROLES.HEAD_ACCOUNTANT;
     
-    if (!isSuper && !currentUser?.canViewAll && currentUser?.schoolId) {
+    if (schoolId) {
+      if (isSuper || currentUser?.canViewAll) {
+        conditions.push(eq(htGroups.schoolId, schoolId));
+      } else {
+        conditions.push(eq(htGroups.schoolId, currentUser?.schoolId || 0));
+      }
+    } else if (!isSuper && !currentUser?.canViewAll && currentUser?.schoolId) {
       conditions.push(eq(htGroups.schoolId, currentUser.schoolId));
     }
 
@@ -350,4 +418,91 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
       .limit(20);
       
     return rows;
+  }, {
+    query: t.Object({
+      q: t.Optional(t.String()),
+      schoolId: t.Optional(t.String()),
+    })
+  })
+  .get("/student-group-info", async (context: any) => {
+    const { query } = context;
+    const { studentId, groupId } = query;
+    if (!studentId || !groupId) return { error: "Missing params" };
+
+    try {
+      const gId = parseInt(groupId);
+      if (isNaN(gId)) return { error: "Invalid groupId" };
+
+      const [enrollment] = await db
+        .select({
+          tariffId: htGroupStudents.tariffId,
+          discount: htGroupStudents.discount,
+          tariffPrice: tariffs.price,
+        })
+        .from(htGroupStudents)
+        .leftJoin(tariffs, eq(htGroupStudents.tariffId, tariffs.id))
+        .where(and(eq(htGroupStudents.userId, studentId), eq(htGroupStudents.groupId, gId)))
+        .limit(1);
+
+      const [paymentSum] = await db
+        .select({ totalPaid: sum(payments.total) })
+        .from(payments)
+        .where(and(eq(payments.studentId, studentId), eq(payments.groupId, gId)));
+
+      return {
+        tariffId: enrollment?.tariffId || null,
+        tariffPrice: enrollment?.tariffPrice ? parseFloat(enrollment.tariffPrice) : 0,
+        discount: enrollment?.discount ? parseFloat(enrollment.discount) : 0,
+        totalPaid: paymentSum?.totalPaid ? parseFloat(paymentSum.totalPaid) : 0,
+      };
+    } catch (e: any) {
+      console.error("Error in student-group-info:", e);
+      return { error: e.message || "Internal Server Error" };
+    }
+  }, {
+    query: t.Object({
+      studentId: t.String(),
+      groupId: t.String(),
+    })
+  })
+  .get("/accountants", async (context: any) => {
+    const { user } = context;
+    const [currentUser] = await db.select({ role: users.role }).from(users).where(eq(users.id, user.id)).limit(1);
+    const isHeadAccountant = currentUser?.role === ROLES.HEAD_ACCOUNTANT || currentUser?.role === ROLES.GEN_DIRECTOR || currentUser?.role === ROLES.SUPERUSER;
+    
+    if (!isHeadAccountant) {
+      return [];
+    }
+
+    const rows = await db
+      .select({
+        id: users.id,
+        firstName: users.first_name,
+        lastName: users.last_name,
+        schoolName: schools.name,
+      })
+      .from(users)
+      .leftJoin(schools, eq(users.school_id, schools.id))
+      .where(or(eq(users.role, ROLES.ACCOUNTANT), eq(users.role, ROLES.HEAD_ACCOUNTANT)))
+      .orderBy(users.first_name);
+      
+    return rows.map(r => ({
+      id: r.id,
+      label: `${r.firstName} ${r.lastName || ''} (${r.schoolName || 'Без школы'})`
+    }));
+  })
+  .get("/schools", async (context: any) => {
+    const { user } = context;
+    const [currentUser] = await db.select({ role: users.role }).from(users).where(eq(users.id, user.id)).limit(1);
+    const isHeadAccountant = currentUser?.role === ROLES.HEAD_ACCOUNTANT || currentUser?.role === ROLES.GEN_DIRECTOR || currentUser?.role === ROLES.SUPERUSER;
+    
+    if (!isHeadAccountant) {
+      return [];
+    }
+
+    const rows = await db.select().from(schools).orderBy(schools.name);
+    return rows.map(s => ({
+      id: s.id,
+      label: s.name
+    }));
   });

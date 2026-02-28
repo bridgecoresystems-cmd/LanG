@@ -161,7 +161,10 @@ const submitError = ref<string | null>(null)
 const showAddModal = ref(false)
 const selectedStudentIds = ref<string[]>([])
 
-const courseOptions = computed(() => courses.value.map((c) => ({ label: c.name, value: c.id })))
+const courseOptions = computed(() => courses.value.map((c) => ({ 
+  label: c.tariff_name ? `${c.name} (${c.tariff_price} TMT)` : c.name, 
+  value: c.id 
+})))
 const teacherOptions = computed(() => teachers.value.map((t) => ({ label: t.full_name, value: t.id })))
 const examSchemeOptions = computed(() => examSchemes.value.map((s) => ({ label: s.name, value: s.id })))
 

@@ -11,7 +11,7 @@
             <template #icon><NIcon><DownloadIcon /></NIcon></template>
             Экспорт Excel
           </NButton>
-          <NButton type="primary" size="large" @click="navigateTo('/cabinet/accountant/payments/add')">
+          <NButton type="primary" size="large" @click="navigateTo('/cabinet/head-accountant/payments/add')">
             <template #icon><NIcon><AddIcon /></NIcon></template>
             Принять оплату
           </NButton>
@@ -192,29 +192,29 @@ const columns = computed(() => {
     align: 'right',
     render: (row: any) => {
       const actions = [
-        h(NTooltip, { trigger: 'hover' }, {
-          trigger: () => h(NButton, {
-            size: 'small',
-            quaternary: true,
-            circle: true,
-            onClick: () => navigateTo(`/cabinet/accountant/payments/${row.id}/receipt`)
-          }, { icon: () => h(NIcon, null, { default: () => h(PrintIcon) }) }),
-          default: () => 'Печать квитанции'
-        })
+            h(NTooltip, { trigger: 'hover' }, {
+              trigger: () => h(NButton, {
+                size: 'small',
+                quaternary: true,
+                circle: true,
+                onClick: () => navigateTo(`/cabinet/head-accountant/payments/${row.id}/receipt`)
+              }, { icon: () => h(NIcon, null, { default: () => h(PrintIcon) }) }),
+              default: () => 'Печать квитанции'
+            })
       ]
 
       if (isHeadAccountant.value) {
         actions.push(
-          h(NTooltip, { trigger: 'hover' }, {
-            trigger: () => h(NButton, {
-              size: 'small',
-              quaternary: true,
-              circle: true,
-              type: 'info',
-              onClick: () => navigateTo(`/cabinet/accountant/payments/${row.id}/edit`)
-            }, { icon: () => h(NIcon, null, { default: () => h(EditIcon) }) }),
-            default: () => 'Редактировать'
-          })
+              h(NTooltip, { trigger: 'hover' }, {
+                trigger: () => h(NButton, {
+                  size: 'small',
+                  quaternary: true,
+                  circle: true,
+                  type: 'info',
+                  onClick: () => navigateTo(`/cabinet/head-accountant/payments/${row.id}/edit`)
+                }, { icon: () => h(NIcon, null, { default: () => h(EditIcon) }) }),
+                default: () => 'Редактировать'
+              })
         )
       }
 

@@ -159,7 +159,7 @@
 
               <!-- Видеть все школы (для бухгалтера) -->
               <q-checkbox
-                v-if="form.role === 'ACCOUNTANT' || form.role === 'HEAD_ACCOUNTANT'"
+                v-if="form.role === 'ACCOUNTANT'"
                 v-model="form.can_view_all_schools"
                 label="Может видеть все школы"
                 class="q-mb-md block"
@@ -264,7 +264,7 @@ const form = ref({
 
 const showSchoolField = computed(() => {
   const r = form.value.role
-  return ['STUDENT', 'TEACHER', 'HEAD_TEACHER', 'DIRECTOR', 'RECEPTIONIST', 'ACCOUNTANT', 'HEAD_ACCOUNTANT'].includes(r)
+  return ['STUDENT', 'TEACHER', 'HEAD_TEACHER', 'DIRECTOR', 'RECEPTIONIST', 'ACCOUNTANT'].includes(r)
 })
 
 const schoolOptions = computed(() =>

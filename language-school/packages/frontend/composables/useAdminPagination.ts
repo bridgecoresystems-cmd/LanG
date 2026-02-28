@@ -31,9 +31,7 @@ function loadFromStorage(storageKey: string): AdminPaginationState {
         rowsPerPage: validRpp
       }
     }
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
   return { ...defaultState }
 }
 
@@ -41,14 +39,11 @@ function saveToStorage(storageKey: string, data: AdminPaginationState) {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(storageKey, JSON.stringify(data))
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
 }
 
 /**
- * Composable for admin table pagination with localStorage persistence.
- * Survives F5 refresh — rowsPerPage, sortBy, page are saved per page key.
+ * Composable for Quasar tables (Admin Panel)
  */
 export function useAdminPagination(pageKey: string) {
   const storageKey = `${STORAGE_KEY_PREFIX}${pageKey}`
@@ -67,23 +62,12 @@ export function useAdminPagination(pageKey: string) {
     { deep: true }
   )
 
-  onMounted(() => {
-    const saved = loadFromStorage(storageKey)
-    pagination.value = { ...pagination.value, ...saved }
-  })
-
   const resetPage = () => {
-    pagination.value = { ...pagination.value, page: 1 }
+    pagination.value.page = 1
   }
 
-  const savePagination = (val: { sortBy?: string; descending?: boolean; page?: number; rowsPerPage?: number }) => {
-    const toSave: AdminPaginationState = {
-      sortBy: val.sortBy ?? pagination.value.sortBy,
-      descending: val.descending ?? pagination.value.descending,
-      page: val.page ?? pagination.value.page,
-      rowsPerPage: ROWS_PER_PAGE_OPTIONS.includes(val.rowsPerPage ?? 0) ? val.rowsPerPage! : pagination.value.rowsPerPage
-    }
-    saveToStorage(storageKey, toSave)
+  const savePagination = (val: Partial<AdminPaginationState>) => {
+    pagination.value = { ...pagination.value, ...val }
   }
 
   return {
@@ -91,5 +75,56 @@ export function useAdminPagination(pageKey: string) {
     rowsPerPageOptions: ROWS_PER_PAGE_OPTIONS,
     resetPage,
     savePagination
+  }
+}
+
+/**
+ * Composable for Naive UI tables (Cabinet)
+ */
+export function useCabinetPagination(pageKey: string) {
+  const storageKey = `${STORAGE_KEY_PREFIX}${pageKey}`
+  const initialState = loadFromStorage(storageKey)
+
+  const pagination = reactive({
+    page: initialState.page,
+    pageSize: initialState.rowsPerPage,
+    showSizePicker: true,
+    pageSizes: ROWS_PER_PAGE_OPTIONS,
+    itemCount: 0,
+    prefix({ itemCount }: { itemCount: number }) {
+      return `Всего: ${itemCount}`
+    },
+    onUpdatePage: (page: number) => {
+      pagination.page = page
+    },
+    onUpdatePageSize: (pageSize: number) => {
+      pagination.pageSize = pageSize
+      pagination.page = 1
+    }
+  })
+
+  watch(
+    () => ({
+      page: pagination.page,
+      pageSize: pagination.pageSize
+    }),
+    (val) => {
+      const current = loadFromStorage(storageKey)
+      saveToStorage(storageKey, {
+        ...current,
+        page: val.page,
+        rowsPerPage: val.pageSize
+      })
+    },
+    { deep: true, flush: 'post' }
+  )
+
+  const resetPage = () => {
+    pagination.page = 1
+  }
+
+  return {
+    pagination,
+    resetPage
   }
 }
