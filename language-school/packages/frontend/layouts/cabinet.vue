@@ -416,7 +416,7 @@ const menuOptions = computed<MenuOption[]>(() => {
   }
 
   // Бухгалтер (Accountant)
-  if (hasRole(user, 'ACCOUNTANT')) {
+  if (hasRole(user, 'ACCOUNTANT') || hasRole(user, 'HEAD_ACCOUNTANT')) {
     options.push({
       label: 'Оплата',
       key: 'payment-group',

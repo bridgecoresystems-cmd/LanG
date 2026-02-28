@@ -20,13 +20,13 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
       return { error: "Unauthorized" };
     }
     const isAccountant = await hasRole(user.id, ROLES.ACCOUNTANT);
+    const isHeadAccountant = await hasRole(user.id, ROLES.HEAD_ACCOUNTANT);
     const isDirector = await hasRole(user.id, ROLES.DIRECTOR);
     const isGenDirector = await hasRole(user.id, ROLES.GEN_DIRECTOR);
     const isHeadTeacher = await hasRole(user.id, ROLES.HEAD_TEACHER);
     
-    // Allow Director, Gen Director, Head Teacher to act as Accountant too if needed, 
-    // but primarily check for ACCOUNTANT role (which can be secondary)
-    if (!isAccountant && !isDirector && !isGenDirector && !isHeadTeacher) {
+    // Allow Head Accountant, Director, Gen Director, Head Teacher to act as Accountant too if needed
+    if (!isAccountant && !isHeadAccountant && !isDirector && !isGenDirector && !isHeadTeacher) {
       set.status = 403;
       return { error: "Forbidden" };
     }
@@ -50,8 +50,11 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
     let whereClause = undefined;
     const conditions = [];
 
-    // Filter by school if not superuser/gen_director and doesn't have "view all" flag
-    const isSuper = currentUser?.role === ROLES.SUPERUSER || currentUser?.role === ROLES.GEN_DIRECTOR;
+    // Filter by school if not superuser/gen_director/head_accountant and doesn't have "view all" flag
+    const isSuper = currentUser?.role === ROLES.SUPERUSER || 
+                    currentUser?.role === ROLES.GEN_DIRECTOR || 
+                    currentUser?.role === ROLES.HEAD_ACCOUNTANT;
+    
     if (!isSuper && !currentUser?.canViewAll && currentUser?.schoolId) {
       conditions.push(eq(payments.schoolId, currentUser.schoolId));
     }
@@ -105,10 +108,15 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
         payerName: payments.payerName,
         payerPhone: payments.payerPhone,
         groupName: htGroups.name,
+        schoolName: schools.name,
+        createdByFirstName: sql<string>`creator.first_name`,
+        createdByLastName: sql<string>`creator.last_name`,
       })
       .from(payments)
       .leftJoin(users, eq(payments.studentId, users.id))
       .leftJoin(htGroups, eq(payments.groupId, htGroups.id))
+      .leftJoin(schools, eq(payments.schoolId, schools.id))
+      .leftJoin(sql`${users} as creator`, eq(payments.createdById, sql`creator.id`))
       .where(whereClause)
       .orderBy(desc(payments.createdAt))
       .limit(limit)
@@ -133,6 +141,8 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
         payer: r.studentFirstName ? `${r.studentFirstName} ${r.studentLastName || ''}`.trim() : r.payerName || 'Unknown',
         payer_phone: r.payerPhone,
         group_name: r.groupName,
+        school_name: r.schoolName,
+        created_by: [r.createdByFirstName, r.createdByLastName].filter(Boolean).join(" "),
       })),
       total: Number(count)
     };
@@ -170,6 +180,53 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
     }).returning();
     
     return payment;
+  }, {
+    body: t.Object({
+      student_id: t.Optional(t.String()),
+      group_id: t.Optional(t.Number()),
+      payer_name: t.Optional(t.String()),
+      payer_phone: t.Optional(t.String()),
+      amount: t.Number(),
+      discount: t.Optional(t.Number()),
+      method: t.String(),
+      purpose: t.String(),
+      comment: t.Optional(t.String()),
+    })
+  })
+  .patch("/payments/:id", async (context: any) => {
+    const { user, params: { id }, body, set } = context;
+    const { student_id, group_id, payer_name, payer_phone, amount, discount, method, purpose, comment } = body;
+    
+    const isHeadAccountant = await hasRole(user.id, ROLES.HEAD_ACCOUNTANT);
+    const isGenDirector = await hasRole(user.id, ROLES.GEN_DIRECTOR);
+    
+    if (!isHeadAccountant && !isGenDirector) {
+      set.status = 403;
+      return { error: "Forbidden: Only Head Accountant or Gen Director can edit payments" };
+    }
+
+    const [existing] = await db.select().from(payments).where(eq(payments.id, parseInt(id))).limit(1);
+    if (!existing) {
+      set.status = 404;
+      return { error: "Payment not found" };
+    }
+
+    const total = parseFloat(amount.toString()) - parseFloat((discount || 0).toString());
+
+    const [updated] = await db.update(payments).set({
+      studentId: student_id || null,
+      groupId: group_id || null,
+      payerName: payer_name || null,
+      payerPhone: payer_phone || null,
+      amount: amount.toString(),
+      discount: (discount || 0).toString(),
+      total: total.toString(),
+      method,
+      purpose,
+      comment: comment || null,
+    }).where(eq(payments.id, parseInt(id))).returning();
+
+    return updated;
   }, {
     body: t.Object({
       student_id: t.Optional(t.String()),
@@ -236,7 +293,10 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
       )
     ];
 
-    const isSuper = currentUser?.role === ROLES.SUPERUSER || currentUser?.role === ROLES.GEN_DIRECTOR;
+    const isSuper = currentUser?.role === ROLES.SUPERUSER || 
+                    currentUser?.role === ROLES.GEN_DIRECTOR || 
+                    currentUser?.role === ROLES.HEAD_ACCOUNTANT;
+    
     if (!isSuper && !currentUser?.canViewAll && currentUser?.schoolId) {
       conditions.push(eq(users.school_id, currentUser.schoolId));
     }
@@ -272,7 +332,10 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
 
     const conditions = [like(sql`lower(${htGroups.name})`, `%${search}%`)];
 
-    const isSuper = currentUser?.role === ROLES.SUPERUSER || currentUser?.role === ROLES.GEN_DIRECTOR;
+    const isSuper = currentUser?.role === ROLES.SUPERUSER || 
+                    currentUser?.role === ROLES.GEN_DIRECTOR || 
+                    currentUser?.role === ROLES.HEAD_ACCOUNTANT;
+    
     if (!isSuper && !currentUser?.canViewAll && currentUser?.schoolId) {
       conditions.push(eq(htGroups.schoolId, currentUser.schoolId));
     }

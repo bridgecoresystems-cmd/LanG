@@ -159,7 +159,7 @@
 
               <!-- Видеть все школы (для бухгалтера) -->
               <q-checkbox
-                v-if="form.role === 'ACCOUNTANT'"
+                v-if="form.role === 'ACCOUNTANT' || form.role === 'HEAD_ACCOUNTANT'"
                 v-model="form.can_view_all_schools"
                 label="Может видеть все школы"
                 class="q-mb-md block"
@@ -264,7 +264,7 @@ const form = ref({
 
 const showSchoolField = computed(() => {
   const r = form.value.role
-  return ['STUDENT', 'TEACHER', 'HEAD_TEACHER', 'DIRECTOR', 'RECEPTIONIST', 'ACCOUNTANT'].includes(r)
+  return ['STUDENT', 'TEACHER', 'HEAD_TEACHER', 'DIRECTOR', 'RECEPTIONIST', 'ACCOUNTANT', 'HEAD_ACCOUNTANT'].includes(r)
 })
 
 const schoolOptions = computed(() =>
@@ -342,7 +342,7 @@ const handleSubmit = async () => {
       additional_roles: cleanAdditionalRoles,
       additional_school_ids: form.value.role === 'STUDENT' ? (form.value.additional_school_ids || []).filter((id: number) => id !== form.value.school_id) : undefined,
       can_export_excel: form.value.can_export_excel,
-      can_view_all_schools: form.value.role === 'ACCOUNTANT' ? form.value.can_view_all_schools : false
+      can_view_all_schools: (form.value.role === 'ACCOUNTANT' || form.value.role === 'HEAD_ACCOUNTANT') ? form.value.can_view_all_schools : false
     }
     if (form.value.role === 'STUDENT') {
       body.rfid_uid = form.value.rfid_uid?.trim() || null
