@@ -8,7 +8,6 @@ import { users, schools, userRoles, userSchools } from "../../../db/schema";
 import { desc, eq } from "drizzle-orm";
 import { ROLES } from "../../../constants/roles";
 import { generateUniqueUsername, generateRandomPassword } from "../../../services/user-services";
-import { generateId } from "lucia";
 
 export const adminUsersRoutes = new Elysia({ prefix: "/users" })
   .get("/", async ({ query }) => {
@@ -197,7 +196,7 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
       return { error: "username already exists" };
     }
 
-    const id = generateId(15);
+    const id = crypto.randomUUID();
     const password_hash = await Bun.password.hash(password, { algorithm: "bcrypt" });
 
     const avatar = (body.avatar as string)?.trim() || null;

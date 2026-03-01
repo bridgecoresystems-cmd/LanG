@@ -1,10 +1,9 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
-import { lucia } from "./auth";
 import { db } from "./db";
-import { users, userRoles } from "./db/schema";
-import { eq } from "drizzle-orm";
+import { users, userRoles, sessions } from "./db/schema";
+import { eq, and, gt } from "drizzle-orm";
 import { landingRoutes } from "./routes/landing";
 import { userRoutes } from "./routes/users";
 
@@ -38,36 +37,39 @@ const app = new Elysia()
   // Защищённые роуты /api/v1 — применяем authMiddleware внутри группы
   .group("/api/v1", (protectedApp) =>
     protectedApp
-      // Внутренний derive для всех защищённых /api/v1/* — читаем куку Lucia и подставляем user в контекст
+      // Внутренний derive для всех защищённых /api/v1/* — валидируем сессию напрямую через Drizzle
       .derive(async ({ request, set }) => {
         const url = new URL(request.url);
         const cookieHeader = request.headers.get("Cookie") ?? "";
-
         console.log(`[AuthInline] ${request.method} ${url.pathname}`);
-        console.log(`[AuthInline] Cookie Header: "${cookieHeader}"`);
 
-        const sessionId = lucia.readSessionCookie(cookieHeader);
-        if (!sessionId) {
-          console.log("[AuthInline] ❌ No session ID in cookies");
+        const token = cookieHeader.match(/better-auth\.session_token=([^;]+)/)?.[1];
+        if (!token) {
+          console.log("[AuthInline] ❌ No session token in cookies");
           return { user: null, session: null };
         }
 
-        const { session, user } = await lucia.validateSession(sessionId);
+        const now = new Date();
+        const [session] = await db
+          .select()
+          .from(sessions)
+          .where(and(eq(sessions.token, token), gt(sessions.expiresAt, now)))
+          .limit(1);
 
         if (!session) {
-          console.log("[AuthInline] Invalid or expired session, clearing cookie");
-          const blank = lucia.createBlankSessionCookie();
-          set.headers["Set-Cookie"] = blank.serialize();
+          console.log("[AuthInline] ❌ Session not found or expired");
+          const isProduction = process.env.NODE_ENV === "production";
+          set.headers["Set-Cookie"] = `better-auth.session_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${isProduction ? "; Secure" : ""}`;
           return { user: null, session: null };
         }
 
-        if (session.fresh) {
-          console.log(`[AuthInline] Refreshing fresh session for user: ${user?.username}`);
-          const sessionCookie = lucia.createSessionCookie(session.id);
-          set.headers["Set-Cookie"] = sessionCookie.serialize();
+        const [user] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
+        if (!user) {
+          console.log("[AuthInline] ❌ User not found");
+          return { user: null, session: null };
         }
 
-        console.log(`[AuthInline] Authenticated as: ${user?.username} (${user?.role})`);
+        console.log(`[AuthInline] ✅ Authenticated as: ${user.username} (${user.role})`);
         return { user, session };
       })
       .get("/me", async ({ user }) => {

@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { lucia } from "../auth";
+import { auth } from "../auth";
 import { ROLES } from "../constants/roles";
 import { adminClients, publicClients } from "../ws/contact-broadcast";
 
@@ -10,14 +10,13 @@ export const wsRoutes = new Elysia()
     }),
     async beforeHandle({ query, request, set }) {
       if (query.channel === "admin") {
-        const cookieHeader = request.headers.get("Cookie") ?? "";
-        const sessionId = lucia.readSessionCookie(cookieHeader);
-        if (!sessionId) {
+        const session = await auth.api.getSession({ headers: request.headers });
+        if (!session) {
           set.status = 401;
           return { error: "Unauthorized" };
         }
-        const { session, user } = await lucia.validateSession(sessionId);
-        if (!session || !user || user.role !== ROLES.SUPERUSER) {
+        const user = session.user as typeof session.user & { role: string };
+        if (user.role !== ROLES.SUPERUSER) {
           set.status = 403;
           return { error: "Forbidden" };
         }

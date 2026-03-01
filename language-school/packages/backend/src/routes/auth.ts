@@ -1,65 +1,67 @@
 import { Elysia, t } from "elysia";
 import { db } from "../db";
-import { users, userRoles } from "../db/schema";
-import { lucia } from "../auth";
+import { users, userRoles, sessions } from "../db/schema";
+import { createUserSession } from "../auth";
 import { eq } from "drizzle-orm";
-import { generateId } from "lucia";
+
+const isProduction = process.env.NODE_ENV === "production";
+const COOKIE_CLEAR = `better-auth.session_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${isProduction ? "; Secure" : ""}`;
 
 export const authRoutes = new Elysia({ prefix: "/auth" })
-  .post("/register", async ({ body, set }) => {
+  .post("/register", async ({ body, set, request }) => {
     const { username, password, email } = body;
-    
-    // 1. Check if user exists
+
+    // 1. Проверяем что пользователь не существует
     const existingUser = await db.select().from(users).where(eq(users.username, username)).limit(1);
     if (existingUser.length > 0) {
       set.status = 400;
       return { error: "Username already taken" };
     }
 
-    // 2. Hash password and create user
+    // 2. Хэшируем пароль и создаём пользователя
     const passwordHash = await Bun.password.hash(password);
-    const userId = generateId(15);
+    const userId = crypto.randomUUID();
 
     await db.insert(users).values({
       id: userId,
       username,
       password_hash: passwordHash,
       email,
-      role: "STUDENT" // default role
+      role: "STUDENT",
     });
 
-    const session = await lucia.createSession(userId, {});
-    const sessionCookie = lucia.createSessionCookie(session.id);
-    
-    set.headers["Set-Cookie"] = sessionCookie.serialize();
+    // 3. Создаём сессию
+    const { cookie } = await createUserSession(userId, {
+      userAgent: request.headers.get("User-Agent"),
+    });
+    set.headers["Set-Cookie"] = cookie;
 
     const [newUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password_hash: _, ...profile } = newUser!;
     const full_name = [newUser.first_name, newUser.last_name].filter(Boolean).join(" ") || newUser.username;
-    
-    // Получаем дополнительные роли
+
     const additionalRoles = await db
       .select({ role: userRoles.role })
       .from(userRoles)
       .where(eq(userRoles.userId, userId));
 
-    return { 
-      message: "Registered successfully", 
-      user: { 
-        ...profile, 
+    return {
+      message: "Registered successfully",
+      user: {
+        ...profile,
         full_name,
         additional_roles: additionalRoles.map(r => r.role),
-      } 
+      },
     };
   }, {
     body: t.Object({
       username: t.String(),
       password: t.String(),
-      email: t.Optional(t.String({ format: "email" }))
-    })
+      email: t.Optional(t.String({ format: "email" })),
+    }),
   })
-  .post("/login", async ({ body, set }) => {
+
+  .post("/login", async ({ body, set, request }) => {
     const { username, password } = body;
 
     const [user] = await db.select().from(users).where(eq(users.username, username)).limit(1);
@@ -74,44 +76,43 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       return { error: "Invalid username or password" };
     }
 
-    const session = await lucia.createSession(user.id, {});
-    const sessionCookie = lucia.createSessionCookie(session.id);
-    
-    set.headers["Set-Cookie"] = sessionCookie.serialize();
-    
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // Создаём сессию
+    const { cookie } = await createUserSession(user.id, {
+      userAgent: request.headers.get("User-Agent"),
+    });
+    set.headers["Set-Cookie"] = cookie;
+
     const { password_hash: _, ...profile } = user;
     const full_name = [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username;
-    
-    // Получаем дополнительные роли
+
     const additionalRoles = await db
       .select({ role: userRoles.role })
       .from(userRoles)
       .where(eq(userRoles.userId, user.id));
-    
-    return { 
-      message: "Logged in successfully", 
-      user: { 
-        ...profile, 
+
+    return {
+      message: "Logged in successfully",
+      user: {
+        ...profile,
         full_name,
         additional_roles: additionalRoles.map(r => r.role),
-      } 
+      },
     };
   }, {
     body: t.Object({
       username: t.String(),
-      password: t.String()
-    })
+      password: t.String(),
+    }),
   })
+
   .post("/logout", async ({ request, set }) => {
     const cookieHeader = request.headers.get("Cookie") ?? "";
-    const sessionId = lucia.readSessionCookie(cookieHeader);
-    
-    if (sessionId) {
-      await lucia.invalidateSession(sessionId);
+    const token = cookieHeader.match(/better-auth\.session_token=([^;]+)/)?.[1];
+
+    if (token) {
+      await db.delete(sessions).where(eq(sessions.token, token));
     }
-    
-    const sessionCookie = lucia.createBlankSessionCookie();
-    set.headers["Set-Cookie"] = sessionCookie.serialize();
+
+    set.headers["Set-Cookie"] = COOKIE_CLEAR;
     return { message: "Logged out successfully" };
   });

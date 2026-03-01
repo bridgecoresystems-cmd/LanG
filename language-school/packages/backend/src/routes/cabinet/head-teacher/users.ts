@@ -3,7 +3,6 @@ import { db } from "../../../db/index";
 import { users, userSchools, schools } from "../../../db/schema";
 import { eq, desc } from "drizzle-orm";
 import { ROLES } from "../../../constants/roles";
-import { generateId } from "lucia";
 import { generateUniqueUsername, generateRandomPassword } from "../../../services/user-services";
 
 export const headTeacherUserRoutes = new Elysia()
@@ -77,7 +76,7 @@ export const headTeacherUserRoutes = new Elysia()
     const existing = await db.select().from(users).where(eq(users.username, username));
     if (existing.length > 0) throw new Error("username already exists");
 
-    const id = generateId(15);
+    const id = crypto.randomUUID();
     const password_hash = await Bun.password.hash(password, { algorithm: "bcrypt" });
 
     await db.insert(users).values({
