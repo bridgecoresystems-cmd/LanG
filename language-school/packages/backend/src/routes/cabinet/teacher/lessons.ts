@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { db } from "../../../db/index";
-import { users, htLessons, htGroups, htGroupStudents } from "../../../db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { users, htLessons, htGroups, htGroupStudents, htAttendance } from "../../../db/schema";
+import { eq, desc, and, inArray, count, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 export const teacherLessonRoutes = new Elysia()
@@ -67,6 +67,33 @@ export const teacherLessonRoutes = new Elysia()
       .from(htLessons)
       .where(eq(htLessons.groupId, gid))
       .orderBy(desc(htLessons.lessonDate));
+
+    // Total students in group
+    const [studentCountRow] = await db
+      .select({ cnt: count() })
+      .from(htGroupStudents)
+      .where(eq(htGroupStudents.groupId, gid));
+    const totalStudents = Number(studentCountRow?.cnt ?? 0);
+
+    // Attendance counts per lesson (present + late = attended)
+    const lessonIds = rows.map((r) => r.id);
+    const attendedMap: Record<number, number> = {};
+    if (lessonIds.length > 0) {
+      const attendanceCounts = await db
+        .select({ lessonId: htAttendance.lessonId, cnt: count() })
+        .from(htAttendance)
+        .where(
+          and(
+            inArray(htAttendance.lessonId, lessonIds),
+            or(eq(htAttendance.status, "present"), eq(htAttendance.status, "late"))
+          )
+        )
+        .groupBy(htAttendance.lessonId);
+      for (const a of attendanceCounts) {
+        if (a.lessonId) attendedMap[a.lessonId] = Number(a.cnt);
+      }
+    }
+
     return rows.map((r) => ({
       id: r.id,
       group_id: r.groupId,
@@ -77,6 +104,8 @@ export const teacherLessonRoutes = new Elysia()
       homework: r.homework,
       lesson_plan: r.lessonPlan,
       lesson_notes: r.lessonNotes,
+      attended_count: attendedMap[r.id] ?? null,
+      total_students: totalStudents,
     }));
   })
   .get("/lessons/:id", async (context: any) => {

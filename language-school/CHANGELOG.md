@@ -1,110 +1,258 @@
 # 📝 Changelog
 
-Все изменения в проекте Language School.
+All notable changes to the Language School Management System.
+
+This project follows [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
+
+---
+
+## [Unreleased]
+
+### 🔐 Authentication
+
+- **Migrated from Lucia Auth to Better Auth v1.5.0**
+  - Enhanced security with built-in OAuth support
+  - Added email verification capability
+  - Improved session management with token-based validation
+  - Added `accounts` and `verifications` tables for future social login
+  - New `BETTER_AUTH_SECRET` environment variable required
+  - Session tokens now stored with IP and user agent for auditing
+- Updated all authentication routes (login, register, logout)
+- Replaced `generateId()` with `crypto.randomUUID()` for better security
+- Added `createUserSession()` helper for direct session creation
+
+### 🔧 Backend
+
+- Updated middleware to use Better Auth API (`auth.api.getSession()`)
+- Enhanced session validation with direct Drizzle queries
+- Improved cookie handling with proper production flags
+- Added `TRUSTED_ORIGINS` support for CORS in production
+
+### 📦 Dependencies
+
+- **Added:** `better-auth@1.5.0`
+- **Removed:** `lucia@3.2.2`, `@lucia-auth/adapter-drizzle@1.1.0`
+- **Updated:** `elysia@1.4.26`
+- **Updated:** `bun-types@1.3.10`
+
+### 📝 Documentation
+
+- Added comprehensive ARCHITECTURE.md with system deep dive
+- Created docs/DECISIONS.md with Architecture Decision Records (ADRs)
+- Updated README.md with Better Auth information
+- Standardized changelog format in English
 
 ---
 
 ## [1.0.6] - 2026-02-27
 
-### 🎓 Кабинет учителя: уроки и ученики
+### 🎓 Teacher Cabinet: Lessons and Students
 
 **Backend:**
-- ✅ API уроков для учителя: `GET/PATCH /cabinet/teacher/groups/:groupId/lessons`, `GET/PATCH /cabinet/teacher/lessons/:id`
-- ✅ API уроков для ученика: `GET /cabinet/student/groups/:groupId/lessons`, `GET /cabinet/student/lessons/:id`
-- ✅ API списка учеников группы: `GET /cabinet/teacher/groups/:groupId/students` (ФИО, тел. ученика и родителя)
-- ✅ Схема `ht_lessons`: поля `lesson_plan`, `lesson_notes` (конспект и заметки)
-- ✅ Исправлена валидация PATCH уроков: опциональные поля принимают `null`
+- ✅ Teacher lessons API: `GET/PATCH /cabinet/teacher/groups/:groupId/lessons`, `GET/PATCH /cabinet/teacher/lessons/:id`
+- ✅ Student lessons API: `GET /cabinet/student/groups/:groupId/lessons`, `GET /cabinet/student/lessons/:id`
+- ✅ Group students list API: `GET /cabinet/teacher/groups/:groupId/students` (student/parent name, phone)
+- ✅ `ht_lessons` schema: added `lesson_plan`, `lesson_notes` fields
+- ✅ Fixed PATCH lesson validation: optional fields accept `null`
 
-**Frontend — уроки:**
-- ✅ Реструктуризация страниц уроков: список → детали → редактирование (учитель)
-- ✅ Ученик: просмотр списка уроков и детальной страницы
-- ✅ `useCabinetLessons`: переход на `$fetch` для teacher/student API
+**Frontend — Lessons:**
+- ✅ Restructured lesson pages: list → details → edit (teacher)
+- ✅ Student: view lesson list and details page
+- ✅ `useCabinetLessons`: migrated to `$fetch` for teacher/student API
 
-**Frontend — список учеников:**
-- ✅ Новая страница `/cabinet/teacher/groups/:id/students` с шапкой курса и таблицей учеников
-- ✅ Таблица: ФИО ученика, ФИО родителя, тел. ученика, тел. родителя (оплата, чат, наградить — заглушки)
-- ✅ Клик по курсу в «Мои курсы» ведёт на список учеников
-- ✅ Пункт «Список учеников» в сайдбаре учителя (при выбранной группе)
+**Frontend — Student List:**
+- ✅ New page `/cabinet/teacher/groups/:id/students` with course header and student table
+- ✅ Table: student name, parent name, student phone, parent phone (payment, chat, reward — placeholders)
+- ✅ Click on course in "My Courses" navigates to student list
+- ✅ "Student List" menu item in teacher sidebar (when group selected)
 
 **Frontend — UX:**
-- ✅ При смене группы в сайдбаре страница автоматически перезагружается с данными новой группы (Журнал/Уроки, Список учеников, Посещаемость, Оценки, Игры)
+- ✅ When changing group in sidebar, page automatically reloads with new group data (Journal/Lessons, Student List, Attendance, Grades, Games)
 
 ---
 
 ## [1.0.5] - 2026-02-23
 
-### 🎉 Добавлено BridgeCore брендинг
+### 🎉 Added BridgeCore Branding
 
-- ✅ Обновлён README.md с информацией о BridgeCore SYSTEMS
-- ✅ Добавлена секция "О разработчике" с контактами
-- ✅ Обновлена секция "Команда" с ссылкой на bridgecore.tech
-- ✅ Обновлён copyright в лицензии
+- ✅ Updated README.md with BridgeCore SYSTEMS information
+- ✅ Added "About Developer" section with contact details
+- ✅ Updated "Team" section with bridgecore.tech link
+- ✅ Updated copyright in license
 
-### 📦 Новые файлы
+### 📦 New Files
 
-- ✅ `.env.example` - шаблон переменных окружения с подробными комментариями
-- ✅ `QUICKSTART.md` - краткое руководство по быстрому старту
-- ✅ `CHANGELOG.md` - история изменений проекта
+- ✅ `.env.example` - environment variable template with detailed comments
+- ✅ `QUICKSTART.md` - quick start guide
+- ✅ `CHANGELOG.md` - project change history
 
-### 🔧 Улучшены скрипты (package.json)
+### 🔧 Improved Scripts (package.json)
 
-**Корневой package.json:**
-- ✅ `dev` - одновременный запуск backend + frontend
-- ✅ `dev:backend` - запуск только backend
-- ✅ `dev:frontend` - запуск только frontend
-- ✅ `build` - сборка всего проекта
-- ✅ `db:*` - команды для работы с миграциями
-- ✅ `typecheck` - проверка типов
-- ✅ `lint` - linting кода
-- ✅ `format` - форматирование (Prettier)
-- ✅ `clean` - очистка node_modules
+**Root package.json:**
+- ✅ `dev` - concurrent backend + frontend launch
+- ✅ `dev:backend` - backend only
+- ✅ `dev:frontend` - frontend only
+- ✅ `build` - build entire project
+- ✅ `db:*` - database migration commands
+- ✅ `typecheck` - type checking
+- ✅ `lint` - code linting
+- ✅ `format` - code formatting (Prettier)
+- ✅ `clean` - node_modules cleanup
 
 **Backend package.json:**
-- ✅ `build` - сборка backend
-- ✅ `start` - запуск backend
-- ✅ `typecheck` - проверка типов
-- ✅ `test` - тесты (Bun.test)
+- ✅ `build` - backend build
+- ✅ `start` - backend start
+- ✅ `typecheck` - type checking
+- ✅ `test` - tests (Bun.test)
 
 **Frontend package.json:**
-- ✅ `typecheck` - проверка типов (Nuxt)
+- ✅ `typecheck` - type checking (Nuxt)
 - ✅ `lint` - ESLint
 
-### 📚 Обновлён README.md
+### 📚 Updated README.md
 
-- ✅ Добавлены бейджи технологий
-- ✅ Подробная архитектура проекта
-- ✅ Структура backend routes
-- ✅ Структура frontend pages
-- ✅ Таблица ролей и доступов
-- ✅ Примеры кода (Eden Treaty)
-- ✅ Troubleshooting секция
-- ✅ Roadmap развития
+- ✅ Added technology badges
+- ✅ Detailed architecture section
+- ✅ Backend routes structure
+- ✅ Frontend pages structure
+- ✅ Roles and access table
+- ✅ Code examples (Eden Treaty)
+- ✅ Troubleshooting section
+- ✅ Roadmap
 
-### 🎯 Технические улучшения
+### 🎯 Technical Improvements
 
-- ✅ Установлен `concurrently` для параллельного запуска
-- ✅ Установлен `prettier` для форматирования
-- ✅ Добавлен `.env.example` с комментариями
-- ✅ Все `.gitignore` файлы проверены и актуальны
+- ✅ Installed `concurrently` for parallel execution
+- ✅ Installed `prettier` for formatting
+- ✅ Added `.env.example` with comments
+- ✅ All `.gitignore` files verified and up to date
 
 ---
 
-## [1.0.0] - 2026-02-XX
+## [1.0.4] - 2026-02-XX
+
+### 👨‍🏫 Teacher Cabinet Enhancements
+
+**Backend:**
+- ✅ Teacher cabinet routes refactored
+- ✅ Schedule API with group filtering
+- ✅ Student performance tracking
+
+**Frontend:**
+- ✅ Teacher dashboard with course overview
+- ✅ Schedule page with lesson management
+- ✅ Student grading interface
+
+---
+
+## [1.0.3] - 2026-02-XX
+
+### 💼 Accountant Module
+
+**Backend:**
+- ✅ Accountant role added
+- ✅ Payment management API
+- ✅ Transaction tracking
+- ✅ Financial reports
+
+**Frontend:**
+- ✅ Accountant cabinet dashboard
+- ✅ Payment processing interface
+- ✅ Student balance management
+- ✅ Financial reports view
+
+---
+
+## [1.0.2] - 2026-02-XX
+
+### 📞 Sales/CRM Module
+
+**Backend:**
+- ✅ Sales module for call management
+- ✅ Lead tracking
+- ✅ Call history logging
+- ✅ Manager performance metrics
+
+**Frontend:**
+- ✅ Sales dashboard
+- ✅ Call management interface
+- ✅ Lead tracking page
+
+---
+
+## [1.0.1] - 2026-02-XX
+
+### 🎮 Gamification System
+
+**Backend:**
+- ✅ Gems currency system
+- ✅ Achievements framework
+- ✅ Educational games API
+- ✅ Leaderboard calculations
+
+**Frontend:**
+- ✅ Student gamification dashboard
+- ✅ Games page (Matching, Sprint, Memory)
+- ✅ Achievements showcase
+- ✅ Leaderboard view
+
+---
+
+## [1.0.0] - 2026-01-XX
 
 ### 🚀 Initial Release
 
+**Core Features:**
 - ✅ Backend: Elysia.js + Drizzle ORM + Lucia Auth
 - ✅ Frontend: Nuxt 3 + TypeScript + Eden Treaty
-- ✅ База данных: PostgreSQL
-- ✅ Аутентификация: Session-based (Lucia)
-- ✅ Ролевая модель: SUPERUSER, DIRECTOR, HEAD_TEACHER, TEACHER, STUDENT, PARENT
-- ✅ Мульти-школьность
-- ✅ Геймификация (гемы, достижения)
-- ✅ WebSocket для real-time
-- ✅ Многоязычность (TM/RU/EN)
+- ✅ Database: PostgreSQL
+- ✅ Authentication: Session-based (Lucia)
+- ✅ Role system: SUPERUSER, DIRECTOR, HEAD_TEACHER, TEACHER, STUDENT, PARENT
+- ✅ Multi-school support
+- ✅ Course and group management
+- ✅ Lesson scheduling
+- ✅ Grade tracking
+- ✅ Payment processing
+- ✅ RFID attendance tracking
+- ✅ WebSocket real-time notifications
+- ✅ Gamification (gems, achievements)
+- ✅ Multi-language support (TM/RU/EN)
+
+**Admin Panel:**
+- ✅ User management (CRUD)
+- ✅ School management
+- ✅ Course categories management
+- ✅ Landing page content management
+- ✅ System changelog
+
+**User Cabinets:**
+- ✅ Student cabinet (courses, schedule, grades, balance)
+- ✅ Teacher cabinet (groups, lessons, students, grading)
+- ✅ Head teacher cabinet (teacher oversight)
+- ✅ Parent cabinet (child monitoring)
 
 ---
 
-**Разработано:** BridgeCore SYSTEMS  
+## Version History Summary
+
+| Version | Date | Major Changes |
+|---------|------|---------------|
+| 1.0.6 | 2026-02-27 | Teacher cabinet improvements |
+| 1.0.5 | 2026-02-23 | BridgeCore branding, documentation |
+| 1.0.4 | 2026-02-XX | Teacher cabinet enhancements |
+| 1.0.3 | 2026-02-XX | Accountant module |
+| 1.0.2 | 2026-02-XX | Sales/CRM module |
+| 1.0.1 | 2026-02-XX | Gamification system |
+| 1.0.0 | 2026-01-XX | Initial release |
+
+---
+
+<div align="center">
+
+**Developed by:** BridgeCore SYSTEMS  
 **CEO & Founder:** Batyr Akmuradov  
-**Сайт:** [bridgecore.tech](https://bridgecore.tech)
+**Website:** [bridgecore.tech](https://bridgecore.tech)
+
+[Back to README](./README.md)
+
+</div>

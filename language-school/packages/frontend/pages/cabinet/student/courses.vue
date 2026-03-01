@@ -95,6 +95,22 @@
               <span class="info-label">Оплачено</span>
               <span class="info-value info-value--success">{{ course.total_paid ?? 0 }} TMT</span>
             </div>
+            <template v-if="course.tariff_price != null">
+              <div class="info-row mt-1">
+                <span class="info-label-secondary">Тариф / мес</span>
+                <span class="info-value-secondary">
+                  <template v-if="course.student_discount > 0">
+                    <span class="tariff-original">{{ course.tariff_price }} TMT</span>
+                    <span class="tariff-discounted">{{ calcTariff(course) }} TMT</span>
+                  </template>
+                  <template v-else>{{ course.tariff_price }} TMT</template>
+                </span>
+              </div>
+              <div v-if="calcDebt(course) > 0" class="debt-badge mt-2">
+                <NIcon size="13"><component :is="WarningIcon" /></NIcon>
+                Долг: {{ calcDebt(course) }} TMT
+              </div>
+            </template>
           </div>
 
           <!-- Средняя оценка -->
@@ -153,13 +169,14 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { 
   NH1, NTabs, NTab, NCard, NTag, NIcon, NButton, NEmpty, NSkeleton, NProgress, NAlert, NSpace 
 } from 'naive-ui'
-import { 
+import {
   CalendarOutline as CalendarIcon,
   TimeOutline as TimeIcon,
   BookOutline as BookIcon,
   PersonOutline as PersonIcon,
   BusinessOutline as SchoolIcon,
-  StarOutline as StarIcon
+  StarOutline as StarIcon,
+  WarningOutline as WarningIcon,
 } from '@vicons/ionicons5'
 import { useCabinetProfile } from '~/composables/useCabinetProfile'
 import { useContextStore } from '~/stores/contextStore'
@@ -267,6 +284,19 @@ watch(() => contextStore.availableGroups, (groups) => {
   }
 }, { deep: true, immediate: true })
 
+const calcTariff = (course: any) => {
+  const price = Number(course.tariff_price ?? 0)
+  const discount = Number(course.student_discount ?? 0)
+  return Math.round(price * (1 - discount / 100))
+}
+
+const calcDebt = (course: any) => {
+  if (course.tariff_price == null) return 0
+  const paid = Number(course.total_paid ?? 0)
+  const tariff = calcTariff(course)
+  return Math.max(0, tariff - paid)
+}
+
 const goToCourse = (id: number) => {
   nextTick(() => {
     contextStore.setSelectedGroup(id)
@@ -358,6 +388,38 @@ onMounted(() => {
 .info-hint {
   font-size: 0.85rem;
   color: var(--n-text-color-3);
+}
+
+.info-label-secondary {
+  font-size: 0.8rem;
+  color: var(--n-text-color-3);
+}
+.info-value-secondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+.tariff-original {
+  text-decoration: line-through;
+  color: var(--n-text-color-3);
+  font-size: 0.8rem;
+}
+.tariff-discounted {
+  font-weight: 600;
+  color: #18a058;
+}
+
+.debt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #d030501a;
+  color: #d03050;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
 }
 
 .next-lesson-alert {

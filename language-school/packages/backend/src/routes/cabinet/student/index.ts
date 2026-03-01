@@ -7,8 +7,10 @@ import {
   htGrades,
   users,
   schools,
+  payments,
+  tariffs,
 } from "../../../db/schema";
-import { eq, and, desc, gt, asc } from "drizzle-orm";
+import { eq, and, desc, gt, asc, sum, inArray } from "drizzle-orm";
 
 export async function getStudentMyGroups(userId: string) {
   const rows = await db
@@ -25,14 +27,31 @@ export async function getStudentMyGroups(userId: string) {
       teacherLastName: users.last_name,
       teacherUsername: users.username,
       schoolName: schools.name,
+      tariffPrice: tariffs.price,
+      studentDiscount: htGroupStudents.discount,
     })
     .from(htGroupStudents)
     .innerJoin(htGroups, eq(htGroupStudents.groupId, htGroups.id))
     .leftJoin(htCourses, eq(htGroups.courseId, htCourses.id))
     .leftJoin(users, eq(htGroups.teacherId, users.id))
     .leftJoin(schools, eq(htGroups.schoolId, schools.id))
+    .leftJoin(tariffs, eq(htGroupStudents.tariffId, tariffs.id))
     .where(eq(htGroupStudents.userId, userId))
     .orderBy(desc(htGroups.createdAt));
+
+  // Batch-запрос: сумма платежей по каждой группе для этого студента
+  const groupIds = rows.map((r) => r.id);
+  const paidMap: Record<number, number> = {};
+  if (groupIds.length > 0) {
+    const paymentRows = await db
+      .select({ groupId: payments.groupId, totalPaid: sum(payments.total) })
+      .from(payments)
+      .where(and(eq(payments.studentId, userId), inArray(payments.groupId, groupIds)))
+      .groupBy(payments.groupId);
+    for (const p of paymentRows) {
+      if (p.groupId != null) paidMap[p.groupId] = Number(p.totalPaid ?? 0);
+    }
+  }
 
   const now = new Date();
   const enriched = await Promise.all(
@@ -112,7 +131,9 @@ export async function getStudentMyGroups(userId: string) {
         progress,
         next_lesson: nextLesson,
         average_grade: averageGrade,
-        total_paid: 0,
+        total_paid: paidMap[r.id] ?? 0,
+        tariff_price: r.tariffPrice != null ? Number(r.tariffPrice) : null,
+        student_discount: r.studentDiscount != null ? Number(r.studentDiscount) : 0,
       };
     })
   );

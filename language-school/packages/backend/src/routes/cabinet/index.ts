@@ -13,6 +13,7 @@ import { getTeacherMyGroups, getTeacherGroupIds } from "./teacher";
 import { teacherLessonRoutes } from "./teacher/lessons";
 import { getStudentMyGroups, getStudentGroupIds } from "./student";
 import { studentLessonRoutes } from "./student/lessons";
+import { studentPaymentRoutes } from "./student/payments";
 import { getScheduleForGroups } from "./schedule";
 import { rfidRoutes } from "../rfid";
 import { mailingMessages, mailingRecipients } from "../../db/schema";
@@ -239,6 +240,7 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
         }
       })
       .use(studentLessonRoutes)
+      .use(studentPaymentRoutes)
   )
   .use(rfidRoutes)
   .get("/sales/calls", async (context: any) => {

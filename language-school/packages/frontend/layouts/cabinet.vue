@@ -166,6 +166,7 @@ import {
   GameControllerOutline as GameIcon,
   ListOutline as ListIcon,
   AddOutline as AddIcon,
+  CardOutline as PaymentIcon,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '~/stores/authStore'
 import { useContextStore } from '~/stores/contextStore'
@@ -396,6 +397,7 @@ const menuOptions = computed<MenuOption[]>(() => {
         { label: 'Моя успеваемость', key: `/cabinet/student/groups/${studentGroupId}/grades`, icon: renderIcon(ChartIcon) },
         { label: 'Игры', key: `/cabinet/student/groups/${studentGroupId}/games`, icon: renderIcon(GameIcon) },
       ] : []),
+      { label: 'Мои платежи', key: '/cabinet/student/payments', icon: renderIcon(PaymentIcon) },
       { label: 'Расписание', key: '/cabinet/schedule', icon: renderIcon(CalendarIcon) },
       { label: 'Сообщения', key: '/cabinet/mailing', icon: renderIcon(MailIcon) }
     )

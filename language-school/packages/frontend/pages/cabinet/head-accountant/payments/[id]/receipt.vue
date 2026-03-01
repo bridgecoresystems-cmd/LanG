@@ -11,11 +11,10 @@
     <div v-else class="receipt-container" id="receipt">
       <div class="receipt-header">
         <div class="company-info">
-          <h1>LanG School</h1>
-          <p>801 West End Avenue, Turkmenabat</p>
-          <p>Turkmenistan</p>
-          <p>+993 64 585958</p>
-          <p>hi@lang-school.com</p>
+          <h1>{{ payment.schoolName || 'LanG School' }}</h1>
+          <p v-if="payment.schoolAddress">{{ payment.schoolAddress }}</p>
+          <p v-if="payment.schoolPhone">{{ payment.schoolPhone }}</p>
+          <p v-else>hi@lang-school.com</p>
         </div>
         <div class="invoice-meta">
           <h2>TÖLEG KWITANSIÝASY</h2>
@@ -113,7 +112,7 @@
           <span>Kwitansiýa belgisi:</span>
           <strong>{{ payment.id }}-{{ Math.random().toString(36).substr(2, 4).toUpperCase() }}</strong>
         </div>
-        <p class="thank-you">LanG School saýlanyňyz üçin sag boluň!</p>
+        <p class="thank-you">{{ payment.schoolName || 'LanG School' }} saýlanyňyz üçin sag boluň!</p>
         <p class="disclaimer">Bu elektron usulda döredilen kwitansiýa we fiziki gol talap etmeýär.</p>
         <p class="purpose-line">Tölegiň maksady: {{ payment.purpose }}</p>
       </div>

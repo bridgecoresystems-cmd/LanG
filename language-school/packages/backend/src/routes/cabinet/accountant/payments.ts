@@ -296,6 +296,8 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
         schoolId: payments.schoolId,
         isPartial: payments.isPartial,
         schoolName: schools.name,
+        schoolAddress: schools.address,
+        schoolPhone: schools.phone,
         createdById: payments.createdById,
         creatorFirstName: sql<string>`creator.first_name`,
         creatorLastName: sql<string>`creator.last_name`,
@@ -317,6 +319,8 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
       total: parseFloat(payment.total),
       schoolId: payment.schoolId,
       schoolName: payment.schoolName,
+      schoolAddress: payment.schoolAddress,
+      schoolPhone: payment.schoolPhone,
       createdById: payment.createdById,
       createdByName: [payment.creatorFirstName, payment.creatorLastName].filter(Boolean).join(" "),
     };

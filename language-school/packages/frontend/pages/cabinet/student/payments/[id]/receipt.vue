@@ -1,13 +1,13 @@
 <template>
   <div class="receipt-page">
     <div class="no-print actions-bar">
-      <NButton @click="navigateTo('/cabinet/accountant/payments')">Назад</NButton>
+      <NButton @click="navigateTo('/cabinet/student/payments')">Назад</NButton>
       <NButton type="primary" @click="print">Печать / Скачать PDF</NButton>
     </div>
 
     <div v-if="loading" class="loading">Загрузка...</div>
     <div v-else-if="!payment" class="error">Квитанция не найдена</div>
-    
+
     <div v-else class="receipt-container" id="receipt">
       <div class="receipt-header">
         <div class="company-info">
@@ -123,19 +123,20 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { NButton } from 'naive-ui'
-import { useEden } from '~/composables/useEden'
 
 definePageMeta({ layout: 'empty', middleware: 'cabinet-auth' })
 
 const route = useRoute()
-const api = useEden()
 const loading = ref(true)
 const payment = ref<any>(null)
 
 const loadPayment = async () => {
   loading.value = true
   try {
-    const { data } = await api.api.v1.cabinet.accountant.payments({ id: route.params.id as string }).receipt.get()
+    const data = await $fetch<any>(
+      `/api/v1/cabinet/student/payments/${route.params.id}/receipt`,
+      { credentials: 'include' }
+    )
     if (data && !data.error) {
       payment.value = data
     }
@@ -166,22 +167,14 @@ const formatDate = (dateStr: string) => {
   return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
 }
 
-const formatMoney = (val: number) => {
-  return val.toFixed(2)
-}
+const formatMoney = (val: number) => val.toFixed(2)
 
 const translateMethod = (method: string) => {
-  const map: any = {
-    cash: 'Nagt',
-    card: 'Kart',
-    bank_transfer: 'Bank geçirimi'
-  }
+  const map: any = { cash: 'Nagt', card: 'Kart', bank_transfer: 'Bank geçirimi' }
   return map[method] || method
 }
 
-const print = () => {
-  window.print()
-}
+const print = () => window.print()
 
 onMounted(loadPayment)
 </script>
@@ -204,7 +197,7 @@ onMounted(loadPayment)
 
 .receipt-container {
   background: white;
-  width: 210mm; /* A4 width */
+  width: 210mm;
   padding: 20mm;
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
   color: #333;
@@ -230,9 +223,7 @@ onMounted(loadPayment)
   color: #666;
 }
 
-.invoice-meta {
-  text-align: right;
-}
+.invoice-meta { text-align: right; }
 
 .invoice-meta h2 {
   margin: 0 0 8px;
@@ -241,9 +232,7 @@ onMounted(loadPayment)
   text-transform: uppercase;
 }
 
-.meta-row {
-  margin-bottom: 5px;
-}
+.meta-row { margin-bottom: 5px; }
 
 .meta-row .label {
   color: #888;
@@ -252,13 +241,9 @@ onMounted(loadPayment)
   text-transform: uppercase;
 }
 
-.meta-row .value {
-  font-weight: 600;
-}
+.meta-row .value { font-weight: 600; }
 
-.bill-to {
-  margin-bottom: 12px;
-}
+.bill-to { margin-bottom: 12px; }
 
 .bill-to h3 {
   font-size: 12px;
@@ -308,13 +293,9 @@ onMounted(loadPayment)
 }
 
 .items-table th:last-child,
-.items-table td:last-child {
-  text-align: right;
-}
+.items-table td:last-child { text-align: right; }
 
-.item-title {
-  font-weight: 600;
-}
+.item-title { font-weight: 600; }
 
 .item-subtitle {
   font-size: 12px;
@@ -333,9 +314,7 @@ onMounted(loadPayment)
   padding: 5px 0;
 }
 
-.totals-row.discount {
-  color: #d03050;
-}
+.totals-row.discount { color: #d03050; }
 
 .totals-row.grand-total {
   border-top: 2px solid #eee;
@@ -351,9 +330,7 @@ onMounted(loadPayment)
   margin-bottom: 10px;
 }
 
-.payment-history {
-  margin-bottom: 12px;
-}
+.payment-history { margin-bottom: 12px; }
 
 .payment-history h3 {
   font-size: 12px;
@@ -383,9 +360,7 @@ onMounted(loadPayment)
   margin-top: 16px;
 }
 
-.receipt-id {
-  margin-bottom: 8px;
-}
+.receipt-id { margin-bottom: 8px; }
 
 .thank-you {
   font-size: 16px;
@@ -400,13 +375,8 @@ onMounted(loadPayment)
 }
 
 @media print {
-  @page {
-    size: A4;
-    margin: 12mm;
-  }
-  .no-print {
-    display: none !important;
-  }
+  @page { size: A4; margin: 12mm; }
+  .no-print { display: none !important; }
   .receipt-page {
     background: white;
     padding: 0;
@@ -417,8 +387,6 @@ onMounted(loadPayment)
     padding: 12mm;
     width: 100%;
     max-width: 210mm;
-    max-height: none;
-    page-break-inside: avoid;
   }
 }
 </style>
