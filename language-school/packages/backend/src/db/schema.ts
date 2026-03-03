@@ -505,6 +505,38 @@ export const payments = pgTable("payment", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// --- Chat ---
+
+export const chatRooms = pgTable(
+  "chat_room",
+  {
+    id: serial("id").primaryKey(),
+    groupId: integer("group_id")
+      .notNull()
+      .references(() => htGroups.id, { onDelete: "cascade" }),
+    // One room per student-teacher pair within a group
+    studentId: text("student_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("chat_room_unique").on(t.groupId, t.studentId)]
+);
+
+export const chatMessages = pgTable("chat_message", {
+  id: serial("id").primaryKey(),
+  roomId: integer("room_id")
+    .notNull()
+    .references(() => chatRooms.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  isEdited: boolean("is_edited").default(false).notNull(),
+  isDeleted: boolean("is_deleted").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // --- Tariffs (Bookkeeper) ---
 
 export const tariffs = pgTable("tariff", {

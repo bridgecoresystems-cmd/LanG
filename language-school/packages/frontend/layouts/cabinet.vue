@@ -78,6 +78,9 @@
         </div>
       </NLayoutSider>
 
+      <!-- Floating student chat button (visible on all student pages) -->
+      <ChatStudentButton v-if="hasRole(authStore.user, 'STUDENT')" />
+
       <NLayout>
         <NLayoutHeader bordered class="cabinet-header">
           <div class="header-left">

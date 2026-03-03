@@ -14,6 +14,7 @@ import { teacherLessonRoutes } from "./teacher/lessons";
 import { getStudentMyGroups, getStudentGroupIds } from "./student";
 import { studentLessonRoutes } from "./student/lessons";
 import { studentPaymentRoutes } from "./student/payments";
+import { chatRoutes } from "./chat";
 import { getScheduleForGroups } from "./schedule";
 import { rfidRoutes } from "../rfid";
 import { mailingMessages, mailingRecipients } from "../../db/schema";
@@ -46,6 +47,7 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
   .use(accountantRoutes)
   .use(tariffRoutes)
   .use(debtRoutes)
+  .use(chatRoutes)
   .get("/profile", async (context: any) => {
     const { user } = context;
     const [row] = await db

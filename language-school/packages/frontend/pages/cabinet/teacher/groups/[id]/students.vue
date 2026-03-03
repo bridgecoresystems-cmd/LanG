@@ -12,7 +12,7 @@
       </div>
     </header>
 
-    <!-- Course info header (like courses table row) -->
+    <!-- Course info header -->
     <NCard v-if="course" bordered class="course-header-card mt-4">
       <div class="course-header">
         <div class="course-header__main">
@@ -93,20 +93,31 @@
                   >
                     {{ s.paid_amount }} TMT
                   </NText>
-                  <NText
-                    v-else
-                    type="error"
-                    strong
-                    class="mb-1"
-                  >
-                    0 TMT
-                  </NText>
+                  <NText v-else type="error" strong class="mb-1">0 TMT</NText>
                   <div v-if="s.debt_amount > 0" class="debt-hint">
                     Долг: {{ s.debt_amount }} TMT
                   </div>
                 </div>
               </td>
-              <td><span class="placeholder">—</span></td>
+              <td>
+                <NButton
+                  size="small"
+                  :type="chat.studentId === s.id && chat.isOpen ? 'primary' : 'default'"
+                  :loading="chat.loadingId === s.id"
+                  @click="openChat(s)"
+                >
+                  <template #icon>
+                    <NIcon><component :is="ChatIcon" /></NIcon>
+                  </template>
+                  Чат
+                  <NBadge
+                    v-if="unreadMap[s.id] > 0 && !(chat.studentId === s.id && chat.isOpen)"
+                    :value="unreadMap[s.id]"
+                    :max="9"
+                    style="margin-left: 4px;"
+                  />
+                </NButton>
+              </td>
               <td><span class="placeholder">—</span></td>
               <td>
                 <div class="cell-subtitle">{{ s.phone || '—' }}</div>
@@ -122,29 +133,51 @@
         <NEmpty description="В группе пока нет учеников" />
       </div>
     </NCard>
+
+    <!-- Floating Chat Widget -->
+    <ChatWidget
+      v-model="chat.isOpen"
+      :room-id="chat.roomId"
+      :title="chat.title"
+      :readonly="!courseIsActive"
+      :current-user-id="authStore.user?.id"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import {
-  NH1, NButton, NIcon, NCard, NProgress, NSpin, NEmpty, NTag, NText
+  NH1, NButton, NIcon, NCard, NProgress, NSpin, NEmpty, NText, NBadge,
 } from 'naive-ui'
 import {
   ChevronBackOutline as BackIcon,
   CalendarOutline as CalendarIcon,
   TimeOutline as TimeIcon,
-  PeopleOutline as PeopleIcon
+  PeopleOutline as PeopleIcon,
+  ChatbubbleEllipsesOutline as ChatIcon,
 } from '@vicons/ionicons5'
 import { useContextStore } from '~/stores/contextStore'
+import { useAuthStore } from '~/stores/authStore'
 
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
 const route = useRoute()
 const groupId = computed(() => parseInt(route.params.id as string))
 const contextStore = useContextStore()
+const authStore = useAuthStore()
+const config = useRuntimeConfig()
+const API = config.public.apiBase as string
 
+// ── Course ────────────────────────────────────────────────────────────────────
 const course = ref<any>(null)
+
+const courseIsActive = computed(() => {
+  if (!course.value) return true // default allow
+  if (course.value.is_active === false) return false
+  if (course.value.end_date && new Date(course.value.end_date) < new Date()) return false
+  return true
+})
 
 const ensureCourseInContext = async () => {
   const found = contextStore.availableGroups.find((g: any) => g.id === groupId.value)
@@ -166,35 +199,17 @@ const ensureCourseInContext = async () => {
   }
 }
 
+// ── Students ──────────────────────────────────────────────────────────────────
 const students = ref<any[]>([])
 const pending = ref(true)
-
-const formatDateTime = (dateStr: string | null) => {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleString('ru-RU', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-const formatDateShort = (dateStr: string | null) => {
-  if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ru-RU', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-}
 
 const loadStudents = async () => {
   pending.value = true
   try {
-    const data = await $fetch<any[]>(`/api/v1/cabinet/head-teacher/groups/${groupId.value}/students`, {
-      credentials: 'include'
-    })
+    const data = await $fetch<any[]>(
+      `/api/v1/cabinet/head-teacher/groups/${groupId.value}/students`,
+      { credentials: 'include' }
+    )
     students.value = Array.isArray(data) ? data : []
   } catch (e) {
     console.error('Failed to load students', e)
@@ -204,9 +219,61 @@ const loadStudents = async () => {
   }
 }
 
-const goBack = () => {
-  navigateTo('/cabinet/teacher/courses')
+// ── Chat ──────────────────────────────────────────────────────────────────────
+const chat = reactive({
+  isOpen: false,
+  roomId: null as number | null,
+  title: '',
+  studentId: null as string | null,
+  loadingId: null as string | null,
+})
+
+const unreadMap = ref<Record<string, number>>({})
+
+async function openChat(student: any) {
+  // Toggle if same student already loaded
+  if (chat.studentId === student.id && chat.roomId) {
+    chat.isOpen = !chat.isOpen
+    return
+  }
+
+  chat.loadingId = student.id
+  chat.isOpen = false
+
+  try {
+    const room = await $fetch<any>(
+      `${API}/cabinet/chat/rooms/${groupId.value}/student/${student.id}`,
+      { credentials: 'include' }
+    )
+    chat.roomId = room.id
+    chat.title = student.full_name || student.username || 'Ученик'
+    chat.studentId = student.id
+    chat.isOpen = true
+    unreadMap.value[student.id] = 0
+  } catch (e) {
+    console.error('Chat: open failed', e)
+  } finally {
+    chat.loadingId = null
+  }
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const formatDateTime = (dateStr: string | null) => {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleString('ru-RU', {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
+const formatDateShort = (dateStr: string | null) => {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleDateString('ru-RU', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  })
+}
+
+const goBack = () => navigateTo('/cabinet/teacher/courses')
 
 onMounted(async () => {
   await ensureCourseInContext()
@@ -215,145 +282,51 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.students-page {
-  padding-bottom: 40px;
-}
+.students-page { padding-bottom: 80px; }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 8px;
-}
-
-.page-header__title {
-  margin: 0 0 4px;
-  font-weight: 700;
-}
-
-.page-header__subtitle {
-  margin: 0;
-  color: var(--n-text-color-3);
-}
+.page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+.page-header__title { margin: 0 0 4px; font-weight: 700; }
+.page-header__subtitle { margin: 0; color: var(--n-text-color-3); }
 
 .course-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 24px;
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 24px;
 }
-
-.course-header__main {
-  min-width: 160px;
-}
-
+.course-header__main { min-width: 160px; }
 .course-header__stats,
 .course-header__dates,
 .course-header__progress,
-.course-header__next {
-  flex: 0 0 auto;
-}
+.course-header__next { flex: 0 0 auto; }
 
-.cell-title {
-  font-weight: 600;
-}
-
-.cell-subtitle {
-  font-size: 0.85rem;
-  color: var(--n-text-color-3);
-  margin-top: 2px;
-}
-
-.cell-with-icon {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.cell-with-icon .cell-icon {
-  color: #18a058;
-  flex-shrink: 0;
-}
-
-.course-header__dates {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+.cell-title { font-weight: 600; }
+.cell-subtitle { font-size: 0.85rem; color: var(--n-text-color-3); margin-top: 2px; }
+.cell-with-icon { display: inline-flex; align-items: center; gap: 6px; }
+.cell-with-icon .cell-icon { color: #18a058; flex-shrink: 0; }
+.course-header__dates { display: flex; flex-direction: column; gap: 4px; }
 
 .progress-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-  font-size: 0.9rem;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 4px; font-size: 0.9rem;
 }
+.progress-hint { font-size: 0.8rem; color: var(--n-text-color-3); }
+.course-header__progress { min-width: 140px; }
 
-.progress-hint {
-  font-size: 0.8rem;
-  color: var(--n-text-color-3);
-}
-
-.course-header__progress {
-  min-width: 140px;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-}
-
-.students-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
+.table-wrapper { overflow-x: auto; }
+.students-table { width: 100%; border-collapse: collapse; }
 .students-table th,
 .students-table td {
   padding: 12px 16px;
   text-align: left;
   border-bottom: 1px solid var(--n-border-color);
-  vertical-align: top;
+  vertical-align: middle;
 }
-
 .students-table th {
-  font-weight: 600;
-  color: var(--n-text-color-2);
-  white-space: nowrap;
+  font-weight: 600; color: var(--n-text-color-2); white-space: nowrap;
 }
-
-.student-row:hover {
-  background-color: var(--n-color-hover);
-}
-
-.placeholder {
-  color: var(--n-text-color-3);
-  font-size: 0.9rem;
-}
-
-.payment-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.debt-hint {
-  font-size: 0.75rem;
-  color: var(--n-error-color);
-  font-weight: 500;
-}
-
-.mb-1 {
-  margin-bottom: 4px;
-}
-
-.loading-state {
-  display: flex;
-  justify-content: center;
-  padding: 40px 0;
-}
-
-.empty-state {
-  padding: 40px 0;
-  text-align: center;
-}
+.student-row:hover { background-color: var(--n-color-hover); }
+.placeholder { color: var(--n-text-color-3); font-size: 0.9rem; }
+.payment-cell { display: flex; flex-direction: column; align-items: flex-start; }
+.debt-hint { font-size: 0.75rem; color: var(--n-error-color); font-weight: 500; }
+.mb-1 { margin-bottom: 4px; }
+.loading-state { display: flex; justify-content: center; padding: 40px 0; }
+.empty-state { padding: 40px 0; text-align: center; }
 </style>
