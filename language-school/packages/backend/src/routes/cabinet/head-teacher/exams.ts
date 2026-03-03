@@ -13,10 +13,10 @@ export const headTeacherExamRoutes = new Elysia()
   }, {
     body: t.Object({
       name: t.String(),
-      writingWeight: t.Optional(t.Number()),
-      listeningWeight: t.Optional(t.Number()),
-      readingWeight: t.Optional(t.Number()),
-      speakingWeight: t.Optional(t.Number()),
+      writingMax: t.Optional(t.Number()),
+      listeningMax: t.Optional(t.Number()),
+      readingMax: t.Optional(t.Number()),
+      speakingMax: t.Optional(t.Number()),
     })
   })
   .delete("/exam-types/:id", async ({ params: { id } }) => {

@@ -290,10 +290,10 @@ export const htCourses = pgTable("ht_course", {
 export const htExamTypes = pgTable("ht_exam_type", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  writingWeight: integer("writing_weight").default(25).notNull(),
-  listeningWeight: integer("listening_weight").default(25).notNull(),
-  readingWeight: integer("reading_weight").default(25).notNull(),
-  speakingWeight: integer("speaking_weight").default(25).notNull(),
+  writingMax: integer("writing_max").default(25).notNull(),
+  listeningMax: integer("listening_max").default(25).notNull(),
+  readingMax: integer("reading_max").default(25).notNull(),
+  speakingMax: integer("speaking_max").default(25).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -11,9 +11,11 @@ import { headTeacherMailingRoutes } from "./head-teacher/mailing";
 import { headTeacherLessonRoutes } from "./head-teacher/lessons";
 import { getTeacherMyGroups, getTeacherGroupIds } from "./teacher";
 import { teacherLessonRoutes } from "./teacher/lessons";
+import { teacherExamRoutes } from "./teacher/exams";
 import { getStudentMyGroups, getStudentGroupIds } from "./student";
 import { studentLessonRoutes } from "./student/lessons";
 import { studentPaymentRoutes } from "./student/payments";
+import { studentExamRoutes } from "./student/exams";
 import { chatRoutes } from "./chat";
 import { getScheduleForGroups } from "./schedule";
 import { rfidRoutes } from "../rfid";
@@ -229,6 +231,7 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
         }
       })
       .use(teacherLessonRoutes)
+      .use(teacherExamRoutes)
   )
   .group("/student", (app) =>
     app
@@ -243,6 +246,7 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
       })
       .use(studentLessonRoutes)
       .use(studentPaymentRoutes)
+      .use(studentExamRoutes)
   )
   .use(rfidRoutes)
   .get("/sales/calls", async (context: any) => {
