@@ -44,6 +44,7 @@
         :scroll-x="640"
         :row-props="rowProps"
         :row-key="(row: any) => row.id"
+        :row-class-name="(row: any) => getLessonStatus(row.lesson_date) === 'past' ? 'row-past' : 'row-future'"
         class="lessons-table"
       />
     </NCard>
@@ -324,28 +325,48 @@ loadLessons()
 .lessons-card {
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid var(--n-border-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
-/* Table overrides */
+/* Table overrides — как у студента */
 .lessons-table :deep(.n-data-table-th) {
-  background: var(--n-color-hover) !important;
+  background: #f8fafc !important;
+  font-weight: 600;
   font-size: 0.7rem;
-  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--n-text-color-3);
+  color: #64748b;
   padding: 12px 16px !important;
+  white-space: nowrap;
+  border-bottom: 1px solid #e2e8f0;
 }
 .lessons-table :deep(.n-data-table-td) {
   padding: 14px 16px !important;
   font-size: 0.875rem;
+  border-bottom: 1px solid #f1f5f9;
 }
 .lessons-table :deep(.n-data-table-tr:hover .n-data-table-td) {
-  background: var(--n-color-hover) !important;
+  background: #f8fafc !important;
 }
 .lessons-table :deep(.n-data-table-tr) {
   cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+/* Прошедшие уроки — мягкий тёплый оттенок */
+.lessons-table :deep(.row-past .n-data-table-td) {
+  background: #fffbeb !important;
+}
+.lessons-table :deep(.row-past:hover .n-data-table-td) {
+  background: #fef3c7 !important;
+}
+
+/* Предстоящие уроки — мягкий прохладный оттенок */
+.lessons-table :deep(.row-future .n-data-table-td) {
+  background: #f0fdf4 !important;
+}
+.lessons-table :deep(.row-future:hover .n-data-table-td) {
+  background: #dcfce7 !important;
 }
 
 /* Columns */
@@ -410,5 +431,28 @@ loadLessons()
 .empty-state {
   padding: 80px 0;
   text-align: center;
+}
+
+/* Dark mode */
+.dark .lessons-table :deep(.n-data-table-th) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #94a3b8;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .lessons-table :deep(.row-past .n-data-table-td) {
+  background: rgba(251, 191, 36, 0.08) !important;
+}
+
+.dark .lessons-table :deep(.row-past:hover .n-data-table-td) {
+  background: rgba(251, 191, 36, 0.12) !important;
+}
+
+.dark .lessons-table :deep(.row-future .n-data-table-td) {
+  background: rgba(34, 197, 94, 0.08) !important;
+}
+
+.dark .lessons-table :deep(.row-future:hover .n-data-table-td) {
+  background: rgba(34, 197, 94, 0.12) !important;
 }
 </style>

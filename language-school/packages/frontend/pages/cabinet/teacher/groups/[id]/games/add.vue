@@ -98,6 +98,7 @@ import { useCabinetLessons } from '~/composables/useCabinetLessons'
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
 const route = useRoute()
+const router = useRouter()
 const groupId = computed(() => parseInt(route.params.id as string))
 const groupsApi = useCabinetGroups()
 const lessonsApi = useCabinetLessons()
@@ -138,6 +139,14 @@ const loadLessons = async () => {
   lessonsLoading.value = true
   try {
     lessons.value = await lessonsApi.getList({ group_id: groupId.value }) ?? []
+    // Если перешли с урока — предзаполнить урок
+    const qLessonId = route.query.lesson_id
+    if (qLessonId) {
+      const id = parseInt(String(qLessonId))
+      if (!isNaN(id) && lessons.value.some((l: any) => l.id === id)) {
+        formData.value.lesson_id = id
+      }
+    }
   } catch (e) {
     console.error(e)
   } finally {
@@ -145,7 +154,13 @@ const loadLessons = async () => {
   }
 }
 
-const goBack = () => navigateTo(`/cabinet/teacher/groups/${groupId.value}/games`)
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    navigateTo(`/cabinet/teacher/groups/${groupId.value}/games`)
+  }
+}
 
 const handleSave = async () => {
   try {

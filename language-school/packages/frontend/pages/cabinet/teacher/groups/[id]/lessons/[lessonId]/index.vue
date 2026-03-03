@@ -12,12 +12,20 @@
           {{ formatDate(lesson?.lesson_date) }} · {{ lesson?.duration_minutes || 90 }} мин
         </p>
       </div>
-      <NButton type="primary" @click="goToEdit">
-        <template #icon>
-          <NIcon><component :is="EditIcon" /></NIcon>
-        </template>
-        Редактировать
-      </NButton>
+      <NSpace>
+        <NButton type="info" @click="goToCreateGame">
+          <template #icon>
+            <NIcon><component :is="GameIcon" /></NIcon>
+          </template>
+          Создать игру
+        </NButton>
+        <NButton type="primary" @click="goToEdit">
+          <template #icon>
+            <NIcon><component :is="EditIcon" /></NIcon>
+          </template>
+          Редактировать
+        </NButton>
+      </NSpace>
     </header>
 
     <div v-if="pending" class="loading-state">
@@ -77,8 +85,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { NH1, NButton, NIcon, NCard, NEmpty, NSpin } from 'naive-ui'
-import { ChevronBackOutline as BackIcon, PencilOutline as EditIcon } from '@vicons/ionicons5'
+import { NH1, NButton, NIcon, NCard, NEmpty, NSpin, NSpace } from 'naive-ui'
+import { ChevronBackOutline as BackIcon, PencilOutline as EditIcon, GameControllerOutline as GameIcon } from '@vicons/ionicons5'
 import { useCabinetLessons } from '~/composables/useCabinetLessons'
 
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth', key: (route) => route.fullPath })
@@ -105,6 +113,7 @@ const loadLesson = async () => {
 
 const goBack = () => navigateTo(`/cabinet/teacher/groups/${groupId.value}/lessons`)
 const goToEdit = () => navigateTo(`/cabinet/teacher/groups/${groupId.value}/lessons/${lessonId.value}/edit`)
+const goToCreateGame = () => navigateTo(`/cabinet/teacher/groups/${groupId.value}/games/add?lesson_id=${lessonId.value}`)
 
 const formatDate = (dateStr?: string) => {
   if (!dateStr) return '—'

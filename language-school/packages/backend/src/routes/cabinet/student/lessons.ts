@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { db } from "../../../db/index";
 import { htLessons, htGroups, htGroupStudents, htAttendance, htGames, htGameResults } from "../../../db/schema";
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { eq, asc, desc, and, inArray } from "drizzle-orm";
 
 export const studentLessonRoutes = new Elysia()
   .get("/groups/:groupId/attendance", async (context: any) => {
@@ -21,10 +21,10 @@ export const studentLessonRoutes = new Elysia()
         lessonId: htLessons.id,
         lessonTitle: htLessons.title,
         lessonDate: htLessons.lessonDate,
+        homework: htLessons.homework,
         status: htAttendance.status,
         entryTime: htAttendance.entryTime,
         exitTime: htAttendance.exitTime,
-        notes: htAttendance.notes,
       })
       .from(htLessons)
       .leftJoin(htAttendance, and(
@@ -32,15 +32,15 @@ export const studentLessonRoutes = new Elysia()
         eq(htAttendance.userId, user!.id)
       ))
       .where(eq(htLessons.groupId, gid))
-      .orderBy(desc(htLessons.lessonDate));
+      .orderBy(asc(htLessons.lessonDate));
     return rows.map((r) => ({
       lesson_id: r.lessonId,
       lesson_title: r.lessonTitle,
       lesson_date: r.lessonDate?.toISOString(),
+      homework: r.homework ?? null,
       status: r.status || "—",
       entry_time: r.entryTime?.toISOString() ?? null,
       exit_time: r.exitTime?.toISOString() ?? null,
-      notes: r.notes ?? null,
     }));
   })
   .get("/groups/:groupId/lessons", async (context: any) => {
@@ -67,7 +67,7 @@ export const studentLessonRoutes = new Elysia()
       })
       .from(htLessons)
       .where(eq(htLessons.groupId, gid))
-      .orderBy(desc(htLessons.lessonDate));
+      .orderBy(asc(htLessons.lessonDate));
     return rows.map((r) => ({
       id: r.id,
       group_id: r.groupId,

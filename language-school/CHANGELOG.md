@@ -8,6 +8,26 @@ This project follows [Semantic Versioning](https://semver.org/) and [Conventiona
 
 ## [Unreleased]
 
+### 💬 Real-time Chat
+
+- **Added teacher-student messaging system**
+  - WebSocket-based real-time chat
+  - Private chat rooms per teacher-student pair
+  - Auto-create room on first message
+  - Message history retrieval
+  - Online/offline status indicators
+- New database tables: `chat_rooms`, `chat_messages`
+- Frontend components: `Chat/Widget.vue`, `Chat/StudentButton.vue`
+- Integrated into cabinet layout for easy access
+
+### 📚 Lesson Management Improvements
+
+- Enhanced lesson pages for teachers and students
+- Improved attendance tracking interface
+- Fixed lesson plan and notes editing
+- Better UI for homework assignment
+- Added quick access to student lists from lessons
+
 ### 🔐 Authentication
 
 - **Migrated from Lucia Auth to Better Auth v1.5.0**

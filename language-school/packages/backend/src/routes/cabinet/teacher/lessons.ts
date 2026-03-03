@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { db } from "../../../db/index";
 import { users, htLessons, htGroups, htGroupStudents, htAttendance } from "../../../db/schema";
-import { eq, desc, and, inArray, count, or } from "drizzle-orm";
+import { eq, asc, desc, and, inArray, count, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 export const teacherLessonRoutes = new Elysia()
@@ -66,7 +66,7 @@ export const teacherLessonRoutes = new Elysia()
       })
       .from(htLessons)
       .where(eq(htLessons.groupId, gid))
-      .orderBy(desc(htLessons.lessonDate));
+      .orderBy(asc(htLessons.lessonDate));
 
     // Total students in group
     const [studentCountRow] = await db

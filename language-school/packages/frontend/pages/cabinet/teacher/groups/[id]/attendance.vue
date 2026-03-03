@@ -51,9 +51,8 @@
             </NAvatar>
             <div class="attendance-row__info">
               <span class="attendance-row__name">
-                {{ row.firstName }} {{ row.lastName }}
+                {{ fullName(row) }}
               </span>
-              <span class="attendance-row__username">@{{ row.username }}</span>
             </div>
           </div>
           <div class="attendance-row__status">
@@ -186,9 +185,16 @@ const statusOptions = [
   { label: 'Уважительная', value: 'excused' }
 ]
 
+const fullName = (row: any) => {
+  const first = row.firstName || row.first_name || ''
+  const last = row.lastName || row.last_name || ''
+  const name = `${first} ${last}`.trim()
+  return name || row.full_name || row.username || '—'
+}
+
 const getInitial = (row: any) => {
-  const first = row.firstName?.[0] || row.lastName?.[0] || ''
-  const last = row.lastName?.[0] || row.firstName?.[0] || ''
+  const first = (row.firstName || row.first_name)?.[0] || (row.lastName || row.last_name)?.[0] || ''
+  const last = (row.lastName || row.last_name)?.[0] || (row.firstName || row.first_name)?.[0] || ''
   return (first + last).toUpperCase() || '?'
 }
 
@@ -438,11 +444,6 @@ loadStudents()
 .attendance-row__name {
   font-weight: 600;
   color: var(--n-text-color-1);
-}
-
-.attendance-row__username {
-  font-size: 0.8rem;
-  color: var(--n-text-color-3);
 }
 
 .attendance-row__status {
