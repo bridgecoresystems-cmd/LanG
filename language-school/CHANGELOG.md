@@ -16,10 +16,16 @@ This project follows [Semantic Versioning](https://semver.org/) and [Conventiona
   - Teacher can manually reward students
   - Gem shop with vendors
   - Transaction history and analytics
-- Backend routes: `admin/gems.ts`, `admin/terminals.ts`, `cabinet/gems.ts`, `terminal.ts`
+- **WebSocket real-time balance updates**
+  - Live gems balance in student cabinet
+  - Instant updates when gems are awarded
+  - No page reload needed
+  - Per-user WebSocket connections
+- Backend routes: `admin/gems.ts`, `admin/terminals.ts`, `cabinet/gems.ts`, `terminal.ts`, `ws-gems.ts`
+- WebSocket: `ws/gems-broadcast.ts` for real-time messaging
 - Frontend pages:
   - Admin: gems management, terminals CRUD
-  - Student: view balance and history
+  - Student: view balance and history (real-time)
   - Teacher: reward students from group page
   - Head Accountant: vendor management
   - Gen Director: top-up requests
