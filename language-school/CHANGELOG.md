@@ -8,6 +8,23 @@ This project follows [Semantic Versioning](https://semver.org/) and [Conventiona
 
 ## [Unreleased]
 
+### 💎 Gamification: Gems System
+
+- **Added complete gamification system with gems currency**
+  - Virtual currency for student motivation
+  - RFID terminal integration for automatic rewards
+  - Teacher can manually reward students
+  - Gem shop with vendors
+  - Transaction history and analytics
+- Backend routes: `admin/gems.ts`, `admin/terminals.ts`, `cabinet/gems.ts`, `terminal.ts`
+- Frontend pages:
+  - Admin: gems management, terminals CRUD
+  - Student: view balance and history
+  - Teacher: reward students from group page
+  - Head Accountant: vendor management
+  - Gen Director: top-up requests
+- Database tables: gems transactions, terminals, vendors
+
 ### 💬 Real-time Chat
 
 - **Added teacher-student messaging system**
