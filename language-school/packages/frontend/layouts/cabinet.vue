@@ -153,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h, onMounted, nextTick, type Component } from 'vue'
+import { ref, computed, h, onMounted, onUnmounted, nextTick, type Component } from 'vue'
 import {
   NConfigProvider,
   NLayout,
@@ -227,9 +227,58 @@ async function loadGemsBalance() {
   }
 }
 
+// ── Gems WebSocket (real-time balance) ────────────────────────────────────────
+let gemsWs: WebSocket | null = null
+let gemsWsReconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+function connectGemsWs() {
+  if (!showGems.value) return
+  if (gemsWs && (gemsWs.readyState === WebSocket.CONNECTING || gemsWs.readyState === WebSocket.OPEN)) return
+
+  const wsUrl = `${API.replace(/^https?/, 'ws')}/ws/gems`
+  gemsWs = new WebSocket(wsUrl)
+
+  gemsWs.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data)
+      if (data.type === 'balance_update' && typeof data.balance === 'number') {
+        gemsBalance.value = data.balance
+      }
+    } catch (_) {}
+  }
+
+  gemsWs.onclose = () => {
+    gemsWs = null
+    if (showGems.value) {
+      gemsWsReconnectTimer = setTimeout(connectGemsWs, 3000)
+    }
+  }
+
+  gemsWs.onerror = () => {
+    gemsWs?.close()
+  }
+}
+
+function disconnectGemsWs() {
+  if (gemsWsReconnectTimer) {
+    clearTimeout(gemsWsReconnectTimer)
+    gemsWsReconnectTimer = null
+  }
+  if (gemsWs) {
+    gemsWs.onclose = null // prevent auto-reconnect
+    gemsWs.close()
+    gemsWs = null
+  }
+}
+
+onUnmounted(() => {
+  disconnectGemsWs()
+})
+
 // Загрузка групп при монтировании (единый источник для layout и страниц)
 onMounted(async () => {
   loadGemsBalance()
+  connectGemsWs()
 
   if (hasAnyRole(authStore.user, ['TEACHER', 'STUDENT'])) {
     try {

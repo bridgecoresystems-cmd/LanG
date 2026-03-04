@@ -12,6 +12,7 @@ import { adminRoutes } from "./routes/admin/index";
 import { cabinetRoutes } from "./routes/cabinet/index";
 import { uploadRoutes } from "./routes/upload";
 import { wsRoutes } from "./routes/ws";
+import { wsGemsRoutes } from "./routes/ws-gems";
 import { terminalRoutes } from "./routes/terminal";
 import { staticPlugin } from "@elysiajs/static";
 
@@ -33,7 +34,8 @@ const app = new Elysia()
       .get("/health", () => ({ status: "ok" }))
       .use(authRoutes) // authRoutes не требуют аутентификации
       .use(landingRoutes) // landingRoutes не требуют аутентификации
-      .use(wsRoutes) // WebSocket для real-time
+      .use(wsRoutes) // WebSocket для real-time (contact broadcast)
+      .use(wsGemsRoutes) // WebSocket для gems balance real-time
       .use(terminalRoutes) // ESP32 terminal — no session auth, uses terminalId+authToken
   )
   // Защищённые роуты /api/v1 — применяем authMiddleware внутри группы

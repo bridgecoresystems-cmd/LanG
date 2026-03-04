@@ -3,6 +3,7 @@ import { db } from "../../db/index";
 import { gemsWallets, gemsTransactions, gemsVendors, users, userRoles, htGroups, htGroupStudents, gemsTopupRequests, gemsTopupLogs, schools, userSchools } from "../../db/schema";
 import { eq, and, or, desc } from "drizzle-orm";
 import { ROLES } from "../../constants/roles";
+import { pushGemsBalance } from "../../ws/gems-broadcast";
 
 // Hierarchy: who can send gems to whom
 // HEAD_ACCOUNTANT → ACCOUNTANT
@@ -173,6 +174,10 @@ export const gemsRoutes = new Elysia({ prefix: "/gems" })
         comment: comment || null,
       });
 
+      // Push real-time balance updates
+      pushGemsBalance(user!.id, newSenderBalance);
+      pushGemsBalance(String(receiverId), newReceiverBalance);
+
       return {
         ok: true,
         newBalance: newSenderBalance,
@@ -317,7 +322,14 @@ export const gemsRoutes = new Elysia({ prefix: "/gems" })
       comment: comment || null,
     });
 
-    return { ok: true, newBalance: Number(senderWallet.balance) - amount };
+    const newTeacherBalance = Number(senderWallet.balance) - amount;
+    const newStudentBalance = Number(receiverWallet.balance) + amount;
+
+    // Push real-time balance updates to both teacher and student
+    pushGemsBalance(user!.id, newTeacherBalance);
+    pushGemsBalance(studentId, newStudentBalance);
+
+    return { ok: true, newBalance: newTeacherBalance };
   }, {
     body: t.Object({
       studentId: t.String(),

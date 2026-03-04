@@ -2,6 +2,7 @@ import { Elysia } from "elysia";
 import { db } from "../../db/index";
 import { gemsTopupRequests, gemsTopupLogs, gemsWallets, gemsTransactions, users } from "../../db/schema";
 import { eq, desc } from "drizzle-orm";
+import { pushGemsBalance } from "../../ws/gems-broadcast";
 
 async function getOrCreateWallet(userId: string) {
   const [existing] = await db.select().from(gemsWallets).where(eq(gemsWallets.userId, userId)).limit(1);
@@ -146,6 +147,9 @@ export const adminGemsRoutes = new Elysia({ prefix: "/gems" })
       action: "admin_completed",
       comment: `Баланс пополнен на ${amount} 💎`,
     });
+
+    // Push real-time balance update to HEAD_ACCOUNTANT
+    pushGemsBalance(req.requestedById, newBalance);
 
     return { ...updated, amount: Number(updated.amount), newBalance };
   });
