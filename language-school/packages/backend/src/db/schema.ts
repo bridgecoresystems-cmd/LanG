@@ -537,6 +537,79 @@ export const chatMessages = pgTable("chat_message", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// --- Gems (Virtual Currency) ---
+
+// One wallet per user, auto-created on first interaction
+export const gemsWallets = pgTable("gems_wallet", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  balance: decimal("balance", { precision: 10, scale: 2 }).default("0").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Every gem movement is recorded here
+export const gemsTransactions = pgTable("gems_transaction", {
+  id: serial("id").primaryKey(),
+  senderId: text("sender_id").references(() => users.id, { onDelete: "set null" }),
+  receiverId: text("receiver_id").references(() => users.id, { onDelete: "set null" }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  // transfer = HEAD_ACCOUNTANT→ACCOUNTANT→TEACHER, award = TEACHER→STUDENT, purchase = STUDENT→VENDOR, system = manual
+  type: text("type").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Vendor profile (MERCHANT role users) — has a terminal for RFID payments
+export const gemsVendors = pgTable("gems_vendor", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  name: text("name").notNull(),
+  address: text("address"), // Physical location of the vendor/terminal
+  terminalId: text("terminal_id").unique(), // Unique ID flashed to ESP32
+  authToken: text("auth_token").notNull().unique(), // UUID secret for terminal authentication
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// --- Gems Top-Up Requests ---
+
+// Workflow: HEAD_ACCOUNTANT creates → GEN_DIRECTOR approves/rejects → ADMIN completes (funds wallet)
+export const gemsTopupRequests = pgTable("gems_topup_request", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  requestedById: text("requested_by_id").notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  requestDate: timestamp("request_date").notNull(),
+  // pending_director | pending_admin | rejected | completed
+  status: text("status").default("pending_director").notNull(),
+  directorId: text("director_id").references(() => users.id, { onDelete: "set null" }),
+  directorComment: text("director_comment"),
+  directorActedAt: timestamp("director_acted_at"),
+  adminId: text("admin_id").references(() => users.id, { onDelete: "set null" }),
+  adminActedAt: timestamp("admin_acted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const gemsTopupLogs = pgTable("gems_topup_log", {
+  id: serial("id").primaryKey(),
+  requestId: integer("request_id").notNull()
+    .references(() => gemsTopupRequests.id, { onDelete: "cascade" }),
+  actorId: text("actor_id").references(() => users.id, { onDelete: "set null" }),
+  actorRole: text("actor_role").notNull(),
+  // created | resubmitted | director_approved | director_rejected | admin_completed
+  action: text("action").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // --- Tariffs (Bookkeeper) ---
 
 export const tariffs = pgTable("tariff", {

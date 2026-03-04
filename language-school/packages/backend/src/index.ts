@@ -12,6 +12,7 @@ import { adminRoutes } from "./routes/admin/index";
 import { cabinetRoutes } from "./routes/cabinet/index";
 import { uploadRoutes } from "./routes/upload";
 import { wsRoutes } from "./routes/ws";
+import { terminalRoutes } from "./routes/terminal";
 import { staticPlugin } from "@elysiajs/static";
 
 const app = new Elysia()
@@ -33,6 +34,7 @@ const app = new Elysia()
       .use(authRoutes) // authRoutes не требуют аутентификации
       .use(landingRoutes) // landingRoutes не требуют аутентификации
       .use(wsRoutes) // WebSocket для real-time
+      .use(terminalRoutes) // ESP32 terminal — no session auth, uses terminalId+authToken
   )
   // Защищённые роуты /api/v1 — применяем authMiddleware внутри группы
   .group("/api/v1", (protectedApp) =>

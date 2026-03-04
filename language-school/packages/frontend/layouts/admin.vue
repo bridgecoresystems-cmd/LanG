@@ -110,6 +110,20 @@
             <QItemSection>Пользователи</QItemSection>
           </QItem>
 
+          <QItem to="/admin/terminals" clickable v-ripple active-class="nav-item-active" class="nav-item">
+            <QItemSection avatar>
+              <QIcon name="point_of_sale" />
+            </QItemSection>
+            <QItemSection>Терминалы 💎</QItemSection>
+          </QItem>
+
+          <QItem to="/admin/gems/requests" clickable v-ripple active-class="nav-item-active" class="nav-item">
+            <QItemSection avatar>
+              <QIcon name="diamond" />
+            </QItemSection>
+            <QItemSection>Заявки Gems 💎</QItemSection>
+          </QItem>
+
           <QItem to="/admin/sales" clickable v-ripple active-class="nav-item-active" class="nav-item">
             <QItemSection avatar>
               <QIcon name="phone" />
@@ -205,6 +219,11 @@ const breadcrumbItems = computed(() => {
     items.push({ label: 'Пользователи', path: '/admin/users' })
     if (path.match(/\/users\/add$/)) items.push({ label: 'Добавить' })
     if (path.match(/\/users\/[^/]+$/) && !path.endsWith('/add')) items.push({ label: 'Редактировать' })
+  } else if (path.includes('/terminals')) {
+    items.push({ label: 'Терминалы', path: '/admin/terminals' })
+    if (path.match(/\/terminals\/add$/)) items.push({ label: 'Добавить' })
+  } else if (path.includes('/gems')) {
+    items.push({ label: 'Заявки Gems 💎', path: '/admin/gems/requests' })
   } else if (path.includes('/sales')) {
     items.push({ label: 'Sales дневник', path: '/admin/sales' })
     if (path.match(/\/sales\/add$/)) items.push({ label: 'Добавить' })

@@ -109,6 +109,51 @@
                 hint="UID с RC522 для оплаты гемов"
               />
 
+              <!-- MERCHANT: Vendor / Terminal info -->
+              <template v-if="form.role === 'MERCHANT'">
+                <q-separator class="q-mb-md" />
+                <div class="text-subtitle2 q-mb-md row items-center q-gutter-xs">
+                  <q-icon name="point_of_sale" color="primary" />
+                  <span>Точка продажи / Терминал</span>
+                </div>
+                <q-inner-loading :showing="loadingVendor">
+                  <q-spinner size="24px" color="primary" />
+                </q-inner-loading>
+                <template v-if="!loadingVendor">
+                  <q-input
+                    v-model="form.vendor_name"
+                    label="Название точки *"
+                    outlined
+                    class="q-mb-md"
+                    placeholder="Кантина, Буфет, Магазин..."
+                    :rules="[val => !!val?.trim() || 'Обязательно для мерчанта']"
+                  />
+                  <q-input
+                    v-model="form.vendor_address"
+                    label="Адрес / местоположение"
+                    outlined
+                    class="q-mb-md"
+                    placeholder="1-й этаж, столовая..."
+                  >
+                    <template v-slot:prepend><q-icon name="place" /></template>
+                  </q-input>
+                  <q-input
+                    v-model="form.vendor_terminal_id"
+                    label="Terminal ID"
+                    outlined
+                    class="q-mb-md"
+                    placeholder="canteen_1, shop_main..."
+                    hint="Латиница + _ (для прошивки ESP32)"
+                  >
+                    <template v-slot:prepend><q-icon name="hardware" /></template>
+                  </q-input>
+                  <q-banner v-if="!vendorId" class="bg-amber-1 rounded-borders q-mb-md" rounded>
+                    <template v-slot:avatar><q-icon name="warning" color="amber-9" /></template>
+                    <span class="text-caption text-amber-9">Терминал ещё не создан для этого мерчанта. Заполните поля и сохраните — терминал будет создан автоматически.</span>
+                  </q-banner>
+                </template>
+              </template>
+
               <q-toggle v-model="form.is_active" label="Активен" class="q-mb-md" />
             </div>
 
@@ -185,11 +230,15 @@ const { avatarUrl } = useAvatarUrl()
 const { getById, update, getAll } = useAdminUsers()
 const { getAll: getAllSchools } = useAdminSchools()
 const { uploadFile } = useUpload()
+const config = useRuntimeConfig()
+const API = config.public.apiBase as string
 
 const schools = ref<any[]>([])
 const parents = ref<any[]>([])
 const loading = ref(true)
 const saving = ref(false)
+const loadingVendor = ref(false)
+const vendorId = ref<number | null>(null)
 
 const avatarInput = ref<HTMLInputElement | null>(null)
 const avatarPreview = ref<string | null>(null)
@@ -255,11 +304,15 @@ const form = ref({
   school_id: null as number | null,
   parent_id: null as string | null,
   is_active: true,
-      additional_roles: [] as string[],
-      additional_school_ids: [] as number[],
-      can_export_excel: false,
-      can_view_all_schools: false,
-      rfid_uid: ''
+  additional_roles: [] as string[],
+  additional_school_ids: [] as number[],
+  can_export_excel: false,
+  can_view_all_schools: false,
+  rfid_uid: '',
+  // MERCHANT fields
+  vendor_name: '',
+  vendor_address: '',
+  vendor_terminal_id: '',
 })
 
 const showSchoolField = computed(() => {
@@ -311,8 +364,15 @@ const clearAvatar = () => {
 const onRoleChange = () => {
   if (!showSchoolField.value) form.value.school_id = null
   if (form.value.role !== 'STUDENT') form.value.parent_id = null
-  // Удаляем дополнительные роли, которые совпадают с новой основной ролью
   form.value.additional_roles = form.value.additional_roles.filter(r => r !== form.value.role)
+  if (form.value.role === 'MERCHANT' && form.value.id) {
+    loadVendor(form.value.id)
+  } else {
+    vendorId.value = null
+    form.value.vendor_name = ''
+    form.value.vendor_address = ''
+    form.value.vendor_terminal_id = ''
+  }
 }
 
 const handleSubmit = async () => {
@@ -324,10 +384,9 @@ const handleSubmit = async () => {
       avatarUrl = (res as any).url
     }
 
-    // Фильтруем дополнительные роли: убираем пустые, дубликаты основной роли и SUPERUSER
     const cleanAdditionalRoles = form.value.additional_roles
       .filter(r => r && typeof r === 'string' && r.trim() && r !== form.value.role && r !== 'SUPERUSER')
-    
+
     const body: Record<string, any> = {
       first_name: form.value.first_name.trim(),
       last_name: form.value.last_name.trim(),
@@ -351,13 +410,63 @@ const handleSubmit = async () => {
       body.password = form.value.password
     }
     await update(form.value.id as any, body)
+
+    // Save vendor data for MERCHANT
+    if (form.value.role === 'MERCHANT') {
+      if (vendorId.value) {
+        // Update existing vendor
+        await $fetch(`${API}/admin/terminals/${vendorId.value}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          body: {
+            name: form.value.vendor_name.trim(),
+            address: form.value.vendor_address?.trim() || undefined,
+            terminalId: form.value.vendor_terminal_id?.trim() || undefined,
+          },
+        })
+      } else if (form.value.vendor_name?.trim()) {
+        // Create new vendor profile if none exists yet
+        await $fetch(`${API}/admin/terminals`, {
+          method: 'POST',
+          credentials: 'include',
+          body: {
+            userId: form.value.id,
+            name: form.value.vendor_name.trim(),
+            address: form.value.vendor_address?.trim() || undefined,
+            terminalId: form.value.vendor_terminal_id?.trim() || undefined,
+          },
+        })
+      }
+    }
+
     navigateTo('/admin/users')
   } catch (e: any) {
-    const err = e?.data?.error || e?.message || 'Ошибка'
-    console.error(e)
+    const body = e?.value ?? e?.data
+    const err = (body && typeof body === 'object')
+      ? (body.error || body.message || body.summary || JSON.stringify(body))
+      : (body ?? e?.message ?? 'Ошибка')
+    console.error('User update error:', e)
     alert(err)
   } finally {
     saving.value = false
+  }
+}
+
+async function loadVendor(userId: string) {
+  loadingVendor.value = true
+  try {
+    const terminals = await $fetch<any[]>(`${API}/admin/terminals`, { credentials: 'include' })
+    const vendor = Array.isArray(terminals) ? terminals.find(t => t.userId === userId) : null
+    if (vendor) {
+      vendorId.value = vendor.id
+      form.value.vendor_name = vendor.name || ''
+      form.value.vendor_address = vendor.address || ''
+      form.value.vendor_terminal_id = vendor.terminalId || ''
+    }
+  } catch (e) {
+    console.error('Load vendor error:', e)
+  } finally {
+    loadingVendor.value = false
   }
 }
 
@@ -374,7 +483,7 @@ onMounted(async () => {
       getAllSchools(),
       getAll()
     ])
-    
+
     if (!user) {
       navigateTo('/admin/users')
       return
@@ -398,7 +507,14 @@ onMounted(async () => {
       additional_school_ids: Array.isArray((user as any).additional_school_ids) ? (user as any).additional_school_ids : [],
       can_export_excel: (user as any).can_export_excel === true,
       can_view_all_schools: (user as any).can_view_all_schools === true,
-      rfid_uid: (user as any).rfid_uid || ''
+      rfid_uid: (user as any).rfid_uid || '',
+      vendor_name: '',
+      vendor_address: '',
+      vendor_terminal_id: '',
+    }
+
+    if (user.role === 'MERCHANT') {
+      await loadVendor(user.id)
     }
   } catch (e) {
     console.error('Load user error:', e)

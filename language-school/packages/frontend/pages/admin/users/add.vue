@@ -109,6 +109,44 @@
                 hint="UID с RC522 для оплаты гемов"
               />
 
+              <!-- MERCHANT: Vendor / Terminal info -->
+              <template v-if="form.role === 'MERCHANT'">
+                <q-separator class="q-mb-md" />
+                <div class="text-subtitle2 q-mb-md row items-center q-gutter-xs">
+                  <q-icon name="point_of_sale" color="primary" />
+                  <span>Точка продажи / Терминал</span>
+                </div>
+                <q-input
+                  v-model="form.vendor_name"
+                  label="Название точки *"
+                  outlined
+                  class="q-mb-md"
+                  placeholder="Кантина, Буфет, Магазин..."
+                  :rules="[val => !!val?.trim() || 'Обязательно для мерчанта']"
+                  hint="Как называется точка продажи"
+                />
+                <q-input
+                  v-model="form.vendor_address"
+                  label="Адрес / местоположение"
+                  outlined
+                  class="q-mb-md"
+                  placeholder="1-й этаж, столовая..."
+                  hint="Где физически стоит терминал"
+                >
+                  <template v-slot:prepend><q-icon name="place" /></template>
+                </q-input>
+                <q-input
+                  v-model="form.vendor_terminal_id"
+                  label="Terminal ID"
+                  outlined
+                  class="q-mb-md"
+                  placeholder="canteen_1, shop_main..."
+                  hint="Латиница + _ (можно задать позже после прошивки ESP32)"
+                >
+                  <template v-slot:prepend><q-icon name="hardware" /></template>
+                </q-input>
+              </template>
+
               <!-- Логин и пароль -->
               <template v-if="form.role === 'STUDENT' && !form.auto_generate">
                 <q-input v-model="form.username" label="Логин *" outlined :rules="[val => !!val?.trim() || 'Обязательно']" class="q-mb-md" />
@@ -188,9 +226,28 @@
             </div>
           </q-banner>
 
+          <!-- MERCHANT: Terminal credentials after creation -->
+          <q-banner v-if="createdVendor" class="bg-amber-2 q-mb-md rounded-borders" rounded>
+            <template v-slot:avatar>
+              <q-icon name="point_of_sale" color="amber-9" size="2em" />
+            </template>
+            <div class="text-weight-bold text-amber-9">Терминал создан! Данные для ESP32 (сохраните сейчас):</div>
+            <div class="q-mt-sm column q-gutter-xs">
+              <div class="row items-center q-gutter-sm">
+                <span class="text-weight-medium text-dark">Terminal ID:</span>
+                <code class="q-px-sm q-py-xs rounded" style="background:#fff8e1;color:#5f4700;">{{ createdVendor.terminalId || '(не задан — добавьте позже в разделе Терминалы)' }}</code>
+              </div>
+              <div class="row items-center q-gutter-sm">
+                <span class="text-weight-medium text-dark">Auth Token:</span>
+                <code class="q-px-sm q-py-xs rounded text-caption" style="background:#fff8e1;color:#5f4700;word-break:break-all;">{{ createdVendor.authToken }}</code>
+                <q-btn flat dense size="xs" icon="content_copy" color="amber-9" @click="copyVendorToken" />
+              </div>
+            </div>
+          </q-banner>
+
           <div class="row q-gutter-sm q-mt-lg">
-            <q-btn type="submit" color="primary" label="Создать" :loading="saving" icon="save" :disable="!!createdCredentials" />
-            <q-btn v-if="createdCredentials" color="primary" label="Создать ещё" icon="add" @click="resetForm" />
+            <q-btn type="submit" color="primary" label="Создать" :loading="saving" icon="save" :disable="!!createdCredentials || !!createdVendor" />
+            <q-btn v-if="createdCredentials || createdVendor" color="primary" label="Создать ещё" icon="add" @click="resetForm" />
             <q-btn outline color="grey-7" label="К списку" to="/admin/users" />
           </div>
         </q-form>
@@ -206,11 +263,14 @@ const { avatarUrl } = useAvatarUrl()
 const { create, getAll } = useAdminUsers()
 const { getAll: getAllSchools } = useAdminSchools()
 const { uploadFile } = useUpload()
+const config = useRuntimeConfig()
+const API = config.public.apiBase as string
 
 const schools = ref<any[]>([])
 const parents = ref<any[]>([])
 const saving = ref(false)
 const createdCredentials = ref<{ username: string; password: string } | null>(null)
+const createdVendor = ref<{ authToken: string; terminalId?: string } | null>(null)
 const avatarInput = ref<HTMLInputElement | null>(null)
 const avatarPreview = ref<string | null>(null)
 const avatarFile = ref<File | null>(null)
@@ -279,7 +339,11 @@ const form = ref({
   additional_school_ids: [] as number[],
   can_export_excel: false,
   can_view_all_schools: false,
-  rfid_uid: ''
+  rfid_uid: '',
+  // MERCHANT fields
+  vendor_name: '',
+  vendor_address: '',
+  vendor_terminal_id: '',
 })
 
 const showSchoolField = computed(() => {
@@ -340,11 +404,17 @@ const copyCredentials = () => {
   if (!createdCredentials.value) return
   const text = `Логин: ${createdCredentials.value.username}\nПароль: ${createdCredentials.value.password}`
   navigator.clipboard.writeText(text)
-  // TODO: show toast
+}
+
+const copyVendorToken = () => {
+  if (!createdVendor.value) return
+  const text = `Terminal ID: ${createdVendor.value.terminalId || ''}\nAuth Token: ${createdVendor.value.authToken}`
+  navigator.clipboard.writeText(text)
 }
 
 const resetForm = () => {
   createdCredentials.value = null
+  createdVendor.value = null
   clearAvatar()
   form.value = {
     role: form.value.role,
@@ -359,13 +429,18 @@ const resetForm = () => {
     parent_id: null,
     auto_generate: form.value.role === 'STUDENT',
     additional_roles: [],
+    additional_school_ids: [],
+    can_export_excel: false,
     can_view_all_schools: form.value.can_view_all_schools,
-    rfid_uid: ''
+    rfid_uid: '',
+    vendor_name: '',
+    vendor_address: '',
+    vendor_terminal_id: '',
   }
 }
 
 const handleSubmit = async () => {
-  if (createdCredentials.value) return
+  if (createdCredentials.value || createdVendor.value) return
   saving.value = true
   try {
     let avatarUrl = form.value.avatar
@@ -404,13 +479,37 @@ const handleSubmit = async () => {
     const res = await create(body)
     if ((res as any).credentials) {
       createdCredentials.value = (res as any).credentials
-    } else {
+    }
+
+    // If MERCHANT — auto-create vendor profile
+    if (form.value.role === 'MERCHANT' && (res as any).user?.id) {
+      try {
+        const vendorRes = await $fetch<any>(`${API}/admin/terminals`, {
+          method: 'POST',
+          credentials: 'include',
+          body: {
+            userId: (res as any).user.id,
+            name: form.value.vendor_name.trim(),
+            address: form.value.vendor_address?.trim() || undefined,
+            terminalId: form.value.vendor_terminal_id?.trim() || undefined,
+          },
+        })
+        createdVendor.value = { authToken: vendorRes.authToken, terminalId: vendorRes.terminalId }
+      } catch (ve: any) {
+        alert('Пользователь создан, но ошибка при создании терминала: ' + (ve?.data?.error || ve?.message || 'Ошибка'))
+      }
+    }
+
+    if (!(res as any).credentials && form.value.role !== 'MERCHANT') {
       navigateTo('/admin/users')
     }
   } catch (e: any) {
-    const err = e?.data?.error || e?.message || 'Ошибка'
-    console.error(e)
-    // TODO: show error toast
+    // Eden Treaty throws an Error with .value = parsed response body
+    const body = e?.value ?? e?.data
+    const err = (body && typeof body === 'object')
+      ? (body.error || body.message || body.summary || JSON.stringify(body))
+      : (body ?? e?.message ?? 'Ошибка')
+    console.error('User create error:', e)
     alert(err)
   } finally {
     saving.value = false

@@ -24,6 +24,25 @@
           </NuxtLink>
         </div>
 
+        <!-- Gems Balance Widget -->
+        <div class="sidebar-gems" :class="{ 'gems-collapsed': isSidebarCollapsed }" v-if="showGems">
+          <NTooltip v-if="isSidebarCollapsed" placement="right" trigger="hover">
+            <template #trigger>
+              <div class="gems-icon-only">
+                <span>💎</span>
+              </div>
+            </template>
+            {{ gemsBalance }} Gems
+          </NTooltip>
+          <div v-else class="gems-content">
+            <div class="gems-label">Мой баланс</div>
+            <div class="gems-value">
+              <span class="gems-amount">{{ gemsBalance }}</span>
+              <span class="gems-sym">💎</span>
+            </div>
+          </div>
+        </div>
+
         <div v-if="!isSidebarCollapsed && groupOptions.length > 0" class="group-selector-container">
           <div class="group-selector-label">Текущая группа:</div>
           <NSelect
@@ -150,6 +169,7 @@ import {
   NH1,
   NH2,
   NTag,
+  NTooltip,
   NMessageProvider,
   NDivider,
   type MenuOption,
@@ -170,6 +190,8 @@ import {
   ListOutline as ListIcon,
   AddOutline as AddIcon,
   CardOutline as PaymentIcon,
+  DiamondOutline as GemsIcon,
+  StorefrontOutline as VendorIcon,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '~/stores/authStore'
 import { useContextStore } from '~/stores/contextStore'
@@ -181,11 +203,34 @@ const contextStore = useContextStore()
 const profileApi = useCabinetProfile()
 const { locale } = useI18n()
 const route = useRoute()
+const config = useRuntimeConfig()
+const API = config.public.apiBase as string
 
 const isSidebarCollapsed = ref(false)
 
+// --- Gems balance ---
+const gemsBalance = ref<number>(0)
+const GEMS_ROLES = ['HEAD_ACCOUNTANT', 'ACCOUNTANT', 'TEACHER', 'STUDENT']
+const showGems = computed(() => {
+  const user = authStore.user
+  if (!user) return false
+  return GEMS_ROLES.some(r => hasRole(user, r))
+})
+
+async function loadGemsBalance() {
+  if (!showGems.value) return
+  try {
+    const data = await $fetch<{ balance: number }>(`${API}/cabinet/gems/wallet`, { credentials: 'include' })
+    gemsBalance.value = data.balance ?? 0
+  } catch {
+    // wallet not yet created, balance stays 0
+  }
+}
+
 // Загрузка групп при монтировании (единый источник для layout и страниц)
 onMounted(async () => {
+  loadGemsBalance()
+
   if (hasAnyRole(authStore.user, ['TEACHER', 'STUDENT'])) {
     try {
       const groups = await profileApi.getMyGroups()
@@ -382,11 +427,12 @@ const menuOptions = computed<MenuOption[]>(() => {
         { label: 'Посещаемость', key: `/cabinet/teacher/groups/${contextStore.selectedGroupId}/attendance`, icon: renderIcon(DocumentIcon) },
         { label: 'Оценки', key: `/cabinet/teacher/groups/${contextStore.selectedGroupId}/grades`, icon: renderIcon(ChartIcon) },
         { label: 'Игры', key: `/cabinet/teacher/groups/${contextStore.selectedGroupId}/games`, icon: renderIcon(GameIcon) },
+        { label: '💎 Выдать гемы', key: `/cabinet/teacher/groups/${contextStore.selectedGroupId}/gems`, icon: renderIcon(GemsIcon) },
       )
     }
-    
-    // Рассылки (Mailing) для учителя
+
     options.push(
+      { label: 'Мои гемы', key: '/cabinet/gems', icon: renderIcon(GemsIcon) },
       { label: 'Рассылки', key: '/cabinet/mailing', icon: renderIcon(MailIcon) }
     )
   }
@@ -400,6 +446,7 @@ const menuOptions = computed<MenuOption[]>(() => {
         { label: 'Моя успеваемость', key: `/cabinet/student/groups/${studentGroupId}/grades`, icon: renderIcon(ChartIcon) },
         { label: 'Игры', key: `/cabinet/student/groups/${studentGroupId}/games`, icon: renderIcon(GameIcon) },
       ] : []),
+      { label: '💎 Мои гемы', key: '/cabinet/gems', icon: renderIcon(GemsIcon) },
       { label: 'Мои платежи', key: '/cabinet/student/payments', icon: renderIcon(PaymentIcon) },
       { label: 'Расписание', key: '/cabinet/schedule', icon: renderIcon(CalendarIcon) },
       { label: 'Сообщения', key: '/cabinet/mailing', icon: renderIcon(MailIcon) }
@@ -422,32 +469,62 @@ const menuOptions = computed<MenuOption[]>(() => {
 
   // Бухгалтер (Accountant)
   if (hasRole(user, 'ACCOUNTANT')) {
-    options.push({
-      label: 'Оплата',
-      key: 'payment-group',
-      icon: renderIcon(DocumentIcon),
-      children: [
-        { label: 'Принять оплату', key: '/cabinet/accountant/payments/add', icon: renderIcon(AddIcon) },
-        { label: 'Отчёт по оплатам', key: '/cabinet/accountant/payments', icon: renderIcon(ChartIcon) },
-        { label: 'Контроль оплаты', key: '/cabinet/accountant/debts', icon: renderIcon(ChartIcon) },
-        { label: 'Тарифы', key: '/cabinet/accountant/tariffs', icon: renderIcon(DocumentIcon) },
-      ],
-    })
+    options.push(
+      {
+        label: 'Оплата',
+        key: 'payment-group',
+        icon: renderIcon(DocumentIcon),
+        children: [
+          { label: 'Принять оплату', key: '/cabinet/accountant/payments/add', icon: renderIcon(AddIcon) },
+          { label: 'Отчёт по оплатам', key: '/cabinet/accountant/payments', icon: renderIcon(ChartIcon) },
+          { label: 'Контроль оплаты', key: '/cabinet/accountant/debts', icon: renderIcon(ChartIcon) },
+          { label: 'Тарифы', key: '/cabinet/accountant/tariffs', icon: renderIcon(DocumentIcon) },
+        ],
+      },
+      { label: '💎 Гемы', key: '/cabinet/gems', icon: renderIcon(GemsIcon) }
+    )
   }
 
   // Главный бухгалтер (Head Accountant)
   if (hasRole(user, 'HEAD_ACCOUNTANT')) {
-    options.push({
-      label: 'Бухгалтерия',
-      key: 'head-payment-group',
-      icon: renderIcon(DocumentIcon),
-      children: [
-        { label: 'Все транзакции', key: '/cabinet/head-accountant/payments', icon: renderIcon(ChartIcon) },
-        { label: 'Принять оплату', key: '/cabinet/head-accountant/payments/add', icon: renderIcon(AddIcon) },
-        { label: 'Контроль оплаты', key: '/cabinet/head-accountant/debts', icon: renderIcon(ChartIcon) },
-        { label: 'Тарифы', key: '/cabinet/head-accountant/tariffs', icon: renderIcon(DocumentIcon) },
-      ],
-    })
+    options.push(
+      {
+        label: 'Бухгалтерия',
+        key: 'head-payment-group',
+        icon: renderIcon(DocumentIcon),
+        children: [
+          { label: 'Все транзакции', key: '/cabinet/head-accountant/payments', icon: renderIcon(ChartIcon) },
+          { label: 'Принять оплату', key: '/cabinet/head-accountant/payments/add', icon: renderIcon(AddIcon) },
+          { label: 'Контроль оплаты', key: '/cabinet/head-accountant/debts', icon: renderIcon(ChartIcon) },
+          { label: 'Тарифы', key: '/cabinet/head-accountant/tariffs', icon: renderIcon(DocumentIcon) },
+        ],
+      },
+      {
+        label: '💎 Гемы',
+        key: 'gems-head-group',
+        icon: renderIcon(GemsIcon),
+        children: [
+          { label: 'Мой баланс', key: '/cabinet/gems', icon: renderIcon(GemsIcon) },
+          { label: 'Все кошельки', key: '/cabinet/head-accountant/gems', icon: renderIcon(ChartIcon) },
+          { label: 'Вендоры', key: '/cabinet/head-accountant/vendors', icon: renderIcon(VendorIcon) },
+          { label: '📋 Заявки на пополнение', key: '/cabinet/head-accountant/gems/requests', icon: renderIcon(ListIcon) },
+        ],
+      }
+    )
+  }
+
+  // Ген. директор
+  if (hasRole(user, 'GEN_DIRECTOR')) {
+    options.push(
+      { label: '💎 Заявки на пополнение', key: '/cabinet/gen-director/topup-requests', icon: renderIcon(GemsIcon) }
+    )
+  }
+
+  // Merchant / Vendor
+  if (hasRole(user, 'MERCHANT')) {
+    options.push(
+      { label: '💎 Транзакции', key: '/cabinet/gems', icon: renderIcon(GemsIcon) }
+    )
   }
 
   // Профиль всегда в самом низу
@@ -490,6 +567,12 @@ const activePageTitle = computed(() => {
   if (path.includes('/head-teacher/exam-settings')) return 'Настройки экзаменов'
   if (path.includes('/cabinet/mailing')) return 'Сообщения'
   if (path.includes('/sales')) return 'Sales дневник'
+  if (path.includes('/head-accountant/gems/requests')) return '📋 Заявки на пополнение'
+  if (path.includes('/gems') && path.includes('head-accountant')) return '💎 Все кошельки'
+  if (path.includes('/vendors') && path.includes('head-accountant')) return '💎 Вендоры'
+  if (path.includes('/gen-director/topup-requests')) return '💎 Заявки на пополнение'
+  if (path.includes('/gems') && path.includes('teacher/groups')) return '💎 Выдать гемы'
+  if (path.includes('/cabinet/gems')) return '💎 Мои гемы'
   return 'Рабочий стол'
 })
 
@@ -561,6 +644,60 @@ async function handleLogout() {
   text-decoration: none;
   display: flex;
   align-items: center;
+}
+
+.sidebar-gems {
+  margin: 12px 12px 0;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.gems-collapsed {
+  margin: 12px 8px 0;
+  padding: 6px 0;
+  display: flex;
+  justify-content: center;
+  background: transparent;
+}
+
+.gems-icon-only {
+  width: 38px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: default;
+}
+
+.gems-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gems-label {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gems-value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.gems-sym {
+  font-size: 1rem;
 }
 
 .group-selector-container {

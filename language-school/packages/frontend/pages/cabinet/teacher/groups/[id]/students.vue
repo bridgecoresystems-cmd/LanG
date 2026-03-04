@@ -118,7 +118,21 @@
                   />
                 </NButton>
               </td>
-              <td><span class="placeholder">—</span></td>
+              <td>
+                <NTooltip v-if="!courseIsActive" trigger="hover">
+                  <template #trigger>
+                    <NButton size="small" disabled>
+                      <template #icon><NIcon><component :is="GemsIcon" /></NIcon></template>
+                      Наградить
+                    </NButton>
+                  </template>
+                  Группа завершена
+                </NTooltip>
+                <NButton v-else size="small" type="success" ghost @click="openAward(s)">
+                  <template #icon><NIcon><component :is="GemsIcon" /></NIcon></template>
+                  Наградить
+                </NButton>
+              </td>
               <td>
                 <div class="cell-subtitle">{{ s.phone || '—' }}</div>
               </td>
@@ -133,6 +147,37 @@
         <NEmpty description="В группе пока нет учеников" />
       </div>
     </NCard>
+
+    <!-- Award Gems Modal -->
+    <NModal
+      v-model:show="showAwardModal"
+      preset="card"
+      style="width: 400px;"
+      :title="`💎 Наградить: ${awardStudent?.full_name}`"
+    >
+      <NSpace vertical>
+        <div style="font-size: 13px; font-weight: 500; color: #374151;">Количество гемов</div>
+        <NInputNumber
+          v-model:value="awardAmount"
+          :min="1"
+          :precision="0"
+          style="width: 100%;"
+          placeholder="Сколько 💎?"
+        />
+        <div style="font-size: 13px; font-weight: 500; color: #374151; margin-top: 8px;">
+          Комментарий <span style="color:#9ca3af">(необязательно)</span>
+        </div>
+        <NInput v-model:value="awardComment" placeholder="Причина награды..." />
+      </NSpace>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton @click="showAwardModal = false">Отмена</NButton>
+          <NButton type="success" :loading="awarding" :disabled="!awardAmount" @click="doAward">
+            Наградить {{ awardAmount || 0 }} 💎
+          </NButton>
+        </NSpace>
+      </template>
+    </NModal>
 
     <!-- Floating Chat Widget -->
     <ChatWidget
@@ -149,6 +194,7 @@
 import { ref, computed, reactive, onMounted } from 'vue'
 import {
   NH1, NButton, NIcon, NCard, NProgress, NSpin, NEmpty, NText, NBadge,
+  NModal, NInputNumber, NInput, NSpace, NTooltip, useMessage,
 } from 'naive-ui'
 import {
   ChevronBackOutline as BackIcon,
@@ -156,6 +202,7 @@ import {
   TimeOutline as TimeIcon,
   PeopleOutline as PeopleIcon,
   ChatbubbleEllipsesOutline as ChatIcon,
+  DiamondOutline as GemsIcon,
 } from '@vicons/ionicons5'
 import { useContextStore } from '~/stores/contextStore'
 import { useAuthStore } from '~/stores/authStore'
@@ -168,6 +215,7 @@ const contextStore = useContextStore()
 const authStore = useAuthStore()
 const config = useRuntimeConfig()
 const API = config.public.apiBase as string
+const message = useMessage()
 
 // ── Course ────────────────────────────────────────────────────────────────────
 const course = ref<any>(null)
@@ -254,6 +302,45 @@ async function openChat(student: any) {
     console.error('Chat: open failed', e)
   } finally {
     chat.loadingId = null
+  }
+}
+
+// ── Award Gems ────────────────────────────────────────────────────────────────
+const showAwardModal = ref(false)
+const awardStudent = ref<any>(null)
+const awardAmount = ref<number | null>(null)
+const awardComment = ref('')
+const awarding = ref(false)
+
+function openAward(student: any) {
+  awardStudent.value = student
+  awardAmount.value = null
+  awardComment.value = ''
+  showAwardModal.value = true
+}
+
+async function doAward() {
+  if (!awardStudent.value || !awardAmount.value) return
+  awarding.value = true
+  try {
+    await $fetch(`${API}/cabinet/gems/award-group`, {
+      method: 'POST',
+      credentials: 'include',
+      body: {
+        studentId: awardStudent.value.id,
+        groupId: groupId.value,
+        amount: awardAmount.value,
+        comment: awardComment.value || undefined,
+      },
+    })
+    message.success(`${awardStudent.value.full_name} награждён ${awardAmount.value} 💎`)
+    showAwardModal.value = false
+  } catch (e: any) {
+    const body = (e as any)?.data ?? (e as any)?.value
+    const err = body && typeof body === 'object' ? (body.error || JSON.stringify(body)) : ((e as any)?.message || 'Ошибка')
+    message.error(err)
+  } finally {
+    awarding.value = false
   }
 }
 

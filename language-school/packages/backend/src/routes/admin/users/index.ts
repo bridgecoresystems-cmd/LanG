@@ -193,7 +193,15 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
     const existing = await db.select().from(users).where(eq(users.username, username));
     if (existing.length > 0) {
       set.status = 400;
-      return { error: "username already exists" };
+      return { error: "Логин уже занят" };
+    }
+
+    if (email) {
+      const emailTaken = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+      if (emailTaken.length > 0) {
+        set.status = 400;
+        return { error: "Email уже используется другим пользователем" };
+      }
     }
 
     const id = crypto.randomUUID();
@@ -202,22 +210,31 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
     const avatar = (body.avatar as string)?.trim() || null;
     const rfid_uid = role === ROLES.STUDENT ? ((body.rfid_uid as string)?.trim() || null) : null;
 
-    await db.insert(users).values({
-      id,
-      username,
-      password_hash,
-      email: email || null,
-      first_name,
-      last_name,
-      role,
-      phone,
-      avatar,
-      rfid_uid,
-      school_id: school_id ?? null,
-      parent_id: parent_id ?? null,
-      can_export_excel,
-      can_view_all_schools: body.can_view_all_schools as boolean | undefined || false,
-    });
+    try {
+      await db.insert(users).values({
+        id,
+        username,
+        password_hash,
+        email: email || null,
+        first_name,
+        last_name,
+        role,
+        phone,
+        avatar,
+        rfid_uid,
+        school_id: school_id ?? null,
+        parent_id: parent_id ?? null,
+        can_export_excel,
+        can_view_all_schools: body.can_view_all_schools as boolean | undefined || false,
+      });
+    } catch (dbErr: any) {
+      set.status = 400;
+      const msg = dbErr?.message || "";
+      if (msg.includes("username")) return { error: "Логин уже занят" };
+      if (msg.includes("email")) return { error: "Email уже используется" };
+      if (msg.includes("rfid_uid")) return { error: "RFID UID уже зарегистрирован" };
+      return { error: "Ошибка при создании пользователя: " + msg };
+    }
 
     // Сохраняем дополнительные роли (исключаем SUPERUSER, основную роль и пустые строки)
     const validAdditionalRoles = (additional_roles || []).filter(
