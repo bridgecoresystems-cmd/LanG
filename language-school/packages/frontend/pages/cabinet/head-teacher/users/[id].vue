@@ -79,7 +79,27 @@
           </NFormItem>
 
           <NFormItem v-if="form.role === 'STUDENT'" label="RFID UID (браслет Mifare)" path="rfid_uid">
-            <NInput v-model:value="form.rfid_uid" placeholder="UID с RC522" size="large" />
+            <div class="rfid-row">
+              <NInput v-model:value="form.rfid_uid" placeholder="UID с RC522" size="large" :readonly="scanning" />
+              <NButton
+                :type="scanning ? 'warning' : 'primary'"
+                ghost
+                size="large"
+                :loading="scanning"
+                @click="startScan"
+              >
+                {{ scanning ? 'Отмена' : '📡 Сканировать' }}
+              </NButton>
+            </div>
+            <div v-if="scanning" class="rfid-hint rfid-hint--scanning">
+              ⏳ Поднесите браслет к считывателю...
+            </div>
+            <div v-else-if="scanError" class="rfid-hint rfid-hint--error">
+              ⚠️ {{ scanError }}
+            </div>
+            <div v-else-if="form.rfid_uid" class="rfid-hint rfid-hint--ok">
+              ✅ UID: {{ form.rfid_uid }}
+            </div>
           </NFormItem>
 
           <NFormItem label="Новый пароль" path="password">
@@ -147,6 +167,7 @@ function canAccess() {
 const { getUsers, getById, updateUser } = useCabinetHeadTeacher()
 
 const formRef = ref<FormInst | null>(null)
+
 const loading = ref(true)
 const saving = ref(false)
 const parents = ref<any[]>([])
@@ -163,6 +184,12 @@ const form = ref({
   parent_id: null as string | null,
   rfid_uid: '',
 })
+
+const rfidUidRef = computed({
+  get: () => form.value.rfid_uid,
+  set: (v: string) => { form.value.rfid_uid = v },
+})
+const { scanning, scanError, startScan } = useRfidScanner(rfidUidRef)
 
 const parentOptions = computed(() =>
   parents.value
@@ -317,4 +344,22 @@ onMounted(async () => {
 .hidden {
   display: none;
 }
+
+.rfid-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.rfid-row .n-input {
+  flex: 1;
+}
+.rfid-hint {
+  margin-top: 6px;
+  font-size: 13px;
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+.rfid-hint--scanning { color: #d46b08; background: #fff7e6; }
+.rfid-hint--error    { color: #cf1322; background: #fff1f0; }
+.rfid-hint--ok       { color: #389e0d; background: #f6ffed; }
 </style>

@@ -2,6 +2,9 @@
 export default defineNuxtConfig({
   devtools: {enabled: false},
   compatibilityDate: '2024-11-01',
+  devServer: {
+    host: '0.0.0.0', // доступен по IP в локальной сети (для тестирования с других устройств)
+  },
   ssr: false, // SPA mode — временно отключено для разработки (меньше нагрузка на Chrome)
   modules: ['@nuxtjs/i18n', '@pinia/nuxt', 'nuxt-quasar-ui', 'nuxtjs-naive-ui'],
   colorMode: {

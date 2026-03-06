@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ss -tlnp)",
+      "Bash(*)",
       "Bash(curl -v http://localhost:8010/api/v1/health)",
       "Bash(psql \"postgresql://lang_user:lang_password@localhost:5432/lang_db\" -c \"ALTER TABLE gems_vendor ADD COLUMN IF NOT EXISTS address TEXT;\")"
     ]

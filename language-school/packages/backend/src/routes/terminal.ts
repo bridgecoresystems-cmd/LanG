@@ -7,6 +7,17 @@ import { eq, and } from "drizzle-orm";
  * Terminal routes — used by ESP32 devices in the canteen/shop.
  * No session auth — uses terminalId + authToken instead.
  */
+
+// ── RFID Scanner memory store ──────────────────────────────────────────────
+// ESP32+RC522 prototype posts scanned UIDs here.
+// Frontend polls to pick up the UID and fill the user form.
+interface RfidScan { uid: string; scannedAt: Date }
+const rfidScans = new Map<string, RfidScan>()
+
+// Token used to identify the RFID scanner device.
+// Must match SCANNER_TOKEN in the Arduino sketch.
+const RFID_SCANNER_TOKEN = process.env.RFID_SCANNER_TOKEN ?? "LANG_RFID_001"
+
 export const terminalRoutes = new Elysia({ prefix: "/terminal" })
 
   // POST /terminal/payment
@@ -141,4 +152,67 @@ export const terminalRoutes = new Elysia({ prefix: "/terminal" })
       studentName: [student.first_name, student.last_name].filter(Boolean).join(" "),
       balance: Number(wallet?.balance || 0),
     };
+  })
+
+  // ── RFID Scanner endpoints (ESP32 + RC522 prototype) ──────────────────────
+
+  // POST /terminal/rfid-scan
+  // Called by ESP32 when a Mifare bracelet is tapped on the reader.
+  // Body: { scannerToken, uid }
+  .post("/rfid-scan", (context: any) => {
+    const { body, set } = context;
+    const { scannerToken, uid } = body;
+
+    if (scannerToken !== RFID_SCANNER_TOKEN) {
+      set.status = 403;
+      return { status: "error", message: "Invalid scanner token" };
+    }
+
+    rfidScans.set(scannerToken, { uid: String(uid).toUpperCase(), scannedAt: new Date() });
+    console.log(`[RFID] Scanned UID: ${uid}`);
+    return { status: "ok", uid };
+  }, {
+    body: t.Object({
+      scannerToken: t.String(),
+      uid: t.String(),
+    }),
+  })
+
+  // GET /terminal/rfid-scan?scannerToken=xxx
+  // Polled by frontend to pick up the latest scanned UID.
+  .get("/rfid-scan", (context: any) => {
+    const { query, set } = context;
+    const { scannerToken } = query;
+
+    if (scannerToken !== RFID_SCANNER_TOKEN) {
+      set.status = 403;
+      return { status: "error", message: "Invalid scanner token" };
+    }
+
+    const scan = rfidScans.get(scannerToken);
+    if (!scan) return { uid: null };
+
+    // Auto-expire scans older than 60 seconds
+    const age = Date.now() - scan.scannedAt.getTime();
+    if (age > 60_000) {
+      rfidScans.delete(scannerToken);
+      return { uid: null };
+    }
+
+    return { uid: scan.uid, scannedAt: scan.scannedAt };
+  })
+
+  // DELETE /terminal/rfid-scan?scannerToken=xxx
+  // Called by frontend after reading the UID to clear it from memory.
+  .delete("/rfid-scan", (context: any) => {
+    const { query, set } = context;
+    const { scannerToken } = query;
+
+    if (scannerToken !== RFID_SCANNER_TOKEN) {
+      set.status = 403;
+      return { status: "error", message: "Invalid scanner token" };
+    }
+
+    rfidScans.delete(scannerToken);
+    return { status: "ok" };
   });

@@ -16,7 +16,7 @@ import { wsGemsRoutes } from "./routes/ws-gems";
 import { terminalRoutes } from "./routes/terminal";
 import { staticPlugin } from "@elysiajs/static";
 
-const app = new Elysia()
+export const app = new Elysia()
   .onRequest(({ request }) => {
     console.log(`🦊 [Request] ${request.method} ${request.url}`);
   })
