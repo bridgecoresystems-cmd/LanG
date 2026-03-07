@@ -22,13 +22,14 @@ export type Role = (typeof ROLES)[keyof typeof ROLES];
 /** Роли с доступом к админ-панели (инструменты управления) */
 export const ADMIN_ROLES: Role[] = [
   ROLES.SUPERUSER,
+  ROLES.GEN_DIRECTOR,
+  ROLES.HEAD_ACCOUNTANT,
+  ROLES.ACCOUNTANT,
   ROLES.EDITOR,
   ROLES.HEAD_TEACHER,
   ROLES.SALES,
   ROLES.RECEPTIONIST,
   ROLES.DIRECTOR,
-  ROLES.GEN_DIRECTOR,
-  ROLES.ACCOUNTANT
 ];
 
 /** Роли с доступом к личному кабинету */

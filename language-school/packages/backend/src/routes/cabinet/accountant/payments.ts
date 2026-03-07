@@ -163,6 +163,48 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
       method: t.Optional(t.String()),
     })
   })
+  .get("/payments/stats", async (context: any) => {
+    const { user, query } = context;
+    const dateFrom = query.dateFrom ? new Date(query.dateFrom as string) : null;
+    const dateTo = query.dateTo ? new Date(query.dateTo as string) : null;
+    const [currentUser] = await db.select({ schoolId: users.school_id, role: users.role })
+      .from(users).where(eq(users.id, user.id)).limit(1);
+    const isSuper = currentUser?.role === ROLES.SUPERUSER || currentUser?.role === ROLES.GEN_DIRECTOR || currentUser?.role === ROLES.HEAD_ACCOUNTANT;
+    const conditions = [];
+    if (!isSuper && currentUser?.schoolId) {
+      conditions.push(eq(payments.schoolId, currentUser.schoolId));
+    }
+    if (dateFrom && !isNaN(dateFrom.getTime())) {
+      const start = new Date(dateFrom); start.setHours(0, 0, 0, 0);
+      conditions.push(sql`${payments.createdAt} >= ${start.toISOString()}`);
+    }
+    if (dateTo && !isNaN(dateTo.getTime())) {
+      const end = new Date(dateTo); end.setHours(23, 59, 59, 999);
+      conditions.push(sql`${payments.createdAt} <= ${end.toISOString()}`);
+    }
+    const whereClause = conditions.length ? and(...conditions) : undefined;
+    const allRows = await db.select({
+      total: payments.total,
+      method: payments.method,
+      purpose: payments.purpose,
+    }).from(payments).where(whereClause);
+    let totalSum = 0;
+    const byMethod: Record<string, number> = { cash: 0, card: 0, bank_transfer: 0 };
+    const byPurpose: Record<string, number> = {};
+    for (const r of allRows) {
+      const t = parseFloat(r.total || "0");
+      totalSum += t;
+      byMethod[r.method || "cash"] = (byMethod[r.method || "cash"] || 0) + t;
+      const p = (r.purpose || "Прочее").trim() || "Прочее";
+      byPurpose[p] = (byPurpose[p] || 0) + t;
+    }
+    return {
+      totalCount: allRows.length,
+      totalSum: Math.round(totalSum * 100) / 100,
+      byMethod,
+      byPurpose: Object.entries(byPurpose).map(([k, v]) => ({ purpose: k, sum: Math.round(v * 100) / 100 })),
+    };
+  }, { query: t.Object({ dateFrom: t.Optional(t.String()), dateTo: t.Optional(t.String()) }) })
   .post("/payments", async (context: any) => {
     const { user, body, set } = context;
     const { student_id, group_id, payer_name, payer_phone, amount, discount, method, purpose, comment, school_id, created_by_id, is_partial, tariff_id } = body;
@@ -228,10 +270,11 @@ export const accountantRoutes = new Elysia({ prefix: "/accountant" })
     
     const isHeadAccountant = await hasRole(user.id, ROLES.HEAD_ACCOUNTANT);
     const isGenDirector = await hasRole(user.id, ROLES.GEN_DIRECTOR);
+    const isAccountant = await hasRole(user.id, ROLES.ACCOUNTANT);
     
-    if (!isHeadAccountant && !isGenDirector) {
+    if (!isHeadAccountant && !isGenDirector && !isAccountant) {
       set.status = 403;
-      return { error: "Forbidden: Only Head Accountant or Gen Director can edit payments" };
+      return { error: "Forbidden: Only Head Accountant, Accountant or Gen Director can edit payments" };
     }
 
     const [existing] = await db.select().from(payments).where(eq(payments.id, parseInt(id))).limit(1);

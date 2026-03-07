@@ -114,14 +114,47 @@
             <QItemSection avatar>
               <QIcon name="point_of_sale" />
             </QItemSection>
-            <QItemSection>Терминалы 💎</QItemSection>
+            <QItemSection>Терминалы</QItemSection>
           </QItem>
+
+          <QExpansionItem
+            icon="account_balance"
+            label="Главбух"
+            v-model="isHeadAccountantExpanded"
+            header-class="nav-section-header"
+            expand-icon-class="text-dark"
+          >
+            <QItem to="/admin/head-accountant" exact clickable v-ripple :inset-level="1" active-class="nav-item-active" class="nav-subitem">
+              <QItemSection avatar><QIcon name="dashboard" /></QItemSection>
+              <QItemSection>Дашборд</QItemSection>
+            </QItem>
+            <QItem to="/admin/head-accountant/gems" clickable v-ripple :inset-level="1" active-class="nav-item-active" class="nav-subitem">
+              <QItemSection avatar><QIcon name="diamond" /></QItemSection>
+              <QItemSection>Gems кошельки</QItemSection>
+            </QItem>
+            <QItem to="/admin/head-accountant/payments" clickable v-ripple :inset-level="1" active-class="nav-item-active" class="nav-subitem">
+              <QItemSection avatar><QIcon name="payments" /></QItemSection>
+              <QItemSection>Платежи</QItemSection>
+            </QItem>
+            <QItem to="/admin/head-accountant/debts" clickable v-ripple :inset-level="1" active-class="nav-item-active" class="nav-subitem">
+              <QItemSection avatar><QIcon name="receipt_long" /></QItemSection>
+              <QItemSection>Контроль долгов</QItemSection>
+            </QItem>
+            <QItem to="/admin/head-accountant/tariffs" clickable v-ripple :inset-level="1" active-class="nav-item-active" class="nav-subitem">
+              <QItemSection avatar><QIcon name="price_change" /></QItemSection>
+              <QItemSection>Тарифы</QItemSection>
+            </QItem>
+            <QItem to="/admin/head-accountant/vendors" clickable v-ripple :inset-level="1" active-class="nav-item-active" class="nav-subitem">
+              <QItemSection avatar><QIcon name="store" /></QItemSection>
+              <QItemSection>Вендоры</QItemSection>
+            </QItem>
+          </QExpansionItem>
 
           <QItem to="/admin/gems/requests" clickable v-ripple active-class="nav-item-active" class="nav-item">
             <QItemSection avatar>
               <QIcon name="diamond" />
             </QItemSection>
-            <QItemSection>Заявки Gems 💎</QItemSection>
+            <QItemSection>Заявки Gems</QItemSection>
           </QItem>
 
           <QItem to="/admin/sales" clickable v-ripple active-class="nav-item-active" class="nav-item">
@@ -155,9 +188,11 @@
           />
         </QBreadcrumbs>
 
-        <!-- Page Content -->
+        <!-- Page Content (NMessageProvider для Naive UI useMessage в head-accountant и др.) -->
         <div class="admin-content-area">
-          <slot />
+          <NMessageProvider>
+            <slot />
+          </NMessageProvider>
         </div>
       </QPage>
     </QPageContainer>
@@ -167,6 +202,8 @@
 </template>
 
 <script setup lang="ts">
+import { NMessageProvider } from 'naive-ui'
+
 const leftDrawerOpen = ref(true)
 const authStore = useAuthStore()
 const router = useRouter()
@@ -186,12 +223,12 @@ const loading = ref(false)
 
 // Landing expansion state - ref для QExpansionItem
 const isLandingExpanded = ref(false)
+const isHeadAccountantExpanded = ref(false)
 
-// Автоматически открывать Landing при навигации на landing страницы
+// Автоматически открывать секции при навигации
 watch(() => route.path, (newPath) => {
-  if (newPath.startsWith('/admin/landing')) {
-    isLandingExpanded.value = true
-  }
+  if (newPath.startsWith('/admin/landing')) isLandingExpanded.value = true
+  if (newPath.startsWith('/admin/head-accountant')) isHeadAccountantExpanded.value = true
 }, { immediate: true })
 
 const breadcrumbItems = computed(() => {
@@ -222,6 +259,13 @@ const breadcrumbItems = computed(() => {
   } else if (path.includes('/terminals')) {
     items.push({ label: 'Терминалы', path: '/admin/terminals' })
     if (path.match(/\/terminals\/add$/)) items.push({ label: 'Добавить' })
+  } else if (path.startsWith('/admin/head-accountant')) {
+    items.push({ label: 'Главбух', path: '/admin/head-accountant' })
+    if (path.includes('/gems') && !path.includes('/requests')) items.push({ label: 'Gems кошельки' })
+    if (path.includes('/payments')) items.push({ label: 'Платежи' })
+    if (path.includes('/debts')) items.push({ label: 'Контроль долгов' })
+    if (path.includes('/tariffs')) items.push({ label: 'Тарифы' })
+    if (path.includes('/vendors')) items.push({ label: 'Вендоры' })
   } else if (path.includes('/gems')) {
     items.push({ label: 'Заявки Gems 💎', path: '/admin/gems/requests' })
   } else if (path.includes('/sales')) {

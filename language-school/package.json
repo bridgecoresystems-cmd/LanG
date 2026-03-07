@@ -7,9 +7,11 @@
     "dev": "concurrently \"bun run dev:backend\" \"bun run dev:frontend\"",
     "dev:backend": "cd packages/backend && bun run dev",
     "dev:frontend": "cd packages/frontend && bun run dev",
+    "dev:mobile": "cd packages/mobile && bun run dev",
     "build": "bun run build:backend && bun run build:frontend",
     "build:backend": "cd packages/backend && bun run build",
     "build:frontend": "cd packages/frontend && bun run build",
+    "build:mobile": "cd packages/mobile && bun run build",
     "start": "bun run start:backend",
     "start:backend": "cd packages/backend && bun run src/index.ts",
     "start:frontend": "cd packages/frontend && bun run preview",
@@ -18,11 +20,11 @@
     "db:push": "cd packages/backend && bun run db:push",
     "db:studio": "cd packages/backend && bun run db:studio",
     "seed": "cd packages/backend && bun run seed.ts",
-    "install:all": "bun install && cd packages/backend && bun install && cd ../frontend && bun install",
+    "install:all": "bun install && cd packages/backend && bun install && cd ../frontend && bun install && cd ../mobile && bun install",
     "typecheck": "cd packages/backend && bun run typecheck && cd ../frontend && bun run typecheck",
     "lint": "cd packages/frontend && bun run lint",
     "format": "prettier --write \"packages/**/*.{ts,js,vue,json}\"",
-    "clean": "rm -rf packages/backend/node_modules packages/frontend/node_modules node_modules"
+    "clean": "rm -rf packages/backend/node_modules packages/frontend/node_modules packages/mobile/node_modules node_modules"
   },
   "keywords": [
     "language-school",

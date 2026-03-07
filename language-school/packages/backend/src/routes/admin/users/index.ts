@@ -389,7 +389,7 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
         .select({ role: userRoles.role })
         .from(userRoles)
         .where(eq(userRoles.userId, id));
-      
+
       return {
         user: {
           ...profile,

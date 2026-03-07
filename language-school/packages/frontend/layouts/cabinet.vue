@@ -210,7 +210,7 @@ const isSidebarCollapsed = ref(false)
 
 // --- Gems balance ---
 const gemsBalance = ref<number>(0)
-const GEMS_ROLES = ['HEAD_ACCOUNTANT', 'ACCOUNTANT', 'TEACHER', 'STUDENT']
+const GEMS_ROLES = ['HEAD_ACCOUNTANT', 'ACCOUNTANT', 'TEACHER', 'STUDENT', 'MERCHANT']
 const showGems = computed(() => {
   const user = authStore.user
   if (!user) return false

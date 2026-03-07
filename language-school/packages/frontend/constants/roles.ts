@@ -14,12 +14,23 @@ export const ROLES = {
   SALES: "SALES",
   RECEPTIONIST: "RECEPTIONIST",
   EDITOR: "EDITOR",
+  ACCOUNTANT: "ACCOUNTANT",
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
 /** Роли с доступом к админ-панели */
-export const ADMIN_ROLES: Role[] = [ROLES.SUPERUSER];
+export const ADMIN_ROLES: Role[] = [
+  ROLES.SUPERUSER,
+  ROLES.GEN_DIRECTOR,
+  ROLES.HEAD_ACCOUNTANT,
+  ROLES.ACCOUNTANT,
+  ROLES.EDITOR,
+  ROLES.HEAD_TEACHER,
+  ROLES.SALES,
+  ROLES.RECEPTIONIST,
+  ROLES.DIRECTOR,
+];
 
 export function isAdminRole(role: string | null | undefined): boolean {
   return role != null && ADMIN_ROLES.includes(role as Role);
