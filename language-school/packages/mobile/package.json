@@ -1,0 +1,37 @@
+{
+  "name": "mobile",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bunx --bun vite",
+    "build": "vue-tsc -b && bunx --bun vite build",
+    "preview": "bunx --bun vite preview",
+    "cap:sync": "bunx --bun vite build && cap sync",
+    "cap:android": "bunx --bun vite build && cap sync android && cap open android",
+    "cap:ios": "bunx --bun vite build && cap sync ios && cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/app": "^8.0.1",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/haptics": "^8.0.1",
+    "@capacitor/keyboard": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.1",
+    "@ionic/vue": "^8.8.1",
+    "@ionic/vue-router": "^8.8.1",
+    "ionicons": "^8.0.13",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.25",
+    "vue-i18n": "^11.2.8",
+    "vue-router": "^5.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.2.0",
+    "@types/node": "^24.10.1",
+    "@vitejs/plugin-vue": "^6.0.2",
+    "@vue/tsconfig": "^0.8.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.1",
+    "vue-tsc": "^3.1.5"
+  }
+}
