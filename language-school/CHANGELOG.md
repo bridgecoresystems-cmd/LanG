@@ -8,6 +8,39 @@ This project follows [Semantic Versioning](https://semver.org/) and [Conventiona
 
 ## [Unreleased]
 
+### 📱 Mobile App (Ionic Vue + Capacitor)
+
+- **Initialized cross-platform mobile app** for students and parents at `packages/mobile/`
+  - Stack: Vite + Vue 3 + Ionic Vue 8 + Capacitor 8
+  - Role-based routing with auth guard (`/student/*`, `/parent/*`)
+  - Theme fully aligned with web cabinet: `#0066cc` primary, `#ff6b35` accent
+- **Student screens:** Dashboard (today's schedule, gems balance), Schedule (weekly day-picker), Grades (color-coded per subject), Profile
+- **Parent screens:** Dashboard (children list, payment summary), Children (per-child schedule & gems), Payments history, Profile
+- **Auth:** Login page with gradient hero, password visibility toggle
+- **i18n:** RU / TM / EN translations via vue-i18n v11
+- **Pinia** store for auth with localStorage token persistence
+- **Capacitor config** ready for Android / iOS builds
+- API integration (Eden Treaty) — next step
+
+### 🖥️ Dashboard & Admin Panel Redesign
+
+- **Cabinet `index.vue` completely rewritten** — role-aware UI for every role:
+  - Teacher: my groups, quick lesson access
+  - Student: today's schedule, gems balance, homework
+  - Parent: children overview, payment status
+  - Accountant / Head Accountant: payment stats, pending requests, gems wallet
+  - Director / Gen Director: school stats, revenue overview
+  - Sales / Receptionist: leads and enrollment shortcuts
+  - Each role gets a unique hero banner color and icon
+- **Admin dashboard redesigned:** hero section, quick-access shortcut grid, stats overview
+- **New Head Accountant section** in admin panel:
+  - Payments list with receipt generation and edit
+  - Debts tracking page
+  - Gems wallet management
+  - Vendor overview
+  - Tariff management (add / list)
+- Backend: refined role constants, improved accountant payments route
+
 ### 💎 Gamification: Gems System
 
 - **Added complete gamification system with gems currency**
