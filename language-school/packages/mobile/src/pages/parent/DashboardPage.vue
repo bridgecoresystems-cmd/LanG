@@ -15,7 +15,7 @@
       <!-- Приветствие -->
       <div class="greeting-card">
         <p class="greeting-text">{{ $t('parent.dashboard.greeting') }},</p>
-        <h2 class="parent-name">{{ auth.user?.name }}</h2>
+        <h2 class="parent-name">{{ auth.fullName }}</h2>
       </div>
 
       <!-- Дети -->

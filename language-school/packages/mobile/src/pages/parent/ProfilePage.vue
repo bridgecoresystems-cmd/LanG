@@ -9,7 +9,7 @@
     <ion-content :fullscreen="true">
       <div class="profile-hero">
         <ion-icon :icon="personCircleOutline" class="avatar-icon" />
-        <h2 class="profile-name">{{ auth.user?.name }}</h2>
+        <h2 class="profile-name">{{ auth.fullName }}</h2>
         <ion-chip color="tertiary">
           <ion-icon :icon="peopleOutline" />
           <ion-label>{{ $t('roles.PARENT') }}</ion-label>

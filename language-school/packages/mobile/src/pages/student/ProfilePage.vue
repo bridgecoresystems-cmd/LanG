@@ -12,7 +12,7 @@
         <div class="avatar-wrap">
           <ion-icon :icon="personCircleOutline" class="avatar-icon" />
         </div>
-        <h2 class="profile-name">{{ auth.user?.name }}</h2>
+        <h2 class="profile-name">{{ auth.fullName }}</h2>
         <ion-chip color="primary">
           <ion-icon :icon="schoolOutline" />
           <ion-label>{{ $t('roles.STUDENT') }}</ion-label>
@@ -26,7 +26,7 @@
             <ion-icon :icon="diamondOutline" class="gems-icon" />
             <div>
               <p class="gems-label">{{ $t('student.profile.gems') }}</p>
-              <p class="gems-value">240</p>
+              <p class="gems-value">{{ gems.balance }}</p>
             </div>
           </div>
         </ion-card-content>
@@ -58,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
@@ -69,12 +70,16 @@ import {
   notificationsOutline, languageOutline, chevronForwardOutline, logOutOutline,
 } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
+import { useGems } from '@/composables/useGems'
 
 const auth = useAuthStore()
 const router = useRouter()
+const gems = useGems()
 
-function handleLogout() {
-  auth.logout()
+onMounted(() => gems.fetchBalance())
+
+async function handleLogout() {
+  await auth.logout()
   router.replace('/auth/login')
 }
 </script>

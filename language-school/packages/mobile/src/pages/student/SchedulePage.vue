@@ -22,50 +22,57 @@
       </div>
 
       <div class="ion-padding">
-        <div
-          v-for="lesson in filteredLessons"
-          :key="lesson.id"
-          class="lesson-card"
-        >
-          <div class="time-col">
-            <span class="time-start">{{ lesson.timeStart }}</span>
-            <div class="time-line" />
-            <span class="time-end">{{ lesson.timeEnd }}</span>
-          </div>
-          <div class="lesson-body">
-            <h3>{{ lesson.name }}</h3>
-            <p class="teacher">{{ lesson.teacher }}</p>
-            <div class="lesson-meta">
-              <ion-chip color="primary" outline>
-                <ion-icon :icon="locationOutline" />
-                <ion-label>{{ lesson.room }}</ion-label>
-              </ion-chip>
+        <div v-if="loading" class="empty-day">
+          <ion-spinner name="crescent" />
+        </div>
+        <template v-else>
+          <div
+            v-for="lesson in filteredLessons"
+            :key="lesson.id"
+            class="lesson-card"
+          >
+            <div class="time-col">
+              <span class="time-start">{{ formatTime(lesson.lessonDate) }}</span>
+              <div class="time-line" />
+              <span class="time-end">{{ formatEndTime(lesson.lessonDate, lesson.durationMinutes) }}</span>
+            </div>
+            <div class="lesson-body">
+              <h3>{{ lesson.title || lesson.courseName || lesson.groupName }}</h3>
+              <p class="teacher">{{ lesson.groupName }}</p>
+              <div v-if="lesson.homework" class="homework-badge">
+                📝 {{ lesson.homework }}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div v-if="filteredLessons.length === 0" class="empty-day">
-          <ion-icon :icon="calendarOutline" class="empty-icon" />
-          <p>{{ $t('student.schedule.noLessons') }}</p>
-        </div>
+          <div v-if="filteredLessons.length === 0" class="empty-day">
+            <ion-icon :icon="calendarOutline" class="empty-icon" />
+            <p>{{ $t('student.schedule.noLessons') }}</p>
+          </div>
+        </template>
       </div>
     </ion-content>
   </ion-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
-  IonChip, IonIcon, IonLabel,
+  IonIcon, IonSpinner,
 } from '@ionic/vue'
-import { locationOutline, calendarOutline } from 'ionicons/icons'
+import { calendarOutline } from 'ionicons/icons'
+import { useSchedule } from '@/composables/useSchedule'
+
+const { loading, fetchSchedule, lessonsForDay } = useSchedule()
 
 const today = new Date()
+const selectedDay = ref(today.toISOString().slice(0, 10))
 
-const weekDays = Array.from({ length: 6 }, (_, i) => {
+// 14 дней: 7 назад + сегодня + 7 вперёд
+const weekDays = Array.from({ length: 14 }, (_, i) => {
   const d = new Date(today)
-  d.setDate(today.getDate() - today.getDay() + i + 1)
+  d.setDate(today.getDate() - 6 + i)
   return {
     date: d.toISOString().slice(0, 10),
     label: d.toLocaleDateString('ru-RU', { weekday: 'short' }),
@@ -73,18 +80,21 @@ const weekDays = Array.from({ length: 6 }, (_, i) => {
   }
 })
 
-const selectedDay = ref(today.toISOString().slice(0, 10))
+const filteredLessons = computed(() => lessonsForDay(selectedDay.value))
 
-// TODO: загружать с API
-const allLessons = [
-  { id: 1, date: weekDays[0]?.date, timeStart: '09:00', timeEnd: '10:20', name: 'Английский язык', teacher: 'Иванова А.Б.', room: '201' },
-  { id: 2, date: weekDays[0]?.date, timeStart: '10:30', timeEnd: '11:50', name: 'Математика', teacher: 'Петров В.Г.', room: '105' },
-  { id: 3, date: weekDays[1]?.date, timeStart: '09:00', timeEnd: '10:20', name: 'Чтение', teacher: 'Сидорова Н.М.', room: '301' },
-]
+function formatTime(dateStr: string | null) {
+  if (!dateStr) return '--:--'
+  return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
 
-const filteredLessons = computed(() =>
-  allLessons.filter(l => l.date === selectedDay.value)
-)
+function formatEndTime(dateStr: string | null, duration: number | null) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  d.setMinutes(d.getMinutes() + (duration ?? 90))
+  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+
+onMounted(() => fetchSchedule(14))
 </script>
 
 <style scoped>
@@ -196,5 +206,15 @@ const filteredLessons = computed(() =>
   font-size: 3rem;
   margin-bottom: 12px;
   opacity: 0.4;
+}
+
+.homework-badge {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: #666;
+  background: #fff8f0;
+  border-left: 3px solid #ff6b35;
+  padding: 4px 8px;
+  border-radius: 0 6px 6px 0;
 }
 </style>

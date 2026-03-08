@@ -18,11 +18,11 @@
       <div class="greeting-card">
         <div class="greeting-info">
           <p class="greeting-text">{{ $t('student.dashboard.greeting') }},</p>
-          <h2 class="student-name">{{ auth.user?.name }}</h2>
+          <h2 class="student-name">{{ auth.fullName }}</h2>
         </div>
         <div class="gems-badge">
           <ion-icon :icon="diamondOutline" class="gems-icon" />
-          <span class="gems-count">240</span>
+          <span class="gems-count">{{ gemsLoading ? '…' : gems.balance }}</span>
         </div>
       </div>
 
@@ -33,19 +33,19 @@
           <ion-card-subtitle>{{ todayDate }}</ion-card-subtitle>
         </ion-card-header>
         <ion-card-content>
-          <div v-for="lesson in todayLessons" :key="lesson.id" class="lesson-item">
-            <div class="lesson-time">{{ lesson.time }}</div>
-            <div class="lesson-info">
-              <p class="lesson-name">{{ lesson.name }}</p>
-              <p class="lesson-teacher">{{ lesson.teacher }}</p>
-            </div>
-            <ion-badge :color="lesson.active ? 'primary' : 'medium'">
-              {{ lesson.room }}
-            </ion-badge>
+          <div v-if="scheduleLoading" class="empty-text">
+            <ion-spinner name="crescent" />
           </div>
-          <p v-if="todayLessons.length === 0" class="empty-text">
+          <div v-else-if="todayLessons.length === 0" class="empty-text">
             {{ $t('student.dashboard.noLessons') }}
-          </p>
+          </div>
+          <div v-else v-for="lesson in todayLessons" :key="lesson.id" class="lesson-item">
+            <div class="lesson-time">{{ formatTime(lesson.lessonDate) }}</div>
+            <div class="lesson-info">
+              <p class="lesson-name">{{ lesson.title || lesson.courseName }}</p>
+              <p class="lesson-teacher">{{ lesson.groupName }}</p>
+            </div>
+          </div>
         </ion-card-content>
       </ion-card>
 
@@ -81,27 +81,37 @@
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonCard, IonCardHeader, IonCardTitle, IonCardSubtitle, IonCardContent,
-  IonButtons, IonButton, IonAvatar, IonIcon, IonBadge,
+  IonButtons, IonButton, IonAvatar, IonIcon, IonSpinner,
   IonGrid, IonRow, IonCol,
 } from '@ionic/vue'
 import {
   personCircleOutline, diamondOutline, statsChartOutline, calendarOutline,
 } from 'ionicons/icons'
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useSchedule } from '@/composables/useSchedule'
+import { useGems } from '@/composables/useGems'
 
 const auth = useAuthStore()
+const { lessonsForDay, fetchSchedule, loading: scheduleLoading } = useSchedule()
+const gems = useGems()
+const gemsLoading = gems.loading
 
 const todayDate = computed(() =>
   new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })
 )
+const todayStr = new Date().toISOString().slice(0, 10)
+const todayLessons = computed(() => lessonsForDay(todayStr))
 
-// TODO: получить с API
-const todayLessons = [
-  { id: 1, time: '09:00', name: 'Английский язык', teacher: 'Иванова А.Б.', room: '201', active: true },
-  { id: 2, time: '10:30', name: 'Математика', teacher: 'Петров В.Г.', room: '105', active: false },
-  { id: 3, time: '12:00', name: 'Чтение', teacher: 'Сидорова Н.М.', room: '301', active: false },
-]
+function formatTime(dateStr: string | null) {
+  if (!dateStr) return '--:--'
+  return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+
+onMounted(() => {
+  fetchSchedule(7)
+  gems.fetchBalance()
+})
 </script>
 
 <style scoped>

@@ -17,12 +17,13 @@
             <ion-card-content>
               <ion-list lines="none">
                 <ion-item class="input-item">
-                  <ion-icon :icon="mailOutline" slot="start" color="primary" />
+                  <ion-icon :icon="personOutline" slot="start" color="primary" />
                   <ion-input
-                    v-model="form.email"
-                    type="email"
-                    :placeholder="$t('auth.email')"
+                    v-model="form.username"
+                    type="text"
+                    :placeholder="$t('auth.username')"
                     :clear-input="true"
+                    autocomplete="username"
                   />
                 </ion-item>
                 <ion-item class="input-item">
@@ -74,40 +75,37 @@ import {
   IonList, IonItem, IonInput, IonButton, IonIcon, IonSpinner,
 } from '@ionic/vue'
 import {
-  mailOutline, lockClosedOutline, eyeOutline, eyeOffOutline,
+  personOutline, lockClosedOutline, eyeOutline, eyeOffOutline,
 } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
 
-const form = ref({ email: '', password: '' })
+const form = ref({ username: '', password: '' })
 const loading = ref(false)
 const error = ref('')
 const showPassword = ref(false)
 
 async function handleLogin() {
-  if (!form.value.email || !form.value.password) {
-    error.value = 'Введите email и пароль'
+  if (!form.value.username || !form.value.password) {
+    error.value = 'Введите логин и пароль'
     return
   }
   loading.value = true
   error.value = ''
   try {
-    // TODO: подключить Eden Treaty API
-    // const res = await api.auth.login.post({ email, password })
-    // auth.setUser(res.data.user, res.data.token)
-    // router.push(auth.isStudent ? '/student' : '/parent')
-
-    // Временная заглушка для разработки
-    await new Promise(r => setTimeout(r, 1000))
-    auth.setUser(
-      { id: '1', name: 'Тест Ученик', email: form.value.email, role: 'STUDENT', schoolId: '1' },
-      'mock_token'
-    )
-    router.push('/student')
-  } catch {
-    error.value = 'Неверный email или пароль'
+    const user = await auth.login(form.value.username, form.value.password)
+    if (user.role === 'STUDENT') {
+      router.replace('/student')
+    } else if (user.role === 'PARENT') {
+      router.replace('/parent')
+    } else {
+      // Другие роли — пока на студенческий экран
+      router.replace('/student')
+    }
+  } catch (e: any) {
+    error.value = e?.message || 'Неверный логин или пароль'
   } finally {
     loading.value = false
   }

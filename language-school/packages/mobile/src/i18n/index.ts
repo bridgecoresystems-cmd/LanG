@@ -13,6 +13,7 @@ const messages = {
     auth: {
       subtitle: 'Языковая школа',
       email: 'Email',
+      username: 'Логин',
       password: 'Пароль',
       login: 'Войти',
       logout: 'Выйти',
