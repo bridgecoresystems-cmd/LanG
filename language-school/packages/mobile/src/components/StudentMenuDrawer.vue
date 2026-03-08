@@ -1,5 +1,5 @@
 <template>
-  <ion-menu content-id="main-content" side="start" menu-id="student-menu">
+  <ion-menu id="student-menu" content-id="main-content" side="start" menu-id="student-menu">
     <ion-content class="menu-content">
       <!-- Шапка: имя + gems -->
       <div class="menu-header">
@@ -40,16 +40,18 @@
           @click="handleNavItemClick(item)"
         >
           <ion-icon :icon="item.icon" slot="start" class="menu-item-icon" />
-          <ion-label>{{ item.label }}</ion-label>
+          <ion-label><span class="menu-item-text">{{ item.label }}</span></ion-label>
         </ion-item>
       </ion-list>
 
       <!-- Выход -->
       <div class="menu-footer">
-        <ion-item lines="none" class="menu-logout" button @click="handleLogout">
-          <ion-icon :icon="logOutOutline" slot="start" color="danger" />
-          <ion-label color="danger">{{ $t('auth.logout') }}</ion-label>
-        </ion-item>
+        <div class="menu-logout-wrap">
+          <ion-item lines="none" class="menu-logout" button @click="handleLogout">
+            <ion-icon :icon="logOutOutline" slot="start" />
+            <ion-label>{{ $t('auth.logout') }}</ion-label>
+          </ion-item>
+        </div>
       </div>
     </ion-content>
   </ion-menu>
@@ -157,8 +159,16 @@ ion-menu#student-menu {
   --max-width: 300px;
 }
 
-ion-menu#student-menu .menu-content {
-  --background: #18a058;
+/* Принудительно переопределяем тему — меню всегда зелёное */
+ion-menu#student-menu ion-content.menu-content {
+  --background: linear-gradient(180deg, #18a058 0%, #0c7a43 100%);
+  --ion-background-color: #18a058;
+  background: linear-gradient(180deg, #18a058 0%, #0c7a43 100%) !important;
+}
+
+ion-menu#student-menu ion-item {
+  --background: transparent;
+  --ion-item-background: transparent;
 }
 
 ion-menu#student-menu .menu-header {
@@ -238,29 +248,47 @@ ion-menu#student-menu .menu-nav {
   padding: 0 8px;
 }
 
-ion-menu#student-menu .menu-item {
-  --background: transparent;
-  --color: rgba(255,255,255,0.85);
+ion-menu#student-menu .menu-nav ion-item {
+  --background: transparent !important;
+  --color: rgba(255,255,255,0.9) !important;
+  --ion-color-base: rgba(255,255,255,0.9) !important;
   --padding-start: 12px;
   --min-height: 48px;
   margin-bottom: 2px;
   border-radius: 10px;
+  color: rgba(255,255,255,0.9) !important;
 }
 
-ion-menu#student-menu .menu-item--active {
-  --background: white;
-  --color: #18a058;
+ion-menu#student-menu .menu-nav ion-item.menu-item--active {
+  --background: white !important;
+  --color: #18a058 !important;
+  background: white !important;
+  color: #18a058 !important;
   font-weight: 700;
 }
 
+ion-menu#student-menu .menu-nav ion-item.menu-item--active .menu-item-icon,
+ion-menu#student-menu .menu-nav ion-item.menu-item--active ion-icon,
+ion-menu#student-menu .menu-nav ion-item.menu-item--active ion-label,
+ion-menu#student-menu .menu-nav ion-item.menu-item--active .menu-item-text {
+  color: #18a058 !important;
+}
+
 ion-menu#student-menu .menu-item--disabled {
-  --color: rgba(255,255,255,0.3);
+  --color: rgba(255,255,255,0.4) !important;
+  color: rgba(255,255,255,0.4) !important;
   pointer-events: none;
 }
 
 ion-menu#student-menu .menu-item-icon {
   font-size: 1.2rem;
   margin-right: 12px;
+  color: inherit !important;
+}
+
+ion-menu#student-menu .menu-nav ion-label,
+ion-menu#student-menu .menu-nav .menu-item-text {
+  color: inherit !important;
 }
 
 ion-menu#student-menu .menu-footer {
@@ -268,8 +296,23 @@ ion-menu#student-menu .menu-footer {
   border-top: 1px solid rgba(255,255,255,0.1);
 }
 
+ion-menu#student-menu .menu-logout-wrap {
+  border: 2px solid #ff4d4f;
+  border-radius: 12px;
+  margin: 0 8px;
+  overflow: hidden;
+}
+
 ion-menu#student-menu .menu-logout {
-  --background: transparent;
-  --color: #ff4d4f;
+  --background: transparent !important;
+  --color: #ff4d4f !important;
+  --inner-padding-end: 0;
+  color: #ff4d4f !important;
+  font-weight: 700;
+}
+
+ion-menu#student-menu .menu-logout ion-icon,
+ion-menu#student-menu .menu-logout ion-label {
+  color: #ff4d4f !important;
 }
 </style>

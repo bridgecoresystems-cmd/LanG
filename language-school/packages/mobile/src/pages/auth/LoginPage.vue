@@ -15,33 +15,32 @@
         <div class="login-form">
           <ion-card>
             <ion-card-content>
-              <ion-list lines="none">
-                <ion-item class="input-item">
-                  <ion-icon :icon="personOutline" slot="start" color="primary" />
+              <div class="inputs-wrapper">
+                <div class="float-input" :class="{ focused: usernameFocused || form.username }">
+                  <ion-icon :icon="personOutline" class="input-icon" />
                   <ion-input
                     v-model="form.username"
                     type="text"
-                    :placeholder="$t('auth.username')"
-                    :clear-input="true"
                     autocomplete="username"
+                    @ionFocus="usernameFocused = true"
+                    @ionBlur="usernameFocused = false"
                   />
-                </ion-item>
-                <ion-item class="input-item">
-                  <ion-icon :icon="lockClosedOutline" slot="start" color="primary" />
+                  <label class="float-label">{{ $t('auth.username') }}</label>
+                </div>
+                <div class="float-input float-input--password" :class="{ focused: passwordFocused || form.password }">
+                  <ion-icon :icon="lockClosedOutline" class="input-icon" />
                   <ion-input
                     v-model="form.password"
                     :type="showPassword ? 'text' : 'password'"
-                    :placeholder="$t('auth.password')"
+                    @ionFocus="passwordFocused = true"
+                    @ionBlur="passwordFocused = false"
                   />
-                  <ion-button
-                    slot="end"
-                    fill="clear"
-                    @click="showPassword = !showPassword"
-                  >
+                  <label class="float-label">{{ $t('auth.password') }}</label>
+                  <ion-button fill="clear" class="eye-btn" @click="showPassword = !showPassword">
                     <ion-icon :icon="showPassword ? eyeOffOutline : eyeOutline" />
                   </ion-button>
-                </ion-item>
-              </ion-list>
+                </div>
+              </div>
 
               <ion-button
                 expand="block"
@@ -86,6 +85,8 @@ const form = ref({ username: '', password: '' })
 const loading = ref(false)
 const error = ref('')
 const showPassword = ref(false)
+const usernameFocused = ref(false)
+const passwordFocused = ref(false)
 
 async function handleLogin() {
   if (!form.value.username || !form.value.password) {
@@ -180,26 +181,79 @@ async function handleLogin() {
   background: #e8f5e9 !important;
 }
 
-.login-form :deep(ion-list) {
-  --background: transparent;
-  background: transparent !important;
+.inputs-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.input-item {
-  --border-radius: 14px;
-  --background: #ffffff;
-  --color: #1e293b;
-  --placeholder-color: #94a3b8;
-  margin-bottom: 16px;
+.float-input {
+  position: relative;
+  background: #ffffff;
   border-radius: 14px;
+  padding: 16px 16px 8px 48px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
 }
 
-.input-item ion-icon {
-  color: #18a058 !important;
+.float-input .input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.3rem;
+  color: #18a058;
 }
 
-.input-item ion-button ion-icon {
-  color: #18a058 !important;
+.float-input ion-input {
+  --padding-top: 8px;
+  --padding-bottom: 8px;
+  --padding-start: 0;
+  --padding-end: 0;
+}
+
+.float-input--password ion-input {
+  --padding-end: 40px;
+}
+
+.float-input ion-input::part(native) {
+  font-size: 1rem;
+  color: #1e293b;
+}
+
+.float-label {
+  position: absolute;
+  left: 48px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  color: #94a3b8;
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.float-input.focused .float-label {
+  top: 12px;
+  transform: translateY(0);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #18a058;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.eye-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  --padding-start: 8px;
+  --padding-end: 8px;
+}
+
+.eye-btn ion-icon {
+  color: #18a058;
 }
 
 .login-btn {
