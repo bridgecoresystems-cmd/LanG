@@ -64,11 +64,15 @@ import { calendarOutline, bookOutline } from 'ionicons/icons'
 import { api } from '@/composables/useApi'
 
 const route = useRoute()
-const lessonId = parseInt(route.params.lessonId as string)
 const lesson = ref<any>(null)
 const loading = ref(true)
 
 async function loadLesson() {
+  const lessonId = parseInt(route.params.lessonId as string)
+  if (!lessonId || isNaN(lessonId)) {
+    loading.value = false
+    return
+  }
   loading.value = true
   try {
     lesson.value = await api.cabinet.lessonById(lessonId)

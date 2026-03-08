@@ -37,17 +37,17 @@
           <div v-else class="lessons-list">
             <div
               v-for="item in attendance"
-              :key="item.id"
+              :key="item.lesson_id"
               class="lesson-item"
               :class="itemStatusClass(item)"
-              @click="$router.push(`/student/groups/${groupId}/lessons/${item.id}`)"
+              @click="$router.push(`/student/groups/${groupId}/lessons/${item.lesson_id}`)"
             >
               <div class="lesson-date-col">
                 <span class="day">{{ getDay(item.lesson_date) }}</span>
                 <span class="month">{{ getMonth(item.lesson_date) }}</span>
               </div>
               <div class="lesson-info-col">
-                <h4 class="lesson-title">{{ item.title }}</h4>
+                <h4 class="lesson-title">{{ item.lesson_title }}</h4>
                 <div class="lesson-status-badge" v-if="item.statusLabel !== '—'">
                   {{ item.statusLabel }}
                 </div>
