@@ -109,10 +109,13 @@ export const app = new Elysia()
     assets: "public",
     prefix: "/"
   }))
-  .listen(process.env.PORT || 8010);
+  .listen({
+  port: Number(process.env.PORT) || 8010,
+  hostname: "0.0.0.0", // доступ по IP в локальной сети (телефон, ESP32 терминал)
+});
 
 console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
+  `🦊 Elysia is running at http://0.0.0.0:${app.server?.port} (LAN: http://<твой_IP>:${app.server?.port})`
 );
 
 export type App = typeof app;

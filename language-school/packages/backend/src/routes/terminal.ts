@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia";
 import { db } from "../db/index";
 import { gemsWallets, gemsTransactions, gemsVendors, users } from "../db/schema";
 import { eq, and } from "drizzle-orm";
+import { pushGemsBalance } from "../ws/gems-broadcast";
 
 /**
  * Terminal routes — used by ESP32 devices in the canteen/shop.
@@ -97,6 +98,10 @@ export const terminalRoutes = new Elysia({ prefix: "/terminal" })
       type: "purchase",
       comment: `Покупка в "${vendor.name}" (терминал: ${terminalId})`,
     });
+
+    // 7. Push real-time balance updates
+    pushGemsBalance(student.id, newStudentBalance);
+    pushGemsBalance(vendor.userId, newVendorBalance);
 
     return {
       status: "success",
