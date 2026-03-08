@@ -114,7 +114,7 @@ async function handleLogin() {
 
 <style scoped>
 .login-content {
-  --background: linear-gradient(160deg, #0066cc 0%, #004499 50%, #003377 100%);
+  --background: #ffffff;
 }
 
 .login-wrapper {
@@ -135,33 +135,33 @@ async function handleLogin() {
   width: 80px;
   height: 80px;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
+  background: rgba(24, 160, 88, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(24, 160, 88, 0.3);
 }
 
 .logo-text {
   font-size: 2.5rem;
   font-weight: 800;
-  color: #ffffff;
+  color: #18a058;
 }
 
 .app-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #ffffff;
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #1e293b;
   margin: 0;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
 }
 
 .app-subtitle {
-  color: rgba(255, 255, 255, 0.8);
+  color: #64748b;
   margin-top: 8px;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 .login-form {
@@ -169,40 +169,66 @@ async function handleLogin() {
 }
 
 .login-form ion-card {
-  border-radius: 20px;
+  --background: #e8f5e9;
+  border-radius: 24px;
   margin: 0;
+  box-shadow: 0 4px 16px rgba(24, 160, 88, 0.12);
+}
+
+.login-form :deep(ion-card-content) {
+  --background: #e8f5e9;
+  background: #e8f5e9 !important;
+}
+
+.login-form :deep(ion-list) {
+  --background: transparent;
+  background: transparent !important;
 }
 
 .input-item {
-  --border-radius: 12px;
-  --background: #f5f5f5;
-  --color: #1a1a1a;
-  --placeholder-color: #999999;
-  margin-bottom: 12px;
-  border-radius: 12px;
-  color: #1a1a1a;
+  --border-radius: 14px;
+  --background: #ffffff;
+  --color: #1e293b;
+  --placeholder-color: #94a3b8;
+  margin-bottom: 16px;
+  border-radius: 14px;
+}
+
+.input-item ion-icon {
+  color: #18a058 !important;
+}
+
+.input-item ion-button ion-icon {
+  color: #18a058 !important;
 }
 
 .login-btn {
-  margin-top: 16px;
-  --border-radius: 12px;
-  --background: #0066cc;
-  --background-activated: #004499;
-  font-weight: 600;
-  height: 48px;
+  margin-top: 24px;
+  --border-radius: 16px;
+  --background: #18a058;
+  --background-activated: #0c7a43;
+  --box-shadow: 0 4px 12px rgba(24, 160, 88, 0.3);
+  font-weight: 700;
+  height: 56px;
+  font-size: 1.1rem;
 }
 
 .error-text {
-  color: #ff6b35;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 12px;
+  border-radius: 12px;
   text-align: center;
-  margin-top: 12px;
+  margin-top: 16px;
   font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .login-footer {
   padding: 24px 0 8px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.8rem;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 </style>
