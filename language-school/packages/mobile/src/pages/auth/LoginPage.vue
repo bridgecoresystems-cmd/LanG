@@ -176,8 +176,11 @@ async function handleLogin() {
 .input-item {
   --border-radius: 12px;
   --background: #f5f5f5;
+  --color: #1a1a1a;
+  --placeholder-color: #999999;
   margin-bottom: 12px;
   border-radius: 12px;
+  color: #1a1a1a;
 }
 
 .login-btn {

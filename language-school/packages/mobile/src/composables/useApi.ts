@@ -6,7 +6,7 @@
  * Dev:  http://localhost:8000
  * Prod: задаётся через VITE_API_URL в .env
  */
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8010'
 
 async function request<T>(
   method: string,

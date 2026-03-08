@@ -2,6 +2,9 @@
   <ion-page>
     <ion-header>
       <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-menu-button menu="student-menu" color="light" />
+        </ion-buttons>
         <ion-title>{{ $t('nav.schedule') }}</ion-title>
       </ion-toolbar>
     </ion-header>
@@ -59,7 +62,7 @@
 import { ref, computed, onMounted } from 'vue'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
-  IonIcon, IonSpinner,
+  IonButtons, IonMenuButton, IonIcon, IonSpinner,
 } from '@ionic/vue'
 import { calendarOutline } from 'ionicons/icons'
 import { useSchedule } from '@/composables/useSchedule'

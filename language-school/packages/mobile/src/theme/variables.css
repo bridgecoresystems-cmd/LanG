@@ -70,6 +70,17 @@
   }
 }
 
+/* Принудительно светлый режим для LoginPage инпутов */
+ion-input {
+  --color: #1a1a1a;
+  --placeholder-color: #999999;
+  color: #1a1a1a;
+}
+
+ion-item {
+  --color: #1a1a1a;
+}
+
 /* Глобальные кастомные стили */
 ion-toolbar {
   --padding-start: 16px;

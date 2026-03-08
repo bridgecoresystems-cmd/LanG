@@ -2,14 +2,10 @@
   <ion-page>
     <ion-header :translucent="true">
       <ion-toolbar>
-        <ion-title>{{ $t('student.dashboard.title') }}</ion-title>
-        <ion-buttons slot="end">
-          <ion-button fill="clear" router-link="/student/profile">
-            <ion-avatar style="width: 32px; height: 32px;">
-              <ion-icon :icon="personCircleOutline" color="light" style="font-size: 32px;" />
-            </ion-avatar>
-          </ion-button>
+        <ion-buttons slot="start">
+          <ion-menu-button menu="student-menu" color="light" />
         </ion-buttons>
+        <ion-title>{{ $t('student.dashboard.title') }}</ion-title>
       </ion-toolbar>
     </ion-header>
 
@@ -81,12 +77,10 @@
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonCard, IonCardHeader, IonCardTitle, IonCardSubtitle, IonCardContent,
-  IonButtons, IonButton, IonAvatar, IonIcon, IonSpinner,
+  IonButtons, IonMenuButton, IonIcon, IonSpinner,
   IonGrid, IonRow, IonCol,
 } from '@ionic/vue'
-import {
-  personCircleOutline, diamondOutline, statsChartOutline, calendarOutline,
-} from 'ionicons/icons'
+import { diamondOutline, statsChartOutline, calendarOutline } from 'ionicons/icons'
 import { computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useSchedule } from '@/composables/useSchedule'
