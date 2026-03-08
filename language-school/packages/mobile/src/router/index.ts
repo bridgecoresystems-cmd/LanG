@@ -20,6 +20,12 @@ const routes: RouteRecordRaw[] = [
     children: [
       { path: '', redirect: '/student/dashboard' },
       { path: 'dashboard', component: () => import('@/pages/student/DashboardPage.vue') },
+      { path: 'courses', component: () => import('@/pages/student/CoursesCatalogPage.vue') },
+      { path: 'payments', component: () => import('@/pages/student/PaymentsListPage.vue') },
+      { path: 'payments/:id', component: () => import('@/pages/student/ReceiptPage.vue') },
+      { path: 'groups/:id', component: () => import('@/pages/student/GroupDetailPage.vue') },
+      { path: 'groups/:id/lessons/:lessonId', component: () => import('@/pages/student/LessonDetailPage.vue') },
+      { path: 'groups/:id/games/:gameId', component: () => import('@/pages/student/GamePlayerPage.vue') },
       { path: 'schedule', component: () => import('@/pages/student/SchedulePage.vue') },
       { path: 'grades', component: () => import('@/pages/student/GradesPage.vue') },
       { path: 'profile', component: () => import('@/pages/student/ProfilePage.vue') },

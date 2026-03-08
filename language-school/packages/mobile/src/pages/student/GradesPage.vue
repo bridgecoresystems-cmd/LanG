@@ -10,47 +10,49 @@
     </ion-header>
 
     <ion-content :fullscreen="true" class="ion-padding">
-      <div v-if="loading" class="empty-state">
-        <ion-spinner name="crescent" />
-      </div>
+      <div class="grades-wrapper">
+        <div v-if="loading" class="empty-state">
+          <ion-spinner name="crescent" />
+        </div>
 
-      <div v-else-if="groups.length === 0" class="empty-state">
-        <ion-icon :icon="statsChartOutline" class="empty-icon" />
-        <p>Нет данных об оценках</p>
-      </div>
+        <div v-else-if="groups.length === 0" class="empty-state">
+          <ion-icon :icon="statsChartOutline" class="empty-icon" />
+          <p>Нет данных об оценках</p>
+        </div>
 
-      <ion-card v-else v-for="group in groups" :key="group.id" class="group-card">
-        <ion-card-content>
-          <div class="group-header">
-            <div class="group-info">
-              <h3 class="group-name">{{ group.course_name || group.name }}</h3>
-              <p class="group-teacher">{{ group.teacher_name || '—' }}</p>
+        <ion-card v-else v-for="group in groups" :key="group.id" class="group-card">
+          <ion-card-content>
+            <div class="group-header">
+              <div class="group-info">
+                <h3 class="group-name">{{ group.course_name || group.name }}</h3>
+                <p class="group-teacher">{{ group.teacher_name || '—' }}</p>
+              </div>
+              <div class="avg-badge" :class="avgClass(group.average_grade)">
+                {{ group.average_grade != null ? group.average_grade.toFixed(1) : '—' }}
+              </div>
             </div>
-            <div class="avg-badge" :class="avgClass(group.average_grade)">
-              {{ group.average_grade != null ? group.average_grade.toFixed(1) : '—' }}
+
+            <div class="progress-row">
+              <span class="progress-label">Пройдено уроков</span>
+              <span class="progress-nums">{{ group.completed_lessons }} / {{ group.total_lessons }}</span>
             </div>
-          </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" :style="{ width: group.progress + '%' }" />
+            </div>
 
-          <div class="progress-row">
-            <span class="progress-label">Пройдено уроков</span>
-            <span class="progress-nums">{{ group.completed_lessons }} / {{ group.total_lessons }}</span>
-          </div>
-          <div class="progress-bar-track">
-            <div class="progress-bar-fill" :style="{ width: group.progress + '%' }" />
-          </div>
+            <div v-if="group.tariff_price" class="payment-row">
+              <span class="payment-label">Оплачено</span>
+              <span class="payment-value">{{ group.total_paid.toLocaleString() }} / {{ group.tariff_price.toLocaleString() }} TMT</span>
+            </div>
 
-          <div v-if="group.tariff_price" class="payment-row">
-            <span class="payment-label">Оплачено</span>
-            <span class="payment-value">{{ group.total_paid.toLocaleString() }} / {{ group.tariff_price.toLocaleString() }} TMT</span>
-          </div>
-
-          <div v-if="group.next_lesson" class="next-lesson">
-            <ion-icon :icon="calendarOutline" />
-            <span>{{ formatDate(group.next_lesson.date) }}</span>
-            <span class="next-lesson-title">{{ group.next_lesson.title }}</span>
-          </div>
-        </ion-card-content>
-      </ion-card>
+            <div v-if="group.next_lesson" class="next-lesson">
+              <ion-icon :icon="calendarOutline" />
+              <span>{{ formatDate(group.next_lesson.date) }}</span>
+              <span class="next-lesson-title">{{ group.next_lesson.title }}</span>
+            </div>
+          </ion-card-content>
+        </ion-card>
+      </div>
     </ion-content>
   </ion-page>
 </template>

@@ -49,5 +49,21 @@ export const api = {
     },
     myGroups: () =>
       request<unknown[]>('GET', '/api/v1/cabinet/my-groups'),
+    lessonById: (lessonId: number) =>
+      request<any>('GET', `/api/v1/cabinet/student/lessons/${lessonId}`),
+    attendance: (groupId: number) =>
+      request<unknown[]>('GET', `/api/v1/cabinet/student/groups/${groupId}/attendance`),
+    examResults: (groupId: number) =>
+      request<any>('GET', `/api/v1/cabinet/student/groups/${groupId}/exam-results`),
+    games: (groupId: number) =>
+      request<unknown[]>('GET', `/api/v1/cabinet/student/groups/${groupId}/games`),
+    playGame: (gameId: number, score: number) =>
+      request<void>('POST', `/api/v1/cabinet/student/games/${gameId}/play`, { score }),
+    payments: () =>
+      request<any[]>('GET', '/api/v1/cabinet/student/payments'),
+    paymentById: (id: number) =>
+      request<any>('GET', `/api/v1/cabinet/student/payments/${id}/receipt`),
+    courses: () =>
+      request<any[]>('GET', '/api/v1/landing/courses'),
   },
 }
