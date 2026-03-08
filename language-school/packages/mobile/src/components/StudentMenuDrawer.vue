@@ -33,8 +33,7 @@
         <ion-item
           v-for="item in navItems"
           :key="item.label"
-          :router-link="item.disabled ? undefined : item.path"
-          router-direction="root"
+          button
           class="menu-item"
           :class="{ 'menu-item--active': isActive(item.path), 'menu-item--disabled': item.disabled }"
           @click="handleNavItemClick(item)"
@@ -121,29 +120,36 @@ function handleGroupChange(e: Event) {
 
 const navItems = computed(() => {
   const groupId = contextStore.selectedGroupId
-  const base = groupId ? `/student/groups/${groupId}` : null
   return [
-    { path: '/student/dashboard',      icon: homeOutline,           label: 'Дашборд' },
-    { path: '/student/courses',        icon: bookOutline,           label: 'Мои курсы' },
-    { path: base ? `${base}/lessons` : '#', icon: calendarOutline,  label: 'Уроки и материалы', disabled: !groupId },
-    { path: base ? `${base}/grades`  : '#', icon: statsChartOutline, label: 'Моя успеваемость',  disabled: !groupId },
-    { path: base ? `${base}/games`   : '#', icon: gameControllerOutline, label: 'Игры',          disabled: !groupId },
-    { path: '/student/profile',        icon: diamondOutline,        label: 'Мои гемы' },
-    { path: '/student/payments',       icon: cardOutline,           label: 'Мои платежи' },
-    { path: '/student/schedule',       icon: calendarOutline,       label: 'Расписание' },
-    { path: '/student/profile',        icon: personOutline,         label: 'Профиль' },
+    { path: '/student/dashboard',  icon: homeOutline,           label: 'Дашборд' },
+    { path: '/student/courses',    icon: bookOutline,           label: 'Мои курсы' },
+    { path: groupId ? `/student/groups/${groupId}?tab=lessons` : null,
+                                   icon: calendarOutline,       label: 'Уроки и материалы', disabled: !groupId },
+    { path: groupId ? `/student/groups/${groupId}?tab=grades`  : null,
+                                   icon: statsChartOutline,     label: 'Моя успеваемость',  disabled: !groupId },
+    { path: groupId ? `/student/groups/${groupId}?tab=games`   : null,
+                                   icon: gameControllerOutline, label: 'Игры',              disabled: !groupId },
+    { path: '/student/profile',    icon: diamondOutline,        label: 'Мои гемы' },
+    { path: '/student/payments',   icon: cardOutline,           label: 'Мои платежи' },
+    { path: '/student/schedule',   icon: calendarOutline,       label: 'Расписание' },
+    { path: '/student/profile',    icon: personOutline,         label: 'Профиль' },
   ]
 })
 
-function isActive(path: string) { return path !== '#' && route.path.startsWith(path) }
+function isActive(path: string | null) {
+  if (!path) return false
+  // убираем query params для сравнения
+  return route.path.startsWith(path.split('?')[0])
+}
 
 async function closeMenu() { await menuController.close('student-menu') }
 
 async function goProfile() { await closeMenu(); router.push('/student/profile') }
 
-function handleNavItemClick(item: { disabled?: boolean }) {
-  if (item.disabled) return
-  closeMenu()
+async function handleNavItemClick(item: { path: string | null; disabled?: boolean }) {
+  if (item.disabled || !item.path) return
+  await closeMenu()
+  router.push(item.path)
 }
 
 async function handleLogout() {
