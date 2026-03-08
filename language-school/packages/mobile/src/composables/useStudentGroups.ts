@@ -31,7 +31,7 @@ export function useStudentGroups() {
     loading.value = true
     error.value = null
     try {
-      const data = await api.cabinet.student.groups()
+      const data = await api.cabinet.myGroups()
       groups.value = (data as StudentGroup[]) || []
     } catch (e: unknown) {
       error.value = (e as Error)?.message || 'Failed to load groups'

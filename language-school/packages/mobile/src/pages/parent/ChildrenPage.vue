@@ -2,6 +2,9 @@
   <ion-page>
     <ion-header>
       <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-menu-button menu="parent-menu" color="light" />
+        </ion-buttons>
         <ion-title>{{ $t('nav.children') }}</ion-title>
       </ion-toolbar>
     </ion-header>
@@ -39,6 +42,7 @@
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonCard, IonCardContent, IonIcon,
+  IonButtons, IonMenuButton,
 } from '@ionic/vue'
 import { diamondOutline } from 'ionicons/icons'
 

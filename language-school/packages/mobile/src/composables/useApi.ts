@@ -47,9 +47,7 @@ export const api = {
       transactions: () =>
         request<unknown[]>('GET', '/api/v1/cabinet/gems/transactions'),
     },
-    student: {
-      groups: () =>
-        request<unknown[]>('GET', '/api/v1/cabinet/student/groups'),
-    },
+    myGroups: () =>
+      request<unknown[]>('GET', '/api/v1/cabinet/my-groups'),
   },
 }

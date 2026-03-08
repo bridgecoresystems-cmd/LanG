@@ -2,6 +2,9 @@
   <ion-page>
     <ion-header>
       <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-menu-button menu="parent-menu" color="light" />
+        </ion-buttons>
         <ion-title>{{ $t('nav.payments') }}</ion-title>
       </ion-toolbar>
     </ion-header>
@@ -29,6 +32,7 @@
 <script setup lang="ts">
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonIcon,
+  IonButtons, IonMenuButton,
 } from '@ionic/vue'
 import { cardOutline } from 'ionicons/icons'
 

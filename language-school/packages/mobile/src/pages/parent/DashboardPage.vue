@@ -2,12 +2,10 @@
   <ion-page>
     <ion-header>
       <ion-toolbar>
-        <ion-title>{{ $t('parent.dashboard.title') }}</ion-title>
-        <ion-buttons slot="end">
-          <ion-button fill="clear" router-link="/parent/profile">
-            <ion-icon :icon="personCircleOutline" color="light" style="font-size: 28px;" />
-          </ion-button>
+        <ion-buttons slot="start">
+          <ion-menu-button menu="parent-menu" color="light" />
         </ion-buttons>
+        <ion-title>{{ $t('parent.dashboard.title') }}</ion-title>
       </ion-toolbar>
     </ion-header>
 
@@ -71,9 +69,9 @@
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
   IonCard, IonCardHeader, IonCardTitle, IonCardSubtitle, IonCardContent,
-  IonButtons, IonButton, IonIcon,
+  IonButtons, IonMenuButton, IonIcon,
 } from '@ionic/vue'
-import { personCircleOutline, diamondOutline } from 'ionicons/icons'
+import { diamondOutline } from 'ionicons/icons'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()

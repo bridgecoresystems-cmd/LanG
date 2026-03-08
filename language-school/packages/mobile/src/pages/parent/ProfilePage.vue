@@ -2,6 +2,9 @@
   <ion-page>
     <ion-header>
       <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-menu-button menu="parent-menu" color="light" />
+        </ion-buttons>
         <ion-title>{{ $t('nav.profile') }}</ion-title>
       </ion-toolbar>
     </ion-header>
@@ -43,6 +46,7 @@
 import { useRouter } from 'vue-router'
 import {
   IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
+  IonButtons, IonMenuButton,
   IonList, IonItem, IonLabel, IonIcon, IonChip, IonButton,
 } from '@ionic/vue'
 import {

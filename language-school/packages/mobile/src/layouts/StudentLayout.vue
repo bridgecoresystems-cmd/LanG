@@ -42,10 +42,9 @@
     </ion-content>
   </ion-menu>
 
-  <!-- Основной контент -->
-  <ion-page id="student-content">
-    <ion-tabs>
-      <ion-router-outlet />
+  <!-- Основной контент: IonPage не нужен — IonMenu требует IonRouterOutlet напрямую -->
+  <ion-tabs>
+    <ion-router-outlet id="student-content" />
       <ion-tab-bar slot="bottom">
         <ion-tab-button tab="dashboard" href="/student/dashboard">
           <ion-icon :icon="homeOutline" />
@@ -64,15 +63,14 @@
           <ion-label>{{ $t('nav.profile') }}</ion-label>
         </ion-tab-button>
       </ion-tab-bar>
-    </ion-tabs>
-  </ion-page>
+  </ion-tabs>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  IonPage, IonTabs, IonRouterOutlet, IonTabBar, IonTabButton,
+  IonTabs, IonRouterOutlet, IonTabBar, IonTabButton,
   IonIcon, IonLabel, IonMenu, IonContent, IonList, IonItem,
   menuController,
 } from '@ionic/vue'
