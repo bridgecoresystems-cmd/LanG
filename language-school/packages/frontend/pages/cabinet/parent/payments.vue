@@ -81,13 +81,13 @@ import { ref, computed, watch, h, onMounted } from 'vue'
 import { NCard, NTag, NIcon, NSpin, NEmpty, NDataTable, NButton } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { PeopleOutline as PeopleIcon } from '@vicons/ionicons5'
-import { useParentCabinet } from '~/composables/useParentCabinet'
 import { useContextStore } from '~/stores/contextStore'
 
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
-const parentApi = useParentCabinet()
 const contextStore = useContextStore()
+const config = useRuntimeConfig()
+const API = config.public.apiBase as string
 
 // all payments per child: childId -> payment[]
 const paymentsMap = ref<Record<string, any[]>>({})
@@ -200,7 +200,10 @@ async function loadAllChildrenPayments() {
     await Promise.all(
       children.map(async (child) => {
         try {
-          const { data } = await parentApi.getChildPayments(child.id)
+          const data = await $fetch<any[]>(
+            `${API}/cabinet/parent/children/${child.id}/payments`,
+            { credentials: 'include' }
+          )
           paymentsMap.value[child.id] = Array.isArray(data) ? data : []
         } catch (e) {
           console.error(`Failed to load payments for child ${child.id}`, e)

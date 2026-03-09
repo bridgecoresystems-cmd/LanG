@@ -133,14 +133,13 @@ import {
   PeopleOutline as PeopleIcon,
   BookOutline as BookIcon,
 } from '@vicons/ionicons5'
-import { useParentCabinet } from '~/composables/useParentCabinet'
 import { useContextStore } from '~/stores/contextStore'
 
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
-const parentApi = useParentCabinet()
 const contextStore = useContextStore()
 const config = useRuntimeConfig()
+const API = config.public.apiBase as string
 
 const selectedChildId = computed(() => contextStore.selectedChildId)
 const selectedGroupId = computed(() => contextStore.selectedGroupId)
@@ -211,7 +210,10 @@ async function loadData() {
   }
   loading.value = true
   try {
-    const { data: result } = await parentApi.getChildGrades(childId, String(groupId))
+    const result = await $fetch<any>(
+      `${API}/cabinet/parent/children/${childId}/grades/${groupId}`,
+      { credentials: 'include' }
+    )
     data.value = result
   } catch (e) {
     console.error('Failed to load child grades', e)

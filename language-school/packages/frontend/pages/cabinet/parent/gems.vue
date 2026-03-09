@@ -61,13 +61,13 @@ import { ref, computed, watch, h } from 'vue'
 import { NCard, NTag, NIcon, NSpin, NEmpty, NDataTable } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { PeopleOutline as PeopleIcon } from '@vicons/ionicons5'
-import { useParentCabinet } from '~/composables/useParentCabinet'
 import { useContextStore } from '~/stores/contextStore'
 
 definePageMeta({ layout: 'cabinet', middleware: 'cabinet-auth' })
 
-const parentApi = useParentCabinet()
 const contextStore = useContextStore()
+const config = useRuntimeConfig()
+const API = config.public.apiBase as string
 
 const selectedChildId = computed(() => contextStore.selectedChildId)
 const selectedChild = computed(() =>
@@ -153,8 +153,11 @@ async function loadData() {
   }
   loading.value = true
   try {
-    const { data } = await parentApi.getChildGems(childId)
-    gemsData.value = data as any
+    const data = await $fetch<{ balance: number; transactions: any[] }>(
+      `${API}/cabinet/parent/children/${childId}/gems`,
+      { credentials: 'include' }
+    )
+    gemsData.value = data
   } catch (e) {
     console.error('Failed to load child gems', e)
     gemsData.value = null
