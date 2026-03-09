@@ -8,7 +8,7 @@
         @error="handleImageError"
       />
       <div v-if="news.is_featured" class="featured-badge">
-        <i class="pi pi-star"></i> Featured
+        <i class="pi pi-star-fill featured-star"></i>
       </div>
     </div>
 
@@ -20,10 +20,14 @@
           <i class="pi pi-calendar"></i>
           {{ formatDate(news.created_at) }}
         </span>
-        <button class="btn-read-more" type="button" @click.stop="openModal">
+        <span class="news-views">
+          <i class="pi pi-eye"></i>
+          {{ formatViews(news.views) }}
+        </span>
+        <NuxtLink :to="`/landing/news/${news.id}`" class="btn-read-more">
           <span>{{ $t('news.readMore') }}</span>
           <i class="pi pi-arrow-right"></i>
-        </button>
+        </NuxtLink>
       </div>
     </div>
   </div>
@@ -42,6 +46,12 @@ const openModal = () => {
 
 const formatDate = (dateString: string) => {
   return dayjs(dateString).format('DD MMMM YYYY')
+}
+
+const formatViews = (views: number) => {
+  if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M+`
+  if (views >= 1000) return `${(views / 1000).toFixed(1)}k+`
+  return `${views || 0}+`
 }
 
 const handleImageError = (event: Event) => {
@@ -99,9 +109,10 @@ const handleImageError = (event: Event) => {
   color: var(--text-primary);
   line-height: 1.4;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .news-preview {
@@ -113,18 +124,22 @@ const handleImageError = (event: Event) => {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .news-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: auto;
   padding-top: 1rem;
   border-top: 1px solid var(--border-color);
 }
 
-.news-date {
+.news-date,
+.news-views {
   color: var(--text-secondary);
   font-size: 0.9rem;
   display: flex;
@@ -132,19 +147,36 @@ const handleImageError = (event: Event) => {
   gap: 5px;
 }
 
+.featured-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.featured-star {
+  color: #f5c518;
+  font-size: 1.25rem;
+}
+
 .btn-read-more {
   background: var(--primary-color);
   border: 2px solid var(--primary-color);
   color: white;
   font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   transition: all 0.3s ease;
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 0.95rem;
+  margin-left: auto;
 }
 
 .btn-read-more:hover {

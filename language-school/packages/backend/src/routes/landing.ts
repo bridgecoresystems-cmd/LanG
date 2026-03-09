@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { db } from "../db";
-import { contactMessages, courseCategories, courseSubCategories, courses, news } from "../db/schema";
+import { contactMessages, courseCategories, courseSubCategories, courses, news, newsSubscribers } from "../db/schema";
 import { desc, eq } from "drizzle-orm";
 
 const tr = (obj: any, key: string, l: string) => obj[`${key}_${l}`] || obj[key];
@@ -225,4 +225,29 @@ export const landingRoutes = new Elysia({ prefix: "/landing" })
     query: t.Object({
       lang: t.Optional(t.String())
     })
+  })
+  .post("/news/:id/increment-views", async ({ params: { id } }) => {
+    const [item] = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
+    if (!item) return { error: "Not found" };
+    const newViews = (item.views || 0) + 1;
+    const [updated] = await db.update(news).set({ views: newViews }).where(eq(news.id, parseInt(id))).returning();
+    return updated;
+  })
+  .post("/news/subscribe", async ({ body }) => {
+    const { email } = body as { email: string };
+    try {
+      const [existing] = await db.select().from(newsSubscribers).where(eq(newsSubscribers.email, email)).limit(1);
+      if (existing) {
+        if (!existing.isActive) {
+          await db.update(newsSubscribers).set({ isActive: true }).where(eq(newsSubscribers.email, email));
+        }
+        return { success: true, message: "Already subscribed" };
+      }
+      await db.insert(newsSubscribers).values({ email });
+      return { success: true };
+    } catch (e) {
+      return { error: "Failed to subscribe" };
+    }
+  }, {
+    body: t.Object({ email: t.String({ format: 'email' }) })
   });

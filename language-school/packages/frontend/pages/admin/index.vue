@@ -101,6 +101,7 @@ const shortcuts = [
 }
 
 .admin-shortcut-card {
+  cursor: pointer;
   border-radius: 10px;
   transition: box-shadow 0.2s, transform 0.2s;
 }

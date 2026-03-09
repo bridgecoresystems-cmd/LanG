@@ -46,8 +46,7 @@
           <p>{{ $t('news.noNews') }}</p>
         </div>
         <div v-else>
-          <NewsCarousel ref="carouselRef" :news="news" @open-modal="openNewsModal" />
-          <NewsModal :is-open="isModalOpen" :news="selectedNews" @close="closeNewsModal" />
+          <NewsCarousel ref="carouselRef" :news="news" />
         </div>
       </div>
     </section>
@@ -66,20 +65,7 @@ const heroBackground = computed(() => {
   return map[locale.value] || map.ru
 })
 
-const isModalOpen = ref(false)
-const selectedNews = ref<News | null>(null)
 const carouselRef = ref<any>(null)
-
-const openNewsModal = (item: News) => {
-  selectedNews.value = item
-  isModalOpen.value = true
-}
-
-const closeNewsModal = () => {
-  isModalOpen.value = false
-  selectedNews.value = null
-  carouselRef.value?.resumeAutoplay?.()
-}
 
 onMounted(async () => {
   await Promise.all([fetchNews(), fetchCategories(), fetchCourses()])

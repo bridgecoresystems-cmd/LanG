@@ -128,7 +128,15 @@
     "subtitle": "Soňky täzelikler we wakalar",
     "readMore": "Doly oka",
     "readLess": "Gysgaça gör",
-    "noNews": "Täzelikler ýok"
+    "noNews": "Täzelikler ýok",
+    "otherNews": "Başga täzelikler",
+    "subscribeTitle": "Täzeliklere ýazylyň",
+    "subscribeText": "Mekdebimiziň ähli wakalaryndan habardar boluň",
+    "notFound": "Täzelik tapylmady",
+    "backToHome": "Baş sahypa",
+    "subscribePlaceholder": "Siziň Email-yňyz",
+    "subscribeSuccess": "Ýazylanyňyz üçin sag boluň!",
+    "subscribeError": "Ýazylmakda ýalňyşlyk ýüze çykdy. Soňra synanyşyň."
   },
   "contact": {
     "formTitle": "Biz bilen habarlaşyň",

@@ -176,6 +176,7 @@ body {
 }
 
 .admin-stat-card {
+  cursor: pointer;
   transition: all 0.3s ease;
   border-radius: 8px;
 }
@@ -186,6 +187,7 @@ body {
 }
 
 .admin-action-card {
+  cursor: pointer;
   text-decoration: none;
   color: inherit;
   display: block;

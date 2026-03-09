@@ -83,5 +83,35 @@ export const useAdminNews = () => {
     }
   }
 
-  return { loading, error, getAll, getById, create, update, remove }
+  const getSubscribers = async () => {
+    loading.value = true
+    error.value = null
+    try {
+      const { data, error: err } = await api.api.v1.admin.news.subscribers.get()
+      if (err) throw err
+      return Array.isArray(data) ? data : []
+    } catch (e: any) {
+      error.value = e?.message || 'Failed to fetch subscribers'
+      return []
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const removeSubscriber = async (id: number) => {
+    loading.value = true
+    error.value = null
+    try {
+      const { data, error: err } = await api.api.v1.admin.news.subscribers({ id: String(id) }).delete()
+      if (err) throw err
+      return data
+    } catch (e: any) {
+      error.value = e?.message || 'Failed to delete subscriber'
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, error, getAll, getById, create, update, remove, getSubscribers, removeSubscriber }
 }

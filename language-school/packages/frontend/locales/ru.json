@@ -114,7 +114,15 @@
     "subtitle": "Последние новости и события",
     "readMore": "Читать далее",
     "readLess": "Свернуть",
-    "noNews": "Новостей пока нет"
+    "noNews": "Новостей пока нет",
+    "otherNews": "Другие новости",
+    "subscribeTitle": "Подпишитесь на новости",
+    "subscribeText": "Будьте в курсе всех событий нашей школы",
+    "notFound": "Новость не найдена",
+    "backToHome": "На главную",
+    "subscribePlaceholder": "Ваш Email",
+    "subscribeSuccess": "Спасибо за подписку!",
+    "subscribeError": "Ошибка при подписке. Попробуйте позже."
   },
   "contact": {
     "formTitle": "Свяжитесь с нами",

@@ -112,7 +112,15 @@
     "subtitle": "Latest news and events",
     "readMore": "Read more",
     "readLess": "Read less",
-    "noNews": "No news available"
+    "noNews": "No news available",
+    "otherNews": "Other News",
+    "subscribeTitle": "Subscribe to News",
+    "subscribeText": "Stay up to date with all the events of our school",
+    "notFound": "News not found",
+    "backToHome": "Back to Home",
+    "subscribePlaceholder": "Your Email",
+    "subscribeSuccess": "Thanks for subscribing!",
+    "subscribeError": "Error subscribing. Please try later."
   },
   "contact": {
     "formTitle": "Contact Us",

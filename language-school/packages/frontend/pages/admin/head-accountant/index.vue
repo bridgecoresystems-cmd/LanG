@@ -181,6 +181,10 @@ watch([dateFrom, dateTo], loadStats)
 .admin-shortcut-card__icon.icon--tariffs { background: #e3f2fd; color: #1976d2; }
 .admin-shortcut-card__icon.icon--vendors { background: #f3e5f5; color: #7b1fa2; }
 
+.admin-shortcut-card {
+  cursor: pointer;
+}
+
 .admin-shortcut-card__body { flex: 1; min-width: 0; }
 .admin-shortcut-card__label { font-size: 0.95rem; font-weight: 600; color: #1a1a1a; }
 .admin-shortcut-card__desc { font-size: 0.75rem; color: #757575; margin-top: 2px; }

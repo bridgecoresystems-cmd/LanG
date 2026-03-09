@@ -15,6 +15,12 @@
           />
           <q-btn
             color="primary"
+            label="Подписчики"
+            icon="people"
+            to="/admin/landing/news/subscribers"
+          />
+          <q-btn
+            color="primary"
             label="Добавить новость"
             icon="add"
             to="/admin/landing/news/add"

@@ -8,6 +8,23 @@ This project follows [Semantic Versioning](https://semver.org/) and [Conventiona
 
 ## [Unreleased]
 
+### 📰 Landing News & Newsletter
+
+- **News detail page** — full page at `/landing/news/[id]` instead of modal; article layout with sidebar (newspaper style)
+- **NewsCard** — title limited to 2 lines, preview to 3 lines with ellipsis; added views count, featured star, improved layout
+- **NewsCarousel** — improved navigation buttons (gradient, shadows, hover)
+- **Newsletter subscribe** — DB table `news_subscriber`, backend endpoint, landing form with validation, success/error messages
+- **Admin: subscribers** — new page `/admin/landing/news/subscribers` to view and remove subscribers
+- **i18n** — all news page texts moved to RU/EN/TM locales
+- **Backend** — route ordering fix: `/subscribers` before `/:id`; `increment_views` endpoint for Eden Treaty compatibility
+- **useContactWs** — replaced with no-op stub (WebSocket removed from contact form)
+
+### 🖥️ Admin Panel UX
+
+- **Cursor pointer on cards** — added `cursor: pointer` for `.admin-stat-card`, `.admin-action-card`, `.admin-shortcut-card` (dashboard, head-accountant)
+
+---
+
 ### 📱 Mobile App (Ionic Vue + Capacitor)
 
 - **LoginPage UI overhaul**

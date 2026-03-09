@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { db } from "../../../db";
-import { news } from "../../../db/schema";
+import { contactMessages, courseCategories, courseSubCategories, courses, news, newsSubscribers } from "../../../db/schema";
 import { desc, eq } from "drizzle-orm";
 
 const newsBody = t.Object({
@@ -16,6 +16,19 @@ const newsBody = t.Object({
 });
 
 export const adminNewsRoutes = new Elysia({ prefix: "/news" })
+  .get("/subscribers", async ({ set }) => {
+    try {
+      return await db.select().from(newsSubscribers).orderBy(desc(newsSubscribers.createdAt));
+    } catch (e) {
+      console.error("Error fetching subscribers:", e);
+      set.status = 200;
+      return [];
+    }
+  })
+  .delete("/subscribers/:id", async ({ params: { id } }) => {
+    await db.delete(newsSubscribers).where(eq(newsSubscribers.id, parseInt(id)));
+    return { success: true };
+  })
   .get("/", async () => {
     return await db.select().from(news).orderBy(desc(news.created_at));
   })

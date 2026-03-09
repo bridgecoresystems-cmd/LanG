@@ -1,5 +1,13 @@
 import { pgTable, text, timestamp, integer, boolean, serial, decimal, uniqueIndex, pgEnum } from "drizzle-orm/pg-core";
 
+// --- News Subscribers ---
+export const newsSubscribers = pgTable("news_subscriber", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // --- Enums ---
 export const attendanceStatusEnum = pgEnum("attendance_status", ["present", "absent", "late", "excused"]);
 export const gradeTypeEnum = pgEnum("grade_type", ["homework", "test", "participation", "exam"]);

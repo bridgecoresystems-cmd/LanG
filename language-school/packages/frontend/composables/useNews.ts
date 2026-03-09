@@ -26,10 +26,16 @@ export const useNews = () => {
   }
 
   const incrementViews = async (id: number) => {
-    const { data, error } = await api.api.v1.landing.news({ id: String(id) }).increment_views.post()
+    const { data, error } = await api.api.v1.landing.news({ id: String(id) })['increment-views'].post()
     if (error) throw error
     return data
   }
 
-  return { news, loading, error, fetchNews, incrementViews }
+  const subscribeToNews = async (email: string) => {
+    const { data, error } = await api.api.v1.landing.news.subscribe.post({ email })
+    if (error) throw error
+    return data
+  }
+
+  return { news, loading, error, fetchNews, incrementViews, subscribeToNews }
 }
