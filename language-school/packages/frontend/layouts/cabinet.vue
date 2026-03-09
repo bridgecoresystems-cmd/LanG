@@ -63,7 +63,7 @@
           <div class="group-selector-label">Текущая группа:</div>
           <NSelect
             :key="'child-group-' + childGroupOptions.length"
-            :value="groupSelectValue"
+            :value="childGroupSelectValue"
             :options="childGroupOptions"
             size="small"
             placeholder="Выберите группу"
@@ -279,6 +279,12 @@ const childGroupOptions = computed(() =>
     value: g.id,
   }))
 )
+
+const childGroupSelectValue = computed(() => {
+  const id = contextStore.selectedGroupId
+  if (!id || !childGroupOptions.value.some((g: { value: number }) => g.value === id)) return null
+  return id
+})
 
 async function handleChildChange(childId: string | null) {
   if (!childId) return
