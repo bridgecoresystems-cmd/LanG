@@ -7,6 +7,12 @@ dist
 *.tgz
 .nuxt
 
+# Nuxt / Nitro build output (frontend)
+packages/frontend/.output/
+
+# Elysia backend build output
+packages/backend/backend/
+
 # code coverage
 coverage
 *.lcov
