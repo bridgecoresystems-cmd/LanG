@@ -283,15 +283,19 @@ const childGroupOptions = computed(() =>
 async function handleChildChange(childId: string | null) {
   if (!childId) return
   contextStore.setSelectedChild(childId)
-  // Load this child's groups
   try {
-    const { data } = await parentApi.getChildGroups(childId)
+    const data = await $fetch<any[]>(`${API}/cabinet/parent/children/${childId}/groups`, {
+      credentials: 'include',
+    })
     const groups = Array.isArray(data) ? data.map((g: any) => ({
       id: g.id,
-      name: g.name,
+      name: g.course_name || g.name,
       course_name: g.course_name,
     })) : []
     contextStore.setChildGroups(groups)
+    // Авто-выбираем первую активную группу
+    const firstActive = groups.find((g: any) => g.is_active !== false) || groups[0]
+    if (firstActive) contextStore.setSelectedGroup(firstActive.id)
   } catch (e) {
     console.error('Failed to load child groups', e)
     contextStore.setChildGroups([])
