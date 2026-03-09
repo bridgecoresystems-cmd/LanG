@@ -16,6 +16,7 @@ import { getStudentMyGroups, getStudentGroupIds } from "./student";
 import { studentLessonRoutes } from "./student/lessons";
 import { studentPaymentRoutes } from "./student/payments";
 import { studentExamRoutes } from "./student/exams";
+import { parentRoutes } from "./parent";
 import { chatRoutes } from "./chat";
 import { getScheduleForGroups } from "./schedule";
 import { rfidRoutes } from "../rfid";
@@ -250,6 +251,7 @@ export const cabinetRoutes = new Elysia({ prefix: "/cabinet" })
       .use(studentPaymentRoutes)
       .use(studentExamRoutes)
   )
+  .use(parentRoutes)
   .use(rfidRoutes)
   .get("/sales/calls", async (context: any) => {
     const { user, query } = context;

@@ -24,7 +24,7 @@
           </NuxtLink>
         </div>
 
-        <!-- Gems Balance Widget -->
+        <!-- Gems Balance Widget (non-PARENT roles) -->
         <div class="sidebar-gems" :class="{ 'gems-collapsed': isSidebarCollapsed }" v-if="showGems">
           <NTooltip v-if="isSidebarCollapsed" placement="right" trigger="hover">
             <template #trigger>
@@ -43,7 +43,38 @@
           </div>
         </div>
 
-        <div v-if="!isSidebarCollapsed && groupOptions.length > 0" class="group-selector-container">
+        <!-- Parent: Child Selector -->
+        <div v-if="!isSidebarCollapsed && isParent && childOptions.length > 0" class="group-selector-container">
+          <div class="group-selector-label">Мой ребёнок:</div>
+          <NSelect
+            :key="'child-' + childOptions.length"
+            :value="childSelectValue"
+            :options="childOptions"
+            size="small"
+            placeholder="Выберите ребёнка"
+            @update:value="handleChildChange"
+            class="group-selector"
+          />
+          <NDivider style="margin: 12px 0 0 0; background-color: rgba(255,255,255,0.1);" />
+        </div>
+
+        <!-- Parent: Child Group Selector (shown after child is selected) -->
+        <div v-if="!isSidebarCollapsed && isParent && childGroupOptions.length > 0" class="group-selector-container" style="padding-top: 0;">
+          <div class="group-selector-label">Текущая группа:</div>
+          <NSelect
+            :key="'child-group-' + childGroupOptions.length"
+            :value="groupSelectValue"
+            :options="childGroupOptions"
+            size="small"
+            placeholder="Выберите группу"
+            @update:value="handleGroupChange"
+            class="group-selector"
+          />
+          <NDivider style="margin: 12px 0 0 0; background-color: rgba(255,255,255,0.1);" />
+        </div>
+
+        <!-- Non-parent: Group Selector for teachers/students -->
+        <div v-if="!isSidebarCollapsed && !isParent && groupOptions.length > 0" class="group-selector-container">
           <div class="group-selector-label">Текущая группа:</div>
           <NSelect
             :key="'group-' + groupOptions.length"
@@ -196,11 +227,13 @@ import {
 import { useAuthStore } from '~/stores/authStore'
 import { useContextStore } from '~/stores/contextStore'
 import { useCabinetProfile } from '~/composables/useCabinetProfile'
+import { useParentCabinet } from '~/composables/useParentCabinet'
 import { useI18n } from 'vue-i18n'
 
 const authStore = useAuthStore()
 const contextStore = useContextStore()
 const profileApi = useCabinetProfile()
+const parentApi = useParentCabinet()
 const { locale } = useI18n()
 const route = useRoute()
 const config = useRuntimeConfig()
@@ -208,14 +241,62 @@ const API = config.public.apiBase as string
 
 const isSidebarCollapsed = ref(false)
 
+// --- Parent role check ---
+const isParent = computed(() => {
+  const user = authStore.user
+  if (!user) return false
+  return hasRole(user, 'PARENT')
+})
+
 // --- Gems balance ---
 const gemsBalance = ref<number>(0)
 const GEMS_ROLES = ['HEAD_ACCOUNTANT', 'ACCOUNTANT', 'TEACHER', 'STUDENT', 'MERCHANT']
 const showGems = computed(() => {
   const user = authStore.user
   if (!user) return false
+  // PARENT role does not have their own gems balance widget
+  if (hasRole(user, 'PARENT')) return false
   return GEMS_ROLES.some(r => hasRole(user, r))
 })
+
+// --- Parent: child selector ---
+const childOptions = computed(() =>
+  contextStore.availableChildren.map(c => ({
+    label: c.full_name || c.username,
+    value: c.id,
+  }))
+)
+
+const childSelectValue = computed(() => {
+  const id = contextStore.selectedChildId
+  if (!id || !childOptions.value.some(c => c.value === id)) return null
+  return id
+})
+
+const childGroupOptions = computed(() =>
+  contextStore.childGroups.map(g => ({
+    label: g.name,
+    value: g.id,
+  }))
+)
+
+async function handleChildChange(childId: string | null) {
+  if (!childId) return
+  contextStore.setSelectedChild(childId)
+  // Load this child's groups
+  try {
+    const { data } = await parentApi.getChildGroups(childId)
+    const groups = Array.isArray(data) ? data.map((g: any) => ({
+      id: g.id,
+      name: g.name,
+      course_name: g.course_name,
+    })) : []
+    contextStore.setChildGroups(groups)
+  } catch (e) {
+    console.error('Failed to load child groups', e)
+    contextStore.setChildGroups([])
+  }
+}
 
 async function loadGemsBalance() {
   if (!showGems.value) return
@@ -290,6 +371,28 @@ onMounted(async () => {
       contextStore.setGroups(normalized)
     } catch (e) {
       console.error('Failed to load groups for context', e)
+    }
+  }
+
+  if (hasRole(authStore.user, 'PARENT')) {
+    try {
+      const { data } = await parentApi.getChildren()
+      const children = Array.isArray(data) ? data.map((c: any) => ({
+        id: c.id,
+        username: c.username,
+        first_name: c.first_name,
+        last_name: c.last_name,
+        full_name: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.username,
+        avatar: c.avatar,
+      })) : []
+      contextStore.setChildren(children)
+      // Auto-load first child's groups
+      if (children.length > 0) {
+        const firstChildId = contextStore.selectedChildId || children[0].id
+        await handleChildChange(firstChildId)
+      }
+    } catch (e) {
+      console.error('Failed to load children for parent', e)
     }
   }
 })
@@ -504,8 +607,11 @@ const menuOptions = computed<MenuOption[]>(() => {
 
   if (hasRole(user, 'PARENT')) {
     options.push(
-      { label: 'Мои дети', key: '/cabinet/children', icon: renderIcon(PeopleIcon) },
-      { label: 'Сообщения', key: '/cabinet/mailing', icon: renderIcon(MailIcon) }
+      { label: 'Успеваемость', key: '/cabinet/parent/grades', icon: renderIcon(ChartIcon) },
+      { label: '💎 Гемы ребёнка', key: '/cabinet/parent/gems', icon: renderIcon(GemsIcon) },
+      { label: 'Платежи', key: '/cabinet/parent/payments', icon: renderIcon(PaymentIcon) },
+      { label: 'Уведомления', key: '/cabinet/parent/notifications', icon: renderIcon(ListIcon) },
+      { label: 'Сообщения', key: '/cabinet/mailing', icon: renderIcon(MailIcon) },
     )
   }
 
@@ -622,6 +728,10 @@ const activePageTitle = computed(() => {
   if (path.includes('/gen-director/topup-requests')) return '💎 Заявки на пополнение'
   if (path.includes('/gems') && path.includes('teacher/groups')) return '💎 Выдать гемы'
   if (path.includes('/cabinet/gems')) return '💎 Мои гемы'
+  if (path.includes('/cabinet/parent/grades')) return 'Успеваемость ребёнка'
+  if (path.includes('/cabinet/parent/gems')) return '💎 Гемы ребёнка'
+  if (path.includes('/cabinet/parent/payments')) return 'Платежи'
+  if (path.includes('/cabinet/parent/notifications')) return 'Уведомления'
   return 'Рабочий стол'
 })
 
