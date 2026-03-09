@@ -10,6 +10,14 @@ This project follows [Semantic Versioning](https://semver.org/) and [Conventiona
 
 ### 📱 Mobile App (Ionic Vue + Capacitor)
 
+- **LoginPage UI overhaul**
+  - White background, light green form card
+  - Floating labels (placeholder moves up on focus)
+  - Firm green accents (icons, button), dark text for contrast
+- **StudentMenuDrawer fixes**
+  - Green theme override for dark mode (`prefers-color-scheme`)
+  - Active menu item: green text and icon (was invisible before)
+  - Logout button: red border/outline
 - **Initialized cross-platform mobile app** for students and parents at `packages/mobile/`
   - Stack: Vite + Vue 3 + Ionic Vue 8 + Capacitor 8
   - Role-based routing with auth guard (`/student/*`, `/parent/*`)
@@ -40,6 +48,11 @@ This project follows [Semantic Versioning](https://semver.org/) and [Conventiona
   - Vendor overview
   - Tariff management (add / list)
 - Backend: refined role constants, improved accountant payments route
+
+### 🔌 Terminal / ESP32
+
+- **Backend: listen on 0.0.0.0** — доступ по IP в локальной сети (телефон, ESP32)
+- **Terminal: real-time gems push** — после оплаты через терминал баланс пушится через WebSocket
 
 ### 💎 Gamification: Gems System
 
