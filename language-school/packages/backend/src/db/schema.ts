@@ -631,3 +631,13 @@ export const tariffs = pgTable("tariff", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const auditLogs = pgTable("audit_log", {
+  id: serial("id").primaryKey(),
+  actorId: text("actor_id").references(() => users.id, { onDelete: "set null" }),
+  targetId: text("target_id").references(() => users.id, { onDelete: "set null" }),
+  action: text("action").notNull(),
+  meta: text("meta"),
+  ip: text("ip"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

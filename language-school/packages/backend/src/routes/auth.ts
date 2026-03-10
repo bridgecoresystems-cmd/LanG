@@ -115,4 +115,61 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
 
     set.headers["Set-Cookie"] = COOKIE_CLEAR;
     return { message: "Logged out successfully" };
+  })
+
+  /**
+   * GET /auth/session-token
+   * Echoes the current session token back to the caller (used by impersonate to save admin token).
+   * Safe: only an authenticated request has a valid cookie to send.
+   */
+  .get("/session-token", async ({ request, set }) => {
+    const cookieHeader = request.headers.get("Cookie") ?? "";
+    const token = cookieHeader.match(/better-auth\.session_token=([^;]+)/)?.[1];
+    if (!token) {
+      set.status = 401;
+      return { error: "No active session" };
+    }
+    // Verify session still valid
+    const now = new Date();
+    const [session] = await db
+      .select({ userId: sessions.userId })
+      .from(sessions)
+      .where(eq(sessions.token, token))
+      .limit(1);
+    if (!session) {
+      set.status = 401;
+      return { error: "Session expired" };
+    }
+    return { token };
+  })
+
+  /**
+   * POST /auth/restore-session
+   * Restores a previously saved session token (impersonate stop flow).
+   * Verifies the token is a valid session before setting cookie.
+   */
+  .post("/restore-session", async ({ body, set }) => {
+    const { token } = body as { token: string };
+    if (!token) { set.status = 400; return { error: "Token required" }; }
+
+    const now = new Date();
+    const [session] = await db
+      .select({ userId: sessions.userId, expiresAt: sessions.expiresAt })
+      .from(sessions)
+      .where(eq(sessions.token, token))
+      .limit(1);
+
+    if (!session || session.expiresAt < now) {
+      set.status = 401;
+      return { error: "Invalid or expired session token" };
+    }
+
+    const secure = isProduction ? "; Secure" : "";
+    const maxAge = Math.floor((session.expiresAt.getTime() - Date.now()) / 1000);
+    const cookie = `better-auth.session_token=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${secure}`;
+    set.headers["Set-Cookie"] = cookie;
+
+    return { success: true };
+  }, {
+    body: t.Object({ token: t.String() }),
   });

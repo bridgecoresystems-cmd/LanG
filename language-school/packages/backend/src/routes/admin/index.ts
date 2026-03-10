@@ -17,6 +17,7 @@ import { adminSchoolsRoutes } from "./schools";
 import { adminSalesRoutes } from "./sales";
 import { adminTerminalRoutes } from "./terminals";
 import { adminGemsRoutes } from "./gems";
+import { adminImpersonateRoutes } from "./impersonate";
 
 export const adminRoutes = new Elysia({ prefix: "/admin" })
   .onBeforeHandle((context: any) => {
@@ -49,4 +50,5 @@ export const adminRoutes = new Elysia({ prefix: "/admin" })
   .use(adminSchoolsRoutes)
   .use(adminSalesRoutes)
   .use(adminTerminalRoutes)
-  .use(adminGemsRoutes);
+  .use(adminGemsRoutes)
+  .use(adminImpersonateRoutes);

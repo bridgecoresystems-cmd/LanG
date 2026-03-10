@@ -132,6 +132,8 @@
       <ChatStudentButton v-if="hasRole(authStore.user, 'STUDENT')" />
 
       <NLayout>
+        <!-- Impersonate banner — shown when admin is logged in as another user -->
+        <ImpersonateBanner />
         <NLayoutHeader bordered class="cabinet-header">
           <div class="header-left">
             <NH1 style="margin: 0; font-size: 1.5rem; font-weight: 600;">

@@ -63,6 +63,16 @@
           <template v-slot:body-cell-actions="props">
             <q-td :props="props" @click.stop>
               <q-btn flat round dense icon="edit" color="primary" @click="editItem(props.row.id)" class="q-mr-xs" />
+              <q-btn
+                v-if="canImpersonate(props.row)"
+                flat round dense
+                icon="manage_accounts"
+                color="teal"
+                class="q-mr-xs"
+                @click.stop="handleImpersonate(props.row)"
+              >
+                <q-tooltip>Войти под этим пользователем</q-tooltip>
+              </q-btn>
               <q-btn flat round dense icon="delete" color="negative" @click.stop="handleDelete(props.row)" />
             </q-td>
           </template>
@@ -94,6 +104,7 @@
 </template>
 
 <script setup lang="ts">
+import { useQuasar } from 'quasar'
 definePageMeta({ layout: 'admin', middleware: 'admin-auth' })
 
 const { avatarUrl } = useAvatarUrl()
@@ -101,6 +112,8 @@ const avatarFailed = reactive<Record<string, boolean>>({})
 const { pagination, rowsPerPageOptions, resetPage, savePagination } = useAdminPagination('users')
 const { getAll, remove } = useAdminUsers()
 const { getAll: getAllSchools } = useAdminSchools()
+const { impersonate } = useImpersonate()
+const $q = useQuasar()
 
 const items = ref<any[]>([])
 const loading = ref(false)
@@ -214,6 +227,27 @@ const resetFilters = () => {
 
 const editItem = (id: string) => {
   navigateTo(`/admin/users/${id}`)
+}
+
+// Impersonate — show only for non-SUPERUSER rows
+function canImpersonate(row: any) {
+  return row.role !== 'SUPERUSER'
+}
+
+async function handleImpersonate(row: any) {
+  $q.dialog({
+    title: 'Войти под пользователем',
+    message: `Вы войдёте под учётной записью <b>${row.full_name || row.username}</b> (${row.role}).<br>Чтобы вернуться — нажмите баннер в кабинете.`,
+    html: true,
+    cancel: true,
+    ok: { label: 'Войти', color: 'teal' },
+  }).onOk(async () => {
+    try {
+      await impersonate(row.id)
+    } catch (e: any) {
+      $q.notify({ type: 'negative', message: e?.data?.error || 'Ошибка при входе под пользователем' })
+    }
+  })
 }
 
 const handleDelete = (row: any) => {
