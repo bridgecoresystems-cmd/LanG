@@ -226,7 +226,7 @@ export const landingRoutes = new Elysia({ prefix: "/landing" })
       lang: t.Optional(t.String())
     })
   })
-  .post("/news/:id/increment-views", async ({ params: { id } }) => {
+  .post("/news-views/:id", async ({ params: { id } }) => {
     const [item] = await db.select().from(news).where(eq(news.id, parseInt(id))).limit(1);
     if (!item) return { error: "Not found" };
     const newViews = (item.views || 0) + 1;

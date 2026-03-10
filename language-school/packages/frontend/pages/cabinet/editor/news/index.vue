@@ -533,7 +533,6 @@ const handleExport = async () => {
 watch([searchQuery, statusFilter, dateFrom, dateTo], resetPage)
 onMounted(() => loadNews())
 </script>
-
 <style scoped>
 .cabinet-page {
   padding-bottom: 40px;
@@ -608,3 +607,4 @@ onMounted(() => loadNews())
   border-top: 1px solid var(--n-border-color);
 }
 </style>
+

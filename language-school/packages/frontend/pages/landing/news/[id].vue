@@ -160,13 +160,18 @@ onMounted(async () => {
   
   if (currentNews.value) {
     viewsCount.value = currentNews.value.views
-    try {
-      const data = await incrementViews(currentNews.value.id)
-      if ((data as any)?.views !== undefined) {
-        viewsCount.value = (data as any).views
+    // Increment views only if it's the first visit to this news in this session
+    const storageKey = `news_viewed_${currentNews.value.id}`
+    if (!sessionStorage.getItem(storageKey)) {
+      try {
+        const data = await incrementViews(currentNews.value.id)
+        if ((data as any)?.views !== undefined) {
+          viewsCount.value = (data as any).views
+          sessionStorage.setItem(storageKey, 'true')
+        }
+      } catch (e) {
+        console.error('Failed to increment views', e)
       }
-    } catch (e) {
-      console.error('Failed to increment views', e)
     }
   }
 })
@@ -178,13 +183,17 @@ watch(newsId, async (newId) => {
   
   if (currentNews.value) {
     viewsCount.value = currentNews.value.views
-    try {
-      const data = await incrementViews(currentNews.value.id)
-      if ((data as any)?.views !== undefined) {
-        viewsCount.value = (data as any).views
+    const storageKey = `news_viewed_${currentNews.value.id}`
+    if (!sessionStorage.getItem(storageKey)) {
+      try {
+        const data = await incrementViews(currentNews.value.id)
+        if ((data as any)?.views !== undefined) {
+          viewsCount.value = (data as any).views
+          sessionStorage.setItem(storageKey, 'true')
+        }
+      } catch (e) {
+        console.error('Failed to increment views', e)
       }
-    } catch (e) {
-      console.error('Failed to increment views', e)
     }
   }
 })
