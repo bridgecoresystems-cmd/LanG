@@ -4,7 +4,7 @@
  */
 import { Elysia, t } from "elysia";
 import { db } from "../../../db";
-import { users, schools, userRoles, userSchools } from "../../../db/schema";
+import { users, schools, userRoles, userSchools, gemsWallets } from "../../../db/schema";
 import { desc, eq } from "drizzle-orm";
 import { ROLES } from "../../../constants/roles";
 import { generateUniqueUsername, generateRandomPassword } from "../../../services/user-services";
@@ -421,4 +421,14 @@ export const adminUsersRoutes = new Elysia({ prefix: "/users" })
   .delete("/:id", async ({ params: { id } }) => {
     await db.delete(users).where(eq(users.id, id));
     return { message: "Deleted successfully" };
+  })
+
+  // GET /admin/users/:id/gems — gems balance for any user (admin view)
+  .get("/:id/gems", async ({ params: { id } }) => {
+    const [wallet] = await db
+      .select({ balance: gemsWallets.balance })
+      .from(gemsWallets)
+      .where(eq(gemsWallets.userId, id))
+      .limit(1);
+    return { balance: wallet ? Number(wallet.balance) : 0 };
   });

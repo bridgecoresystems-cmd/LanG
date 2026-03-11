@@ -38,7 +38,7 @@
           flat
           bordered
           :loading="loading"
-          @row-click="(_evt, row) => editItem(row.id)"
+          @row-click="(_evt, row) => navigateTo(`/admin/users/view/${row.id}`)"
           class="cursor-pointer"
           binary-state-sort
         >
